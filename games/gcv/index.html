@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#101b2c">
+  <meta name="description" content="GCV, prototype 3D de course automobile pour GMR.">
+  <title>Grande Course Voiture — GMR</title>
+  <link rel="stylesheet" href="../../shared/site.css">
+  <link rel="stylesheet" href="./game.css">
+  <script defer src="../../shared/game-state.js"></script>
+  <script defer src="./physics.js"></script>
+  <script type="module" src="./game.js"></script>
+</head>
+<body>
+  <main class="page gcv-page">
+    <nav class="page-header gcv-page-header" aria-label="Navigation">
+      <a class="icon-button" href="../../" aria-label="Retour à l'accueil">←</a>
+      <h1>Grande Course Voiture</h1>
+      <span class="gcv-number" aria-label="Voiture numéro 9">N° 9</span>
+    </nav>
+
+    <section class="gcv-stage" id="gcv-stage" aria-label="Jeu de conduite en 3D">
+      <div class="gcv-scene" id="gcv-scene"></div>
+
+      <div class="gcv-hud-left">
+        <div class="gcv-speed" aria-label="Vitesse">
+          <span id="speed-value">0</span><small>km/h</small>
+        </div>
+        <span class="gcv-session-label">Essai libre · N° 9</span>
+      </div>
+
+      <div class="gcv-hud-right">
+        <div class="gcv-actions">
+          <button type="button" class="gcv-action" id="camera-button" aria-label="Passer en vue extérieure">Caméra : intérieure</button>
+          <button type="button" class="gcv-action" id="fullscreen-button" aria-label="Passer en plein écran">⛶ Plein écran</button>
+        </div>
+        <canvas id="mini-map" class="gcv-minimap" width="320" height="248" aria-label="Mini-carte de la piste montrant votre position" role="img"></canvas>
+      </div>
+
+      <div class="gcv-notice" id="gcv-notice" hidden role="status"></div>
+
+      <div class="gcv-controls" aria-label="Commandes de conduite">
+        <div class="gcv-steering-wrap">
+          <span class="gcv-control-caption">DIRECTION</span>
+          <div id="steer-pad" class="gcv-steer-pad" role="slider" tabindex="0" aria-label="Direction" aria-valuemin="-100" aria-valuemax="100" aria-valuenow="0" aria-valuetext="Tout droit">
+            <span class="gcv-steer-side">◀</span>
+            <div class="gcv-steer-track"><span class="gcv-steer-knob" id="steer-knob"></span></div>
+            <span class="gcv-steer-side">▶</span>
+          </div>
+        </div>
+        <div class="gcv-pedals">
+          <button type="button" id="brake-button" class="gcv-pedal gcv-brake" aria-label="Freiner">Frein</button>
+          <button type="button" id="accelerate-button" class="gcv-pedal gcv-accelerate" aria-label="Accélérer">Accélérer</button>
+        </div>
+      </div>
+    </section>
+
+    <p class="gcv-help">Maintiens <strong>Accélérer</strong> et dirige avec le pouce gauche. Sur ordinateur : <strong>↑ / W</strong> accélérer, <strong>↓ / S</strong> freiner et <strong>← / →</strong> tourner. La progression est enregistrée sur cet appareil.</p>
+    <p class="gcv-help gcv-prototype">Première version de conduite : les concurrents, le départ et les cinq tours seront ajoutés dans une prochaine étape.</p>
+  </main>
+</body>
+</html>
