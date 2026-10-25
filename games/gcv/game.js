@@ -6,6 +6,7 @@
   const stage = document.getElementById("gcv-stage");
   const sceneHost = document.getElementById("gcv-scene");
   const speedLabel = document.getElementById("speed-value");
+  const gearLabel = document.getElementById("gear-value");
   const lapLabel = document.getElementById("lap-value");
   const cameraButton = document.getElementById("camera-button");
   const fullscreenButton = document.getElementById("fullscreen-button");
@@ -34,7 +35,7 @@
 
   function start(THREE) {
     const ROAD_HALF_WIDTH = 9;
-    const GRAVEL_WIDTH = 2; // Two metres of safety on each side of the asphalt.
+    const GRAVEL_WIDTH = 6; // Six metres of gravel on each side of the asphalt.
     const OUTER_HALF_WIDTH = ROAD_HALF_WIDTH + GRAVEL_WIDTH;
     const SAMPLE_COUNT = 420;
     const CURVE_POINTS = [
@@ -103,7 +104,7 @@
 
     // Sparse, low-poly stones on the 2 m gravel shoulders. Instancing keeps
     // rendering cheap on Android and never places stones on the asphalt.
-    const pebbleCount = Math.ceil(SAMPLE_COUNT / 7) * 4;
+    const pebbleCount = Math.ceil(SAMPLE_COUNT / 7) * 2 * 5;
     const pebbles = new THREE.InstancedMesh(
       new THREE.DodecahedronGeometry(0.12, 0),
       new THREE.MeshStandardMaterial({ color: 0x736e61, roughness: 1 }),
@@ -113,7 +114,7 @@
     let pebbleIndex = 0;
     for (let i = 0; i < SAMPLE_COUNT; i += 7) {
       for (const side of [-1, 1]) {
-        for (let stone = 0; stone < 2; stone++) {
+        for (let stone = 0; stone < 5; stone++) {
           const proportion = ((i * 13 + stone * 43) % 97) / 97;
           const offset = side * (ROAD_HALF_WIDTH + 0.22 + proportion * (GRAVEL_WIDTH - 0.44));
           const center = positions[i], normal = sides[i];
@@ -174,14 +175,17 @@
     scene.add(abyss);
     const rockMaterial = new THREE.MeshStandardMaterial({ color: 0x65807b, roughness: 1, flatShading: true });
     const rockGeometry = new THREE.DodecahedronGeometry(1, 0);
-    // Sparse landmarks well away from the drivable road.
+    // Larger rock formations rise clearly above the abyss floor. Place them
+    // beyond the 6-m shoulders, close enough to remain visible from the road.
     for (let i = 0; i < 26; i++) {
-      const angle = (i / 26) * Math.PI * 2;
-      const radius = 98 + (i % 4) * 11;
-      const height = 5 + (i % 5) * 3;
+      const index = Math.floor(i * SAMPLE_COUNT / 26);
+      const normal = sides[index], center = positions[index];
+      const side = i % 2 === 0 ? -1 : 1;
+      const offset = side * (OUTER_HALF_WIDTH + 18 + (i % 3) * 7);
       const rock = new THREE.Mesh(rockGeometry, rockMaterial);
-      rock.scale.set(4 + i % 4, height, 5 + (i % 3));
-      rock.position.set(Math.cos(angle) * radius, -29.1, Math.sin(angle) * radius);
+      rock.scale.set(8 + (i % 4) * 2.2, 10 + (i % 5) * 3.5, 9 + (i % 3) * 2);
+      rock.position.set(center.x + normal.x * offset, -4, center.z + normal.z * offset);
+      rock.rotation.y = i * 0.74;
       scene.add(rock);
     }
 
@@ -230,17 +234,34 @@
       cabin.add(new THREE.Mesh(geometry, material));
     }
 
-    // Low-poly sports-car greenhouse: windscreen, rear window, doors and roof.
-    panel([[-0.86, 1.02, -1.01], [0.86, 1.02, -1.01],
-      [0.72, 1.63, -0.43], [-0.72, 1.63, -0.43]], glass);
+    // Always render the roof and the structural pillars from inside AND outside.
+    // Omit the windscreen pane to keep the forward view unobstructed.
     panel([[-0.72, 1.63, 0.75], [0.72, 1.63, 0.75],
       [0.86, 1.01, 1.35], [-0.86, 1.01, 1.35]], glass);
     for (const side of [-1, 1]) {
       panel([[side * 0.86, 1.02, -1.01], [side * 0.72, 1.63, -0.43],
         [side * 0.72, 1.63, 0.75], [side * 0.86, 1.01, 1.35]], glass);
-      box(cabin, 0.07, 0.61, 0.07, dark, side * 0.82, 1.32, 0.26);
     }
-    box(cabin, 1.46, 0.10, 1.23, colored, 0, 1.68, 0.16);
+    function pillar(from, to, thickness = 0.085) {
+      const a = new THREE.Vector3(...from), b = new THREE.Vector3(...to);
+      const direction = b.clone().sub(a);
+      const mesh = new THREE.Mesh(
+        new THREE.CylinderGeometry(thickness, thickness, direction.length(), 8), dark
+      );
+      mesh.position.copy(a).add(b).multiplyScalar(0.5);
+      mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
+      cabin.add(mesh);
+    }
+    for (const side of [-1, 1]) {
+      // Forward A pillars (no glass), central B pillars, rear C pillars.
+      pillar([side * 0.86, 1.01, -1.01], [side * 0.72, 1.63, -0.43], 0.075);
+      pillar([side * 0.83, 1.01, 0.25], [side * 0.72, 1.63, 0.25], 0.07);
+      pillar([side * 0.86, 1.01, 1.35], [side * 0.72, 1.63, 0.75], 0.075);
+      pillar([side * 0.72, 1.63, -0.43], [side * 0.72, 1.63, 0.75], 0.07);
+    }
+    box(cabin, 1.54, 0.11, 1.28, colored, 0, 1.69, 0.15); // Solid roof.
+    box(cabin, 1.59, 0.105, 0.12, dark, 0, 1.62, -0.43); // Upper windscreen frame.
+    box(cabin, 1.54, 0.09, 0.13, dark, 0, 1.62, 0.76); // Rear roof frame.
 
     const wheelPivots = [];
     for (const side of [-1, 1]) {
@@ -258,13 +279,63 @@
       }
     }
 
+    // Visible interior with a steering wheel, a dashboard, two decorative
+    // analogue gauges and a small faux information display.
     const dashboard = new THREE.Group();
-    box(dashboard, 1.85, 0.18, 0.45, dark, 0, 1.00, -0.94);
-    const steeringWheel = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.047, 8, 18), dark);
-    steeringWheel.position.set(-0.42, 1.15, -0.70);
+    box(dashboard, 1.88, 0.23, 0.47, dark, 0, 1.02, -0.91);
+    box(dashboard, 1.28, 0.34, 0.13, dark, -0.22, 1.19, -0.86);
+    const dialCanvas = document.createElement("canvas");
+    dialCanvas.width = 512;
+    dialCanvas.height = 160;
+    const dialCtx = dialCanvas.getContext("2d");
+    dialCtx.fillStyle = "#111d2d";
+    dialCtx.fillRect(0, 0, 512, 160);
+    function paintDial(cx, label, angle) {
+      dialCtx.strokeStyle = "#a0bacf";
+      dialCtx.lineWidth = 5;
+      dialCtx.beginPath();
+      dialCtx.arc(cx, 83, 56, 0, Math.PI * 2);
+      dialCtx.stroke();
+      dialCtx.strokeStyle = "#e6f4ff";
+      dialCtx.lineWidth = 3;
+      for (let i = 0; i < 9; i++) {
+        const t = Math.PI * 0.75 + i * Math.PI * 1.5 / 8;
+        dialCtx.beginPath();
+        dialCtx.moveTo(cx + Math.cos(t) * 44, 83 + Math.sin(t) * 44);
+        dialCtx.lineTo(cx + Math.cos(t) * 52, 83 + Math.sin(t) * 52);
+        dialCtx.stroke();
+      }
+      dialCtx.strokeStyle = "#ef4358";
+      dialCtx.lineWidth = 5;
+      dialCtx.beginPath();
+      dialCtx.moveTo(cx, 83);
+      dialCtx.lineTo(cx + Math.cos(angle) * 39, 83 + Math.sin(angle) * 39);
+      dialCtx.stroke();
+      dialCtx.fillStyle = "#e1ecf7";
+      dialCtx.font = "bold 16px sans-serif";
+      dialCtx.textAlign = "center";
+      dialCtx.fillText(label, cx, 147);
+    }
+    paintDial(84, "KM/H", 2.6);
+    paintDial(242, "RPM", 3.3);
+    dialCtx.fillStyle = "#3889bc";
+    dialCtx.fillRect(322, 38, 162, 80);
+    dialCtx.fillStyle = "#eaffff";
+    dialCtx.font = "bold 25px monospace";
+    dialCtx.textAlign = "center";
+    dialCtx.fillText("GCV  09", 402, 88);
+    const gauges = new THREE.Mesh(new THREE.PlaneGeometry(1.30, 0.4),
+      new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(dialCanvas) }));
+    gauges.position.set(-0.22, 1.19, -0.786); // Faces the driver's seat.
+    dashboard.add(gauges);
+    const steeringWheel = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.041, 8, 18), dark);
+    steeringWheel.position.set(-0.42, 1.16, -0.54);
     steeringWheel.rotation.x = -0.33;
     dashboard.add(steeringWheel);
-    box(dashboard, 0.12, 0.12, 0.12, rimMaterial, -0.42, 1.15, -0.70);
+    box(dashboard, 0.12, 0.12, 0.12, rimMaterial, -0.42, 1.16, -0.54);
+    box(dashboard, 0.43, 0.034, 0.044, rimMaterial, -0.42, 1.16, -0.53);
+    box(dashboard, 0.045, 0.32, 0.05, rimMaterial, -0.42, 1.11, -0.53);
+    box(dashboard, 0.30, 0.20, 0.43, redDetail, 0.64, 1.03, -0.75);
     car.add(dashboard);
 
     // The number is on the car, independent of its position on the starting grid.
@@ -427,7 +498,7 @@
       const outside = cameraMode === "outside";
       cameraButton.textContent = outside ? "Caméra : extérieure" : "Caméra : intérieure";
       cameraButton.setAttribute("aria-label", outside ? "Passer en vue intérieure" : "Passer en vue extérieure");
-      cabin.visible = outside;
+      cabin.visible = true; // Roof and pillars must stay visible in cockpit view.
       dashboard.visible = !outside;
       initializedCamera = false;
     }
@@ -522,6 +593,7 @@
         x: safe.x, z: safe.z,
         yaw: falling ? Math.atan2(-directions[respawnIndex].x, -directions[respawnIndex].z) : driver.yaw,
         speed: falling ? 0 : driver.speed,
+        reverseHold: falling ? 0 : driver.reverseHold,
         camera: cameraMode,
         progress: lapTracker.progress,
         laps: lapTracker.laps,
@@ -533,7 +605,8 @@
       if (valid && Math.abs(saved.x) < 220 && Math.abs(saved.z) < 220) {
         driver = {
           x: saved.x, z: saved.z, yaw: saved.yaw,
-          speed: clamp(saved.speed, 0, Physics.MAX_SPEED),
+          speed: clamp(saved.speed, -Physics.REVERSE_MAX_SPEED, Physics.MAX_SPEED),
+          reverseHold: clamp(Number(saved.reverseHold) || 0, 0, Physics.REVERSE_DELAY),
         };
         const near = closestRoad(driver.x, driver.z);
         if (near.distanceSquared > OUTER_HALF_WIDTH * OUTER_HALF_WIDTH) {
@@ -591,19 +664,25 @@
       }
       for (const wheel of wheelPivots) wheel.rotation.x -= driver.speed * dt / 0.46;
       car.updateMatrixWorld(true);
-      speedLabel.textContent = String(Math.round(driver.speed * 3.6));
+      speedLabel.textContent = String(Math.round(Math.abs(driver.speed) * 3.6));
+      gearLabel.textContent = driver.speed < -0.02 ? "R" : "";
     }
 
     function updateCamera(dt) {
       const inside = cameraMode === "inside";
       const desiredPosition = car.localToWorld(inside
-        ? new THREE.Vector3(0, 1.48, 0.38)
+        ? new THREE.Vector3(-0.42, 1.43, 0.30) // Directly behind the wheel.
         : new THREE.Vector3(0, 4.5, 9.7));
       const desiredTarget = car.localToWorld(inside
-        ? new THREE.Vector3(0, 1.34, -14)
+        ? new THREE.Vector3(-0.42, 1.42, -14)
         : new THREE.Vector3(0, 1.13, -8));
-      const blend = initializedCamera ? 1 - Math.exp(-8 * dt) : 1;
-      camera.position.lerp(desiredPosition, blend);
+      if (inside) {
+        // Fixed cockpit mount: no elastic camera movement, even while turning.
+        camera.position.copy(desiredPosition);
+      } else {
+        const blend = initializedCamera ? 1 - Math.exp(-8 * dt) : 1;
+        camera.position.lerp(desiredPosition, blend);
+      }
       camera.lookAt(desiredTarget);
       initializedCamera = true;
     }
