@@ -17,8 +17,8 @@ const GcvPhysics = (() => {
     const currentSpeed = clamp(Number(state.speed) || 0, -REVERSE_MAX_SPEED, MAX_SPEED);
     const gas = Boolean(input.accelerate);
     const brake = Boolean(input.brake);
-    const gravel = Boolean(input.gravel);
-    const drag = 1.4 + 0.003 * currentSpeed * currentSpeed + (gravel ? 7 : 0);
+    // Paved-road handling on the muddy-looking track AND safety shoulders.
+    const drag = 1.4 + 0.003 * currentSpeed * currentSpeed;
     let speed;
     let reverseHold = 0;
 
@@ -40,9 +40,8 @@ const GcvPhysics = (() => {
     }
 
     const steer = clamp(Number(input.steer) || 0, -1, 1);
-    const grip = gravel ? 0.78 : 1;
     const yaw = state.yaw - steer * Math.sign(speed) *
-      Math.min(Math.abs(speed) / 14, 1) * MAX_STEER_RATE * grip * elapsed;
+      Math.min(Math.abs(speed) / 14, 1) * MAX_STEER_RATE * elapsed;
     return {
       x: state.x - Math.sin(yaw) * speed * elapsed,
       z: state.z - Math.cos(yaw) * speed * elapsed,
@@ -50,6 +49,17 @@ const GcvPhysics = (() => {
       speed,
       reverseHold,
     };
+  }
+
+  // An intentionally high threshold for visual mud spray. Normal steering,
+  // normal braking and simply touching the shoulder must never spawn mud.
+  // This approximates excessive lateral load without changing driving physics.
+  function skidIntensity(speed, steering) {
+    const v = Math.abs(Number(speed) || 0);
+    const turn = Math.min(1, Math.abs(Number(steering) || 0));
+    if (v < 30 || turn < 0.80) return 0;
+    const lateralLoad = v * MAX_STEER_RATE * turn;
+    return Math.min(1.5, Math.max(0, (lateralLoad - 45) / 32));
   }
 
   // Airborne motion is independent from road steering/braking. Timer starts
@@ -84,7 +94,7 @@ const GcvPhysics = (() => {
   return Object.freeze({
     MAX_SPEED, MAX_STEER_RATE, BRAKE_DECELERATION,
     REVERSE_DELAY, REVERSE_MAX_SPEED, GRAVITY, FALL_SECONDS,
-    advance, startFall, advanceFall,
+    advance, skidIntensity, startFall, advanceFall,
   });
 })();
 
