@@ -410,6 +410,81 @@
     cabin.add(roofNumber);
     scene.add(car);
 
+    // One batched particle system for little splashes of mud when the car
+    // loses grip in a fast corner or locks its wheels under hard braking.
+    const MAX_MUD_PARTICLES = 240;
+    const mudPositions = new Float32Array(MAX_MUD_PARTICLES * 3);
+    const mudColors = new Float32Array(MAX_MUD_PARTICLES * 3);
+    const mudState = Array.from({ length: MAX_MUD_PARTICLES }, () => ({
+      lifetime: 0, duration: 0, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0,
+    }));
+    for (let i = 0; i < MAX_MUD_PARTICLES; i++) mudPositions[i * 3 + 1] = -2000;
+    const mudGeometry = new THREE.BufferGeometry();
+    const mudPositionAttribute = new THREE.BufferAttribute(mudPositions, 3);
+    const mudColorAttribute = new THREE.BufferAttribute(mudColors, 3);
+    mudPositionAttribute.setUsage(THREE.DynamicDrawUsage);
+    mudColorAttribute.setUsage(THREE.DynamicDrawUsage);
+    mudGeometry.setAttribute("position", mudPositionAttribute);
+    mudGeometry.setAttribute("color", mudColorAttribute);
+    const mudPoints = new THREE.Points(mudGeometry, new THREE.PointsMaterial({
+      size: 0.34, vertexColors: true, transparent: true,
+      opacity: 0.92, depthWrite: false, sizeAttenuation: true,
+    }));
+    mudPoints.frustumCulled = false;
+    scene.add(mudPoints);
+    let nextMudParticle = 0, mudEmissionRemainder = 0;
+
+    function tickMudParticles(dt, intensity) {
+      for (let i = 0; i < MAX_MUD_PARTICLES; i++) {
+        const p = mudState[i], j = 3 * i;
+        if (p.lifetime > 0) {
+          p.lifetime -= dt;
+          p.x += p.vx * dt;
+          p.z += p.vz * dt;
+          p.y += p.vy * dt;
+          p.vy -= 9.81 * dt;
+          if (p.y < 0.11) p.lifetime = 0;
+        }
+        if (p.lifetime > 0) {
+          mudPositions[j] = p.x;
+          mudPositions[j + 1] = p.y;
+          mudPositions[j + 2] = p.z;
+          const brightness = 0.3 + 0.7 * (p.lifetime / p.duration);
+          mudColors[j] = brightness * 0.42;
+          mudColors[j + 1] = brightness * 0.29;
+          mudColors[j + 2] = brightness * 0.16;
+        } else {
+          mudPositions[j + 1] = -2000;
+        }
+      }
+
+      if (intensity > 0 && dt > 0) {
+        mudEmissionRemainder += Math.min(1.5, intensity) * dt * 100;
+        const emissions = Math.min(12, Math.floor(mudEmissionRemainder));
+        mudEmissionRemainder -= emissions;
+        for (let i = 0; i < emissions; i++) {
+          const p = mudState[nextMudParticle];
+          const side = i % 2 === 0 ? -1 : 1;
+          const origin = car.localToWorld(new THREE.Vector3(
+            side * 0.86, 0.22, 1.48
+          ));
+          p.x = origin.x;
+          p.y = origin.y;
+          p.z = origin.z;
+          const spread = (Math.random() - 0.5) * 3.0;
+          const backSpeed = 1.3 + Math.random() * 3.7;
+          p.vx = Math.sin(driver.yaw) * backSpeed + Math.cos(driver.yaw) * spread;
+          p.vz = Math.cos(driver.yaw) * backSpeed - Math.sin(driver.yaw) * spread;
+          p.vy = 1.4 + Math.random() * 2.2;
+          p.duration = 0.4 + Math.random() * 0.4;
+          p.lifetime = p.duration;
+          nextMudParticle = (nextMudParticle + 1) % MAX_MUD_PARTICLES;
+        }
+      }
+      mudPositionAttribute.needsUpdate = true;
+      mudColorAttribute.needsUpdate = true;
+    }
+
     // Start on a straight section, facing the road in its normal forward direction.
     const initialIndex = 19;
     const initial = positions[initialIndex];
@@ -746,6 +821,8 @@
     refreshCameraButton();
 
     function updateCar(dt, fallDt = dt) {
+      const brakePressed = brakePointers.size > 0 || keys.has("arrowdown") || keys.has("s");
+      let mudSkidIntensity = 0;
       if (falling) {
         fall = Physics.advanceFall(fall, fallDt);
         if (fall.remaining <= 0.000001) {
@@ -756,10 +833,15 @@
       } else {
         const steer = refreshPad();
         const accelerate = gasPointers.size > 0 || keys.has("arrowup") || keys.has("w");
-        const brake = brakePointers.size > 0 || keys.has("arrowdown") || keys.has("s");
+        const brake = brakePressed;
         const currentRoad = closestRoad(driver.x, driver.z);
         const gravel = currentRoad.distanceSquared > ROAD_HALF_WIDTH * ROAD_HALF_WIDTH;
         driver = Physics.advance(driver, { steer, accelerate, brake, gravel }, dt);
+        const speed = Math.abs(driver.speed);
+        const steeringSkid = speed > 8 ? Math.abs(steer) * Math.min(1.4, (speed - 8) / 18) : 0;
+        const brakingSkid = brake && speed > 15 ? 0.85 : 0;
+        const looseDirt = gravel && speed > 10 ? 0.35 : 0;
+        mudSkidIntensity = Math.max(steeringSkid, brakingSkid, looseDirt);
         const nearest = closestRoad(driver.x, driver.z);
         if (nearest.distanceSquared > OUTER_HALF_WIDTH * OUTER_HALF_WIDTH) {
           // Keep the speed and forward momentum in the air. Begin both the
@@ -788,6 +870,9 @@
       }
       for (const wheel of wheelPivots) wheel.rotation.x -= driver.speed * dt / 0.46;
       car.updateMatrixWorld(true);
+      brakeLights.emissiveIntensity = brakePressed ? 3.8 : 0.15;
+      for (const glow of rearBrakeGlows) glow.intensity = brakePressed ? 3.5 : 0;
+      tickMudParticles(dt, falling ? 0 : mudSkidIntensity);
       speedLabel.textContent = String(Math.round(Math.abs(driver.speed) * 3.6));
       gearLabel.textContent = driver.speed < -0.02 ? "R" : "";
     }
