@@ -149,3 +149,23 @@ test("falling backward keeps the correct signed horizontal momentum", () => {
   const falling = physics.startFall({ ...standing(), speed: -3 });
   assert.ok(falling.vz > 0);
 });
+
+test("top speed is 250 km/h and achievable with held acceleration", () => {
+  assert.ok(Math.abs(physics.MAX_SPEED * 3.6 - 250) < 1e-8);
+  let car = standing();
+  for (let i = 0; i < 1200; i++) {
+    car = physics.advance(car, { accelerate: true }, 1 / 60);
+  }
+  assert.ok(Math.abs(car.speed - physics.MAX_SPEED) < 0.001,
+    "full throttle should actually reach the configured top speed");
+});
+
+test("a 250 km/h car can still brake to a full stop", () => {
+  let car = { ...standing(), speed: physics.MAX_SPEED };
+  for (let i = 0; i < 100; i++) {
+    car = physics.advance(car, { brake: true }, 1 / 60);
+    if (car.speed === 0) break;
+  }
+  assert.equal(car.speed, 0);
+  assert.equal(car.reverseHold, 0);
+});
