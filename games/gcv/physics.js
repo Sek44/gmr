@@ -1,7 +1,7 @@
 "use strict";
 // Deterministic, dependency-free driving physics; units: metres, seconds, radians.
 const GcvPhysics = (() => {
-  const MAX_SPEED = 46; // 165.6 km/h
+  const MAX_SPEED = 250 / 3.6; // 250 km/h
   const MAX_STEER_RATE = 1.45; // Original steering sensitivity.
   const BRAKE_DECELERATION = 82; // m/s²; substantially stronger than before.
   const REVERSE_DELAY = 0.8; // Hold the brake this long *after stopping*.
@@ -18,7 +18,7 @@ const GcvPhysics = (() => {
     const gas = Boolean(input.accelerate);
     const brake = Boolean(input.brake);
     const gravel = Boolean(input.gravel);
-    const drag = 1.4 + 0.006 * currentSpeed * currentSpeed + (gravel ? 7 : 0);
+    const drag = 1.4 + 0.003 * currentSpeed * currentSpeed + (gravel ? 7 : 0);
     let speed;
     let reverseHold = 0;
 
@@ -32,7 +32,7 @@ const GcvPhysics = (() => {
         speed = Math.max(-REVERSE_MAX_SPEED, currentSpeed - reverseAcceleration * elapsed);
       }
     } else if (gas) {
-      speed = clamp(currentSpeed + (20 - Math.sign(currentSpeed) * drag) * elapsed,
+      speed = clamp(currentSpeed + (25 - Math.sign(currentSpeed) * drag) * elapsed,
         -REVERSE_MAX_SPEED, MAX_SPEED);
     } else {
       // Drag brings a rolling car to rest in either direction.
