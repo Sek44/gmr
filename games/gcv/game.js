@@ -548,9 +548,9 @@
     binding = window.GameState.create("gcv").bind({ snapshot, restore });
     refreshCameraButton();
 
-    function updateCar(dt) {
+    function updateCar(dt, fallDt = dt) {
       if (falling) {
-        fall = Physics.advanceFall(fall, dt);
+        fall = Physics.advanceFall(fall, fallDt);
         if (fall.remaining <= 0.000001) {
           snapBack(respawnIndex);
         } else {
@@ -610,10 +610,11 @@
 
     function frame(now) {
       requestAnimationFrame(frame);
-      const dt = Math.min((now - lastFrame) / 1000, 0.05);
+      const realDt = Math.max(0, (now - lastFrame) / 1000);
+      const dt = Math.min(realDt, 0.05);
       lastFrame = now;
       if (document.hidden) return;
-      updateCar(dt);
+      updateCar(dt, realDt);
       updateCamera(dt);
       autosaveElapsed += dt;
       if (autosaveElapsed >= 1.5) {
