@@ -61,12 +61,12 @@ test("steering returns to its original 1.45 rad/s sensitivity", () => {
   assert.equal(physics.MAX_STEER_RATE, 1.45);
 });
 
-test("gravel lowers traction and slows a car more than asphalt", () => {
+test("earth shoulder and track have identical paved-road handling", () => {
   const rolling = { x: 0, z: 0, yaw: 0, speed: 20 };
   const road = physics.advance(rolling, { accelerate: true, steer: 1 }, 1 / 60);
-  const gravel = physics.advance(rolling, { accelerate: true, steer: 1, gravel: true }, 1 / 60);
-  assert.ok(gravel.speed < road.speed);
-  assert.ok(Math.abs(gravel.yaw) < Math.abs(road.yaw));
+  const shoulder = physics.advance(rolling,
+    { accelerate: true, steer: 1, gravel: true }, 1 / 60);
+  assert.deepEqual(shoulder, road);
 });
 
 test("a falling car keeps forward momentum while gravity lowers it", () => {
@@ -168,4 +168,17 @@ test("a 250 km/h car can still brake to a full stop", () => {
   }
   assert.equal(car.speed, 0);
   assert.equal(car.reverseHold, 0);
+});
+
+test("normal turns, straight driving and braking produce no visual skid", () => {
+  assert.equal(physics.skidIntensity(22, 1), 0);
+  assert.equal(physics.skidIntensity(physics.MAX_SPEED, 0.5), 0);
+  assert.equal(physics.skidIntensity(physics.MAX_SPEED, 0), 0);
+  assert.equal(physics.skidIntensity(35, 0.8), 0);
+});
+
+test("mud only sprays during extreme fast cornering", () => {
+  assert.ok(physics.skidIntensity(48, 1) > 0);
+  assert.ok(physics.skidIntensity(physics.MAX_SPEED, 0.9) > 0);
+  assert.ok(physics.skidIntensity(-physics.REVERSE_MAX_SPEED, 1) === 0);
 });
