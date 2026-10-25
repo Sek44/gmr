@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="./game.css">
   <script defer src="../../shared/game-state.js"></script>
   <script defer src="./physics.js"></script>
+  <script defer src="./track-progress.js"></script>
   <script type="module" src="./game.js"></script>
 </head>
 <body>
@@ -28,6 +29,7 @@
           <span id="speed-value">0</span><small>km/h</small>
         </div>
         <span class="gcv-session-label">Essai libre · N° 9</span>
+        <span class="gcv-session-label">Tours effectués : <strong id="lap-value">0</strong></span>
       </div>
 
       <div class="gcv-hud-right">
@@ -57,7 +59,7 @@
     </section>
 
     <p class="gcv-help">Maintiens <strong>Accélérer</strong> et dirige avec le pouce gauche. Sur ordinateur : <strong>↑ / W</strong> accélérer, <strong>↓ / S</strong> freiner et <strong>← / →</strong> tourner. La progression est enregistrée sur cet appareil.</p>
-    <p class="gcv-help gcv-prototype">Première version de conduite : les concurrents, le départ et les cinq tours seront ajoutés dans une prochaine étape.</p>
+    <p class="gcv-help gcv-prototype">Essai libre : les tours sont comptés sans limite. Les concurrents, le départ et la course officielle en cinq tours arriveront ensuite.</p>
   </main>
 </body>
 </html>
