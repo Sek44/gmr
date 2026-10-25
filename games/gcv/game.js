@@ -64,16 +64,20 @@
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x97cfe4);
-    scene.fog = new THREE.Fog(0x97cfe4, 145, 320);
+    scene.fog = new THREE.Fog(0x97cfe4, 500, 2100);
     scene.add(new THREE.HemisphereLight(0xeaf8ff, 0x526d6c, 2.0));
     const sunlight = new THREE.DirectionalLight(0xffeed5, 2.35);
     sunlight.position.set(-70, 120, 45);
     scene.add(sunlight);
 
-    const camera = new THREE.PerspectiveCamera(72, 1, 0.08, 460);
-    const roadMaterial = new THREE.MeshStandardMaterial({ color: 0x303944, roughness: 0.95, side: THREE.DoubleSide });
-    const gravelMaterial = new THREE.MeshStandardMaterial({ color: 0xb5a388, roughness: 1, side: THREE.DoubleSide });
-    const stripeMaterial = new THREE.MeshStandardMaterial({ color: 0xf6f3dd, roughness: 0.8, side: THREE.DoubleSide });
+    const camera = new THREE.PerspectiveCamera(72, 1, 0.08, 2400);
+    // Earth/mud throughout: road and safety shoulders differ only by soil shade.
+    const roadMaterial = new THREE.MeshStandardMaterial({
+      color: 0x856044, roughness: 1, side: THREE.DoubleSide,
+    });
+    const shoulderMaterial = new THREE.MeshStandardMaterial({
+      color: 0xb29871, roughness: 1, side: THREE.DoubleSide,
+    });
 
     // Build ribbon meshes from a single closed centerline. The same geometry
     // drives minimap, collision/respawn and future AI waypoint navigation.
@@ -99,10 +103,10 @@
       return mesh;
     }
 
-    strip(0, OUTER_HALF_WIDTH, 0.02, gravelMaterial);
+    strip(0, OUTER_HALF_WIDTH, 0.02, shoulderMaterial);
     strip(0, ROAD_HALF_WIDTH, 0.07, roadMaterial);
 
-    // Sparse, low-poly stones on the 2 m gravel shoulders. Instancing keeps
+    // Sparse, low-poly stones on the 6 m earth shoulders. Instancing keeps
     // rendering cheap on Android and never places stones on the asphalt.
     const pebbleCount = Math.ceil(SAMPLE_COUNT / 7) * 2 * 5;
     const pebbles = new THREE.InstancedMesh(
@@ -129,28 +133,39 @@
     }
     pebbles.instanceMatrix.needsUpdate = true;
     scene.add(pebbles);
-    strip(-ROAD_HALF_WIDTH + 0.38, 0.14, 0.084, stripeMaterial);
-    strip(ROAD_HALF_WIDTH - 0.38, 0.14, 0.084, stripeMaterial);
-
-    const markerMaterial = new THREE.MeshStandardMaterial({ color: 0xf7e9a4, roughness: 1 });
-    for (let i = 0; i < SAMPLE_COUNT; i += 17) {
-      const a = positions[i], b = positions[Math.min(i + 7, SAMPLE_COUNT)];
-      const marker = new THREE.Mesh(
-        new THREE.BoxGeometry(0.24, 0.022, a.distanceTo(b)),
-        markerMaterial
-      );
-      marker.position.copy(a).add(b).multiplyScalar(0.5);
-      marker.position.y = 0.10;
-      marker.rotation.y = Math.atan2(-directions[i].x, -directions[i].z);
-      scene.add(marker);
+    // Muddy patches give the road a rough, irregular surface without painted
+    // white/yellow lane markings. All use a single instanced draw call.
+    const patches = new THREE.InstancedMesh(
+      new THREE.CircleGeometry(1, 10),
+      new THREE.MeshStandardMaterial({
+        color: 0x614a37, roughness: 1, transparent: true, opacity: 0.42,
+        depthWrite: false, side: THREE.DoubleSide,
+      }),
+      210
+    );
+    const patch = new THREE.Object3D();
+    let patchIndex = 0;
+    for (let i = 2; i < SAMPLE_COUNT; i += 2) {
+      const p = positions[i], normal = sides[i];
+      const n = ((i * 61) % 97) / 97;
+      const offset = (n * 2 - 1) * (ROAD_HALF_WIDTH - 1.5);
+      patch.position.set(p.x + normal.x * offset, 0.096,
+        p.z + normal.z * offset);
+      patch.rotation.set(-Math.PI / 2, 0, i * 0.31);
+      patch.scale.set(0.5 + n * 1.7, 1.2 + (i % 7) * 0.31, 1);
+      patch.updateMatrix();
+      patches.setMatrixAt(patchIndex++, patch.matrix);
     }
+    patches.instanceMatrix.needsUpdate = true;
+    scene.add(patches);
 
     // Checkered line across a straight section of the circuit.
     const startIndex = 10;
     const startCenter = positions[startIndex], startSide = sides[startIndex];
     const startYaw = Math.atan2(-directions[startIndex].x, -directions[startIndex].z);
-    const black = new THREE.MeshStandardMaterial({ color: 0x17212d });
-    const white = new THREE.MeshStandardMaterial({ color: 0xf7fbff });
+    // The finish marking is made of dark and pale earth tiles, not paint.
+    const black = new THREE.MeshStandardMaterial({ color: 0x523b2e, roughness: 1 });
+    const white = new THREE.MeshStandardMaterial({ color: 0xc2a783, roughness: 1 });
     for (let row = 0; row < 2; row++) {
       for (let col = 0; col < 12; col++) {
         const longitudinal = directions[startIndex].clone().multiplyScalar((row - 0.5) * 1.35);
@@ -164,29 +179,61 @@
       }
     }
 
-    // The low plain gives visual depth below the elevated track. Driving outside
-    // the road is detected separately, not by a heavy physics engine.
+    // Huge sea under the raised dirt course. It extends beyond the camera's
+    // visibility so its rectangular edge cannot appear on the horizon.
+    const WATER_LEVEL = -30;
     const abyss = new THREE.Mesh(
-      new THREE.PlaneGeometry(520, 520),
-      new THREE.MeshStandardMaterial({ color: 0x476f80, roughness: 1 })
+      new THREE.PlaneGeometry(4200, 4200),
+      new THREE.MeshStandardMaterial({
+        color: 0x417f91, roughness: 0.28, metalness: 0.04,
+      })
     );
     abyss.rotation.x = -Math.PI / 2;
-    abyss.position.y = -30;
+    abyss.position.y = WATER_LEVEL;
     scene.add(abyss);
-    const rockMaterial = new THREE.MeshStandardMaterial({ color: 0x65807b, roughness: 1, flatShading: true });
-    const rockGeometry = new THREE.DodecahedronGeometry(1, 0);
-    // Larger rock formations rise clearly above the abyss floor. Place them
-    // beyond the 6-m shoulders, close enough to remain visible from the road.
-    for (let i = 0; i < 26; i++) {
-      const index = Math.floor(i * SAMPLE_COUNT / 26);
+
+    // Little sandy islands with giant rock formations rooted in the sea.
+    const sandMaterial = new THREE.MeshStandardMaterial({
+      color: 0xd8bb82, roughness: 1, flatShading: true,
+    });
+    const wetSandMaterial = new THREE.MeshStandardMaterial({
+      color: 0xbca579, roughness: 1, flatShading: true,
+    });
+    const rockMaterial = new THREE.MeshStandardMaterial({
+      color: 0x64737b, roughness: 1, flatShading: true,
+    });
+    const rockGeometry = new THREE.DodecahedronGeometry(1, 1);
+    const sandGeometry = new THREE.CylinderGeometry(1, 1.16, 0.85, 14, 1);
+    const islands = [];
+    for (let i = 0; i < 22; i++) {
+      const index = Math.floor(i * SAMPLE_COUNT / 22);
       const normal = sides[index], center = positions[index];
       const side = i % 2 === 0 ? -1 : 1;
-      const offset = side * (OUTER_HALF_WIDTH + 18 + (i % 3) * 7);
+      const offset = side * (OUTER_HALF_WIDTH + 42 + (i % 3) * 13);
+      const x = center.x + normal.x * offset;
+      const z = center.z + normal.z * offset;
+      const sandRadius = 15 + i % 4 * 2.5;
+      const rockRadius = 8.5 + (i % 4) * 1.4;
+      const rockHeight = 22 + (i % 5) * 3.5;
+
+      const shoreline = new THREE.Mesh(sandGeometry, wetSandMaterial);
+      shoreline.position.set(x, WATER_LEVEL + 0.24, z);
+      shoreline.scale.set(sandRadius * 1.08, 0.75, sandRadius * 1.05);
+      shoreline.rotation.y = i * 0.72;
+      scene.add(shoreline);
+      const beach = new THREE.Mesh(sandGeometry, sandMaterial);
+      beach.position.set(x, WATER_LEVEL + 0.72, z);
+      beach.scale.set(sandRadius, 0.85, sandRadius);
+      beach.rotation.y = i * 0.54;
+      scene.add(beach);
+
+      // The rock penetrates the beach: its foot is never suspended in the air.
       const rock = new THREE.Mesh(rockGeometry, rockMaterial);
-      rock.scale.set(8 + (i % 4) * 2.2, 10 + (i % 5) * 3.5, 9 + (i % 3) * 2);
-      rock.position.set(center.x + normal.x * offset, -4, center.z + normal.z * offset);
+      rock.scale.set(rockRadius, rockHeight, rockRadius * 0.9);
+      rock.position.set(x, WATER_LEVEL + rockHeight * 0.88, z);
       rock.rotation.y = i * 0.74;
       scene.add(rock);
+      islands.push({ x, z, sandRadius, rockRadius });
     }
 
     const car = new THREE.Group();
