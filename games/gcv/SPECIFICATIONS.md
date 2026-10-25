@@ -247,3 +247,15 @@ Documentation : [Three.js — WebGLRenderer](https://threejs.org/docs/pages/WebG
 - [x] **Tests :** vérifications du plafond de 250 km/h et du freinage depuis la vitesse maximale.
 
 **Tests réels encore requis :** vérifier le cadrage/visibilité du cockpit, les îles, les projections de boue et l'apparence satellite sur Chrome Android après le déploiement GitHub Pages.
+
+
+## 18. Rochers immergés et comportement sur terre (25/10/2026) — v0.5
+
+- [x] Suppression des petites plages, anneaux de sable et socles autour des rochers : les **rochers plongent directement dans l'eau**.
+- [x] Correction du rocher situé sur la chaussée : le placement vérifie désormais la distance à **tous les tronçons du circuit**, y compris les tronçons proches mais non adjacents, ainsi qu'aux autres rochers. Un rocher impossible à placer correctement est omis. Vérifié par des tests spécifiques.
+- [x] L'aspect visuel de la piste reste en **terre/boue**, mais les **caractéristiques de conduite redeviennent celles d'une piste goudronnée**, y compris sur les accotements : suppression de la pénalité d'accélération/adhérence sur la terre latérale. Conservation de la direction, du freinage, de la marche arrière et de la vitesse maximale déjà établis (250 km/h).
+- [x] Particules de boue **uniquement dans les virages extrêmement appuyés à vitesse élevée**, avec seuil sur la vitesse, l'intensité du braquage et l'accélération latérale estimée. Le simple freinage, la marche normale et l'utilisation des accotements n'en produisent plus.
+- [x] Mini-carte sans plages, montrant uniquement les rochers sur l'eau.
+- [x] Ajout des tests de placement des rochers et révision des tests de physique/émission des particules.
+
+**À contrôler sur navigateur :** disposition finale des rochers, visibilité des structures rocheuses à la ligne d'horizon et sensations de conduite dans les virages.
