@@ -1,12 +1,13 @@
 # GMR — petits jeux pour enfants
 
-Site statique, sans dépendance d'exécution ni build, conçu pour GitHub Pages, téléphone, tablette et ordinateur.
+Site statique sans étape de build, conçu pour GitHub Pages, téléphone, tablette et ordinateur. Certains jeux chargent une librairie JavaScript dans le navigateur (GCV utilise Three.js depuis un CDN).
 
 ## Organisation
 
 - index.html : accueil, cartes construites depuis games/catalog.js.
 - scores.html : historique global et par jeu, courbe d'évolution sur les pages de jeu.
 - games/<id>/ : chaque jeu (HTML, JS, CSS ou ressources propres).
+- games/gcv/ : **Grande Course Voiture**, premier prototype 3D jouable (voiture, piste, caméras, conduite au pouce). Voir games/gcv/SPECIFICATIONS.md.
 - games/_template/ : modèle de nouveau jeu, non inscrit à l'accueil.
 - shared/site.css : composants visuels responsives communs.
 - shared/game-state.js : états des parties, restauration et sauvegarde automatique.
@@ -47,6 +48,9 @@ gmr:v1:state:<id>. Éviter de changer ces clés sans migration explicite.
 ## Vérifications
 
 Node.js : node --test tests/*.test.cjs
+
+GCV inclut les tests de physique dans tests/gcv-physics.test.cjs.
+Le rendu WebGL et le plein écran restent à vérifier manuellement sur Chrome Android.
 
 Le test de navigation et d'affichage doit aussi être fait sur téléphone et
 tablette. La publication GitHub Pages peut se faire directement depuis la
