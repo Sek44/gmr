@@ -1,0 +1,110 @@
+/* GCV: HUD and touch controls belong to the fullscreen game container. */
+:root { color-scheme: light; }
+.gcv-page { width: min(calc(100% - 24px), 1180px); padding-top: 12px; padding-bottom: 18px; }
+.gcv-page-header { margin-bottom: 10px; grid-template-columns: 48px 1fr 60px; }
+.gcv-page-header h1 { font-size: clamp(1.15rem, 3.8vw, 1.65rem); }
+.gcv-number { justify-self: end; font-weight: 850; color: #ce273a; font-size: 1.05rem; }
+.gcv-stage {
+  position: relative; width: 100%; height: clamp(350px, 70dvh, 720px);
+  overflow: hidden; isolation: isolate; border-radius: 18px;
+  background: linear-gradient(#87c5dd, #d8eff4 65%, #233d51);
+  color: white; user-select: none; -webkit-user-select: none;
+  touch-action: none; font-variant-numeric: tabular-nums;
+  box-shadow: 0 9px 30px #13284130;
+}
+.gcv-stage:fullscreen, .gcv-stage:-webkit-full-screen {
+  width: 100vw; height: 100dvh; max-width: none;
+  border-radius: 0; box-shadow: none;
+}
+.gcv-scene, .gcv-scene canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.gcv-scene { z-index: 0; }
+.gcv-stage button { -webkit-tap-highlight-color: transparent; font-family: inherit; }
+.gcv-hud-left, .gcv-hud-right { position: absolute; top: 14px; z-index: 2; display: flex; flex-direction: column; gap: 7px; pointer-events: none; }
+.gcv-hud-left { left: 16px; align-items: flex-start; }
+.gcv-hud-right { right: 16px; align-items: flex-end; }
+.gcv-speed { display: flex; align-items: baseline; gap: 5px; padding: 8px 13px;
+  border-radius: 13px; background: #0d182ac9; backdrop-filter: blur(7px);
+  box-shadow: 0 2px 8px #06152240; }
+.gcv-speed span { font-size: clamp(1.7rem, 4vw, 2.5rem); line-height: 1.05; font-weight: 900; min-width: 2ch; }
+.gcv-speed small { font-size: .8rem; font-weight: 700; color: #d1e5f2; }
+.gcv-session-label { border-radius: 8px; background: #0d182aba; padding: 5px 9px; font-weight: 750; font-size: .75rem; letter-spacing: .025em; }
+.gcv-actions { display: flex; gap: 7px; pointer-events: auto; }
+.gcv-action {
+  background: #0d182ad9; border: 1px solid #bad2e46b; color: white;
+  min-height: 40px; padding: 7px 10px; border-radius: 11px;
+  font-size: .78rem; font-weight: 800;
+}
+.gcv-action:active { background: #234569; }
+.gcv-minimap {
+  width: 145px; height: 113px; border: 1px solid #d6e8f95a;
+  border-radius: 12px; background: #0c2439c9; padding: 3px;
+}
+.gcv-notice {
+  position: absolute; z-index: 3; left: 50%; top: 31%;
+  transform: translateX(-50%); min-width: 200px; max-width: min(90%, 420px);
+  text-align: center; padding: 12px 18px; border: 1px solid #f0e4bd;
+  border-radius: 13px; background: #121d2ce8; font-size: 1.08rem;
+  font-weight: 800; box-shadow: 0 8px 28px #1117;
+}
+.gcv-controls {
+  position: absolute; bottom: max(15px, env(safe-area-inset-bottom));
+  left: max(14px, env(safe-area-inset-left));
+  right: max(14px, env(safe-area-inset-right)); z-index: 2;
+  display: flex; justify-content: space-between; align-items: flex-end; gap: 12px;
+  pointer-events: none;
+}
+.gcv-steering-wrap { display: flex; flex-direction: column; gap: 5px; align-items: center; }
+.gcv-control-caption { font-size: .72rem; font-weight: 800; color: white; text-shadow: 0 1px 4px #000a; letter-spacing: .08em; }
+.gcv-steer-pad {
+  width: clamp(144px, 28vw, 190px); height: clamp(76px, 15vw, 103px);
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 9px; border: 2px solid #d5e4f9a0; border-radius: 23px;
+  background: #0e2439b8; backdrop-filter: blur(5px);
+  pointer-events: auto; touch-action: none; cursor: ew-resize;
+}
+.gcv-steer-side { font-size: 1.05rem; color: #d0ddec; flex: 0 0 auto; }
+.gcv-steer-track { position: relative; height: 10px; flex: 1; border-radius: 99px; background: #c0d0e3a3; }
+.gcv-steer-knob {
+  position: absolute; width: 29px; height: 39px; left: 50%; top: 50%;
+  border: 3px solid #dceaff; border-radius: 15px;
+  background: #4e9cee; box-shadow: 0 2px 10px #0008;
+  transform: translate(-50%, -50%); transition: background .12s;
+}
+.gcv-steer-pad:active .gcv-steer-knob { background: #a2ccfa; }
+.gcv-pedals { display: flex; align-items: flex-end; gap: 10px; pointer-events: auto; }
+.gcv-pedal {
+  min-width: clamp(77px, 14vw, 116px); height: clamp(76px, 15vw, 104px);
+  border: 2px solid #ffffff8c; border-radius: 20px;
+  font-size: clamp(.87rem, 2.2vw, 1.15rem); font-weight: 900; color: white;
+  text-shadow: 0 1px 2px #0004; touch-action: none;
+  box-shadow: inset 0 1px 4px #fff3, 0 4px 12px #0006;
+}
+.gcv-brake { background: linear-gradient(145deg, #c7334e, #81192d); }
+.gcv-accelerate { background: linear-gradient(145deg, #35ba6a, #08733a); }
+.gcv-pedal.is-active, .gcv-pedal:active { filter: brightness(1.27); transform: scale(.96); }
+.gcv-help { font-size: .86rem; color: #53667d; line-height: 1.45; margin: 9px 3px 0; }
+.gcv-prototype { color: #62768b; }
+@media (max-width: 600px) {
+  .gcv-stage { border-radius: 12px; }
+  .gcv-hud-left { left: 9px; top: 9px; }
+  .gcv-hud-right { right: 9px; top: 9px; }
+  .gcv-speed { padding: 7px 9px; }
+  .gcv-speed span { font-size: 1.65rem; }
+  .gcv-actions { flex-direction: column; align-items: flex-end; gap: 5px; }
+  .gcv-action { min-height: 31px; padding: 5px 8px; font-size: .72rem; }
+  .gcv-minimap { width: 114px; height: 89px; }
+  .gcv-controls { left: 8px; right: 8px; bottom: max(10px, env(safe-area-inset-bottom)); gap: 6px; }
+  .gcv-steer-pad { width: 138px; height: 77px; padding: 7px; }
+  .gcv-steer-side { font-size: .78rem; }
+  .gcv-steer-knob { width: 26px; height: 33px; }
+  .gcv-pedals { gap: 6px; }
+  .gcv-pedal { min-width: 68px; height: 78px; font-size: .82rem; border-radius: 17px; }
+}
+@media (max-height: 480px) and (orientation: landscape) {
+  .gcv-page { padding-top: 6px; }
+  .gcv-page-header { margin-bottom: 5px; }
+  .gcv-stage:not(:fullscreen) { height: max(280px, calc(100dvh - 82px)); }
+  .gcv-steer-pad { height: 70px; }
+  .gcv-pedal { height: 70px; }
+  .gcv-minimap { width: 112px; height: 82px; }
+}
