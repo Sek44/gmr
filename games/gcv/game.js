@@ -587,43 +587,115 @@
       minX: Math.min(acc.minX, p.x), maxX: Math.max(acc.maxX, p.x),
       minZ: Math.min(acc.minZ, p.z), maxZ: Math.max(acc.maxZ, p.z),
     }), { minX: Infinity, maxX: -Infinity, minZ: Infinity, maxZ: -Infinity });
+    const mapWidth = mapCanvas.width, mapHeight = mapCanvas.height;
+    const mapScale = Math.min((mapWidth - 74) / (bounds.maxX - bounds.minX),
+      (mapHeight - 56) / (bounds.maxZ - bounds.minZ));
+    const mapCenterX = (bounds.minX + bounds.maxX) / 2;
+    const mapCenterZ = (bounds.minZ + bounds.maxZ) / 2;
+    const toMap = (x, z) => [
+      mapWidth / 2 + (x - mapCenterX) * mapScale,
+      mapHeight / 2 + (z - mapCenterZ) * mapScale,
+    ];
+
+    // Pre-render the static satellite-style minimap just once. Colors match
+    // sea, sandy islands, muddy roadway and light earth safety shoulders.
+    const mapBackground = document.createElement("canvas");
+    mapBackground.width = mapWidth;
+    mapBackground.height = mapHeight;
+    const satellite = mapBackground.getContext("2d");
+    if (satellite) {
+      const waterGradient = satellite.createLinearGradient(0, 0, 0, mapHeight);
+      waterGradient.addColorStop(0, "#376e7f");
+      waterGradient.addColorStop(1, "#28566b");
+      satellite.fillStyle = waterGradient;
+      satellite.fillRect(0, 0, mapWidth, mapHeight);
+
+      function islandCircle(x, y, radius, color) {
+        satellite.beginPath();
+        satellite.arc(x, y, radius, 0, Math.PI * 2);
+        satellite.fillStyle = color;
+        satellite.fill();
+      }
+      for (const island of islands) {
+        const [x, y] = toMap(island.x, island.z);
+        islandCircle(x, y, island.sandRadius * mapScale * 1.06, "#ab9c77");
+        islandCircle(x, y, island.sandRadius * mapScale, "#dbc08b");
+        islandCircle(x + 2, y + 2, island.rockRadius * mapScale * 0.74, "#53636b");
+        islandCircle(x - 1, y - 2, island.rockRadius * mapScale * 0.60, "#718086");
+      }
+
+      function drawCourse(width, color) {
+        satellite.beginPath();
+        positions.forEach((p, index) => {
+          const [x, y] = toMap(p.x, p.z);
+          if (index === 0) satellite.moveTo(x, y);
+          else satellite.lineTo(x, y);
+        });
+        satellite.closePath();
+        satellite.lineCap = "round";
+        satellite.lineJoin = "round";
+        satellite.strokeStyle = color;
+        satellite.lineWidth = width;
+        satellite.stroke();
+      }
+      drawCourse(OUTER_HALF_WIDTH * 2 * mapScale + 3, "#534c3e");
+      drawCourse(OUTER_HALF_WIDTH * 2 * mapScale, "#b29871");
+      drawCourse(ROAD_HALF_WIDTH * 2 * mapScale, "#856044");
+
+      // Uneven muddy details visible from above; no painted centerline.
+      for (let i = 0; i < SAMPLE_COUNT; i += 9) {
+        const position = positions[i], normal = sides[i];
+        const offset = ((i * 17) % 19 - 9) * 0.65;
+        const [x, y] = toMap(position.x + normal.x * offset,
+          position.z + normal.z * offset);
+        islandCircle(x, y, 1.6 + (i % 3), "#6f523c");
+      }
+
+      // Finish line marker: a short contrasting crossing and flag, separate
+      // from roadway lane markings.
+      const [fx, fy] = toMap(startCenter.x, startCenter.z);
+      satellite.save();
+      satellite.translate(fx, fy);
+      satellite.rotate(Math.atan2(startSide.z, startSide.x));
+      satellite.fillStyle = "#332b28";
+      satellite.fillRect(-ROAD_HALF_WIDTH * mapScale, -2, ROAD_HALF_WIDTH * 2 * mapScale, 4);
+      satellite.fillStyle = "#ebd2a0";
+      for (let i = 0; i < 8; i += 2) {
+        satellite.fillRect(-ROAD_HALF_WIDTH * mapScale + i * ROAD_HALF_WIDTH * mapScale / 4,
+          -2, ROAD_HALF_WIDTH * mapScale / 4, 2);
+      }
+      satellite.restore();
+      satellite.fillStyle = "#ffffff";
+      satellite.strokeStyle = "#243f4e";
+      satellite.lineWidth = 3;
+      satellite.font = "bold 17px system-ui";
+      satellite.strokeText("⚑", fx + 9, fy - 10);
+      satellite.fillText("⚑", fx + 9, fy - 10);
+    }
 
     function drawMap() {
       if (!map) return;
-      const w = mapCanvas.width, h = mapCanvas.height;
-      map.clearRect(0, 0, w, h);
-      const scale = Math.min((w - 48) / (bounds.maxX - bounds.minX),
-        (h - 42) / (bounds.maxZ - bounds.minZ));
-      const centerX = (bounds.minX + bounds.maxX) / 2;
-      const centerZ = (bounds.minZ + bounds.maxZ) / 2;
-      const convert = (x, z) => [w / 2 + (x - centerX) * scale, h / 2 + (z - centerZ) * scale];
-      map.lineJoin = "round";
-      map.lineCap = "round";
-      map.beginPath();
-      positions.forEach((p, i) => {
-        const [x, y] = convert(p.x, p.z);
-        if (i === 0) map.moveTo(x, y);
-        else map.lineTo(x, y);
-      });
-      map.closePath();
-      map.strokeStyle = "#547b90";
-      map.lineWidth = 18;
-      map.stroke();
-      map.strokeStyle = "#e1edee";
-      map.lineWidth = 5;
-      map.stroke();
-      const [px, py] = convert(driver.x, driver.z);
-      map.fillStyle = "#f04755";
+      map.clearRect(0, 0, mapWidth, mapHeight);
+      if (satellite) map.drawImage(mapBackground, 0, 0);
+      const x = falling && fall ? fall.x : driver.x;
+      const z = falling && fall ? fall.z : driver.z;
+      const [px, py] = toMap(x, z);
+      map.save();
+      map.shadowColor = "#16212a";
+      map.shadowBlur = 7;
+      map.fillStyle = "#ed4857";
       map.strokeStyle = "#ffffff";
       map.lineWidth = 3;
       map.beginPath();
       map.arc(px, py, 8, 0, Math.PI * 2);
       map.fill();
       map.stroke();
+      map.shadowBlur = 0;
       map.beginPath();
       map.moveTo(px, py);
-      map.lineTo(px - Math.sin(driver.yaw) * 16, py - Math.cos(driver.yaw) * 16);
+      map.lineTo(px - Math.sin(driver.yaw) * 17, py - Math.cos(driver.yaw) * 17);
       map.stroke();
+      map.restore();
     }
 
     function resize() {
