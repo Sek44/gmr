@@ -52,3 +52,38 @@ test("no input allows the car to coast to a stop", () => {
   }
   assert.equal(car.speed, 0);
 });
+
+test("steering has a stronger response than the prototype's original rate", () => {
+  const rolling = { x: 0, z: 0, yaw: 0, speed: 18 };
+  const turned = physics.advance(rolling, { steer: 1 }, 1 / 60);
+  assert.ok(turned.yaw < -1.45 / 60);
+});
+
+test("gravel lowers traction and slows a car more than asphalt", () => {
+  const rolling = { x: 0, z: 0, yaw: 0, speed: 20 };
+  const road = physics.advance(rolling, { accelerate: true, steer: 1 }, 1 / 60);
+  const gravel = physics.advance(rolling, { accelerate: true, steer: 1, gravel: true }, 1 / 60);
+  assert.ok(gravel.speed < road.speed);
+  assert.ok(Math.abs(gravel.yaw) < Math.abs(road.yaw));
+});
+
+test("a falling car keeps forward momentum while gravity lowers it", () => {
+  const initial = { x: 4, z: 15, yaw: 0, speed: 18 };
+  let fall = physics.startFall(initial);
+  assert.equal(fall.remaining, 2);
+  for (let i = 0; i < 60; i++) fall = physics.advanceFall(fall, 1 / 60);
+  assert.ok(fall.z < initial.z - 10, "car should travel into the air");
+  assert.ok(fall.y < -4.5, "car should have fallen under gravity");
+  assert.ok(fall.vy < 0, "downward velocity increases");
+  assert.ok(Math.abs(fall.remaining - 1) < 1e-8, "countdown starts with the fall");
+  for (let i = 0; i < 60; i++) fall = physics.advanceFall(fall, 1 / 60);
+  assert.ok(Math.abs(fall.remaining) < 1e-8);
+  assert.ok(Math.abs(fall.y - (0.14 - 0.5 * 9.81 * 4)) < 1e-6);
+});
+
+test("the fall timer never runs past two seconds", () => {
+  let fall = physics.startFall({ x: 0, z: 0, yaw: 0, speed: 12 });
+  for (let i = 0; i < 150; i++) fall = physics.advanceFall(fall, 1 / 60);
+  assert.equal(fall.remaining, 0);
+  assert.equal(fall.elapsed, physics.FALL_SECONDS);
+});
