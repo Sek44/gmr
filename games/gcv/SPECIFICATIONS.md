@@ -216,3 +216,19 @@ Documentation : [Three.js — WebGLRenderer](https://threejs.org/docs/pages/WebG
 - [x] Tests automatisés pour la physique des chutes, l'adhérence et le décompte des tours dans `tests/gcv-physics.test.cjs` et `tests/gcv-track-progress.test.cjs`.
 
 **Reste à valider sur appareil :** l'emplacement physique des boutons sur les différentes tailles de téléphones, les performances du rendu et la sensation de direction.
+
+## 16. Ajustements de conduite et d'habitacle (25/10/2026) — v0.3
+
+- [x] Bandes de graviers élargies de **2 m à 6 m de chaque côté** de la piste. Le test de sortie de piste suit leur nouveau bord extérieur ; les cailloux sont répartis sur toute la largeur.
+- [x] Direction rétablie à sa **sensibilité d'origine** : vitesse angulaire maximale **1,45 rad/s** et réponse progressive selon la vitesse comme dans le prototype v0.1.
+- [x] Freinage renforcé (**82 m/s²** au lieu de 31, hors résistance au roulement). Il arrête la voiture avant d'engager la marche arrière.
+- [x] **Marche arrière lente** : après maintien du frein pendant **0,8 s à l'arrêt**, la voiture recule progressivement jusqu'à environ **14,4 km/h** ; relâcher le frein interrompt l'accélération arrière ; l'accélérateur permet de repartir vers l'avant. La direction s'inverse naturellement en reculant.
+- [x] Pédales à droite désormais **superposées**, avec **Accélérer au-dessus de Frein**.
+- [x] Compteur de vitesse **plus de deux fois plus grand** ; affichage de la vitesse absolue en km/h et lettre **R** lorsque la marche arrière est enclenchée.
+- [x] Rochers de décor **plus gros, remontés et rapprochés de la piste**, en dehors de la zone de graviers.
+- [x] Vue intérieure : caméra **fixée rigidement derrière le volant** (aucun lissage ou « élastique »), toit et montants toujours visibles, sans vitre avant pour dégager la vue.
+- [x] Faux tableau de bord avec **deux cadrans**, affichage décoratif, volant et structure intérieure. Ces cadrans restent décoratifs ; la vitesse réelle est fournie par le HUD.
+- [x] Conservation de la vitesse négative et du temps de maintien de frein dans la sauvegarde locale ; retour à l'arrêt après chute.
+- [x] Tests automatisés étendus pour les nouvelles règles de direction, freinage, recul et chute.
+
+**À vérifier en navigateur réel :** qualité du cadrage du volant et du toit en vue intérieure, absence de masquage excessif par le tableau de bord, lisibilité des grands chiffres, interaction des pédales en disposition verticale et ressenti du freinage/recul sur Android.
