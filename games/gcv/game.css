@@ -47,7 +47,7 @@
   font-weight: 800; box-shadow: 0 8px 28px #1117;
 }
 .gcv-controls {
-  position: absolute; bottom: max(15px, env(safe-area-inset-bottom));
+  position: absolute; bottom: max(24%, env(safe-area-inset-bottom));
   left: max(14px, env(safe-area-inset-left));
   right: max(14px, env(safe-area-inset-right)); z-index: 2;
   display: flex; justify-content: space-between; align-items: flex-end; gap: 12px;
@@ -56,7 +56,7 @@
 .gcv-steering-wrap { display: flex; flex-direction: column; gap: 5px; align-items: center; }
 .gcv-control-caption { font-size: .72rem; font-weight: 800; color: white; text-shadow: 0 1px 4px #000a; letter-spacing: .08em; }
 .gcv-steer-pad {
-  width: clamp(144px, 28vw, 190px); height: clamp(76px, 15vw, 103px);
+  width: clamp(165px, 30vw, 220px); height: clamp(88px, 16vw, 120px);
   display: flex; align-items: center; justify-content: center; gap: 6px;
   padding: 9px; border: 2px solid #d5e4f9a0; border-radius: 23px;
   background: #0e2439b8; backdrop-filter: blur(5px);
@@ -73,7 +73,7 @@
 .gcv-steer-pad:active .gcv-steer-knob { background: #a2ccfa; }
 .gcv-pedals { display: flex; align-items: flex-end; gap: 10px; pointer-events: auto; }
 .gcv-pedal {
-  min-width: clamp(77px, 14vw, 116px); height: clamp(76px, 15vw, 104px);
+  min-width: clamp(86px, 14.8vw, 126px); height: clamp(88px, 16vw, 120px);
   border: 2px solid #ffffff8c; border-radius: 20px;
   font-size: clamp(.87rem, 2.2vw, 1.15rem); font-weight: 900; color: white;
   text-shadow: 0 1px 2px #0004; touch-action: none;
@@ -93,18 +93,25 @@
   .gcv-actions { flex-direction: column; align-items: flex-end; gap: 5px; }
   .gcv-action { min-height: 31px; padding: 5px 8px; font-size: .72rem; }
   .gcv-minimap { width: 114px; height: 89px; }
-  .gcv-controls { left: 8px; right: 8px; bottom: max(10px, env(safe-area-inset-bottom)); gap: 6px; }
-  .gcv-steer-pad { width: 138px; height: 77px; padding: 7px; }
+  .gcv-controls { left: 8px; right: 8px; bottom: max(24%, env(safe-area-inset-bottom)); gap: 6px; }
+  .gcv-steer-pad { width: 155px; height: 94px; padding: 8px; }
   .gcv-steer-side { font-size: .78rem; }
-  .gcv-steer-knob { width: 26px; height: 33px; }
+  .gcv-steer-knob { width: 29px; height: 39px; }
   .gcv-pedals { gap: 6px; }
-  .gcv-pedal { min-width: 68px; height: 78px; font-size: .82rem; border-radius: 17px; }
+  .gcv-pedal { min-width: 75px; height: 94px; font-size: .86rem; border-radius: 19px; }
 }
 @media (max-height: 480px) and (orientation: landscape) {
   .gcv-page { padding-top: 6px; }
   .gcv-page-header { margin-bottom: 5px; }
   .gcv-stage:not(:fullscreen) { height: max(280px, calc(100dvh - 82px)); }
-  .gcv-steer-pad { height: 70px; }
-  .gcv-pedal { height: 70px; }
+  .gcv-steer-pad { height: 88px; }
+  .gcv-pedal { height: 88px; }
   .gcv-minimap { width: 112px; height: 82px; }
+}
+
+/* Fit both thumbs even on very narrow portrait phones. */
+@media (max-width: 350px) {
+  .gcv-steer-pad { width: 132px; height: 88px; }
+  .gcv-pedal { min-width: 67px; height: 88px; font-size: .77rem; }
+  .gcv-pedals { gap: 5px; }
 }
