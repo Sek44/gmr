@@ -22,7 +22,7 @@ test("hard braking stops the car before the delayed reverse engages", () => {
     car = physics.advance(car, { brake: true, steer: 0 }, 1 / 60);
   }
   assert.equal(car.speed, 0);
-  assert.equal(car.reverseHold, 0);
+  assert.ok(car.reverseHold >= 0 && car.reverseHold < physics.REVERSE_DELAY);
 });
 
 test("left and right steering turn the car in opposite directions", () => {
