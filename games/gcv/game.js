@@ -394,6 +394,7 @@
       driver.z = center.z;
       driver.yaw = Math.atan2(-directions[index].x, -directions[index].z);
       driver.speed = 0;
+      driver.reverseHold = 0;
       falling = false;
       fall = null;
       lapTracker = TrackProgress.relocate(lapTracker, index);
