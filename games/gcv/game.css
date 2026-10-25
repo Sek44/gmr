@@ -25,7 +25,9 @@
 .gcv-speed { display: flex; align-items: baseline; gap: 5px; padding: 8px 13px;
   border-radius: 13px; background: #0d182ac9; backdrop-filter: blur(7px);
   box-shadow: 0 2px 8px #06152240; }
-.gcv-speed span { font-size: clamp(1.7rem, 4vw, 2.5rem); line-height: 1.05; font-weight: 900; min-width: 2ch; }
+.gcv-speed #speed-value { font-size: clamp(3.6rem, 8vw, 5.3rem); line-height: 1.05; font-weight: 900; min-width: 2ch; }
+.gcv-speed .gcv-gear { font-size: clamp(1.3rem, 2.8vw, 2rem); font-weight: 900; color: #f6d181; }
+.gcv-speed .gcv-gear:empty { display: none; }
 .gcv-speed small { font-size: .8rem; font-weight: 700; color: #d1e5f2; }
 .gcv-session-label { border-radius: 8px; background: #0d182aba; padding: 5px 9px; font-weight: 750; font-size: .75rem; letter-spacing: .025em; }
 .gcv-actions { display: flex; gap: 7px; pointer-events: auto; }
@@ -47,10 +49,10 @@
   font-weight: 800; box-shadow: 0 8px 28px #1117;
 }
 .gcv-controls {
-  position: absolute; bottom: max(24%, env(safe-area-inset-bottom));
+  position: absolute; top: 68%; bottom: auto; transform: translateY(-50%);
   left: max(14px, env(safe-area-inset-left));
   right: max(14px, env(safe-area-inset-right)); z-index: 2;
-  display: flex; justify-content: space-between; align-items: flex-end; gap: 12px;
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
   pointer-events: none;
 }
 .gcv-steering-wrap { display: flex; flex-direction: column; gap: 5px; align-items: center; }
@@ -71,7 +73,7 @@
   transform: translate(-50%, -50%); transition: background .12s;
 }
 .gcv-steer-pad:active .gcv-steer-knob { background: #a2ccfa; }
-.gcv-pedals { display: flex; align-items: flex-end; gap: 10px; pointer-events: auto; }
+.gcv-pedals { display: flex; flex-direction: column; align-items: stretch; gap: 10px; pointer-events: auto; }
 .gcv-pedal {
   min-width: clamp(86px, 14.8vw, 126px); height: clamp(88px, 16vw, 120px);
   border: 2px solid #ffffff8c; border-radius: 20px;
@@ -89,11 +91,11 @@
   .gcv-hud-left { left: 9px; top: 9px; }
   .gcv-hud-right { right: 9px; top: 9px; }
   .gcv-speed { padding: 7px 9px; }
-  .gcv-speed span { font-size: 1.65rem; }
+  .gcv-speed #speed-value { font-size: clamp(3.4rem, 9vw, 4.8rem); }
   .gcv-actions { flex-direction: column; align-items: flex-end; gap: 5px; }
   .gcv-action { min-height: 31px; padding: 5px 8px; font-size: .72rem; }
   .gcv-minimap { width: 114px; height: 89px; }
-  .gcv-controls { left: 8px; right: 8px; bottom: max(24%, env(safe-area-inset-bottom)); gap: 6px; }
+  .gcv-controls { left: 8px; right: 8px; top: 72%; bottom: auto; gap: 6px; }
   .gcv-steer-pad { width: 155px; height: 94px; padding: 8px; }
   .gcv-steer-side { font-size: .78rem; }
   .gcv-steer-knob { width: 29px; height: 39px; }
@@ -104,8 +106,9 @@
   .gcv-page { padding-top: 6px; }
   .gcv-page-header { margin-bottom: 5px; }
   .gcv-stage:not(:fullscreen) { height: max(280px, calc(100dvh - 82px)); }
-  .gcv-steer-pad { height: 88px; }
-  .gcv-pedal { height: 88px; }
+  .gcv-controls { top: 79%; }
+  .gcv-steer-pad { height: 78px; }
+  .gcv-pedal { height: 76px; }
   .gcv-minimap { width: 112px; height: 82px; }
 }
 
