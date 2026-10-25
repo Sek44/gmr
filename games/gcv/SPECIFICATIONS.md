@@ -202,3 +202,17 @@ Documentation : [Three.js — WebGLRenderer](https://threejs.org/docs/pages/WebG
 **Vérifications à faire sur appareils réels :** ergonomie multitouch, fluidité WebGL, fonctionnement de l'API plein écran et aspect de la vue intérieure sur Chrome Android / tablette.
 
 **Fichiers principaux :** `games/gcv/index.html`, `game.css`, `game.js`, `physics.js`. Three.js est chargé depuis un CDN sur une version fixée (`0.180.0`), ce qui nécessite une connexion pour son chargement initial.
+
+
+## 15. Ajustements du prototype de conduite (25/10/2026)
+
+**Version v0.2 :**
+
+- [x] Remontée des commandes à environ **deux tiers de la hauteur** de la scène, y compris en plein écran, avec une taille légèrement augmentée pour les commandes de direction, d'accélération et de freinage. Ajustement pour les écrans de faible largeur.
+- [x] **Bande de graviers de 2 m** de chaque côté de la route : visuel distinct et cailloux simplifiés, décélération supplémentaire et adhérence réduite.
+- [x] Chute déclenchée uniquement **au-delà de la bordure externe du gravier** (au lieu de la bordure de la route). Pendant les deux secondes, la voiture **poursuit sa vitesse horizontale** et tombe sous la gravité ; le compte à rebours est démarré au début de la chute. Elle réapparaît ensuite immobile au point sûr le plus proche.
+- [x] En **essai libre**, le HUD affiche le **nombre de tours complets effectués**, sans limite de cinq tours. Le compteur s'incrémente en franchissant la ligne dans le bon sens, et les allers-retours sur la ligne ou les réapparitions ne créent pas de faux tours. La course officielle en cinq tours reste à implémenter.
+- [x] Direction plus rapide à braquer : vitesse angulaire maximale augmentée de 1,45 à **2,35 rad/s**, avec une réponse effective dès une vitesse plus faible.
+- [x] Tests automatisés pour la physique des chutes, l'adhérence et le décompte des tours dans `tests/gcv-physics.test.cjs` et `tests/gcv-track-progress.test.cjs`.
+
+**Reste à valider sur appareil :** l'emplacement physique des boutons sur les différentes tailles de téléphones, les performances du rendu et la sensation de direction.
