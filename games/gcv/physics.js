@@ -2,7 +2,11 @@
 // Deterministic, dependency-free driving physics; units: metres, seconds, radians.
 const GcvPhysics = (() => {
   const MAX_SPEED = 46; // 165.6 km/h
-  const MAX_STEER_RATE = 2.35; // More responsive than the original 1.45 rad/s
+  const MAX_STEER_RATE = 1.45; // Original steering sensitivity.
+  const BRAKE_DECELERATION = 82; // m/s²; substantially stronger than before.
+  const REVERSE_DELAY = 0.8; // Hold the brake this long *after stopping*.
+  const REVERSE_MAX_SPEED = 4; // 14.4 km/h
+  const REVERSE_ACCELERATION = 7;
   const GRAVITY = 9.81;
   const FALL_SECONDS = 2;
   const CAR_HEIGHT = 0.14;
@@ -10,31 +14,48 @@ const GcvPhysics = (() => {
 
   function advance(state, input, dt) {
     const elapsed = clamp(Number.isFinite(dt) ? dt : 0, 0, 0.05);
-    const currentSpeed = clamp(Number(state.speed) || 0, 0, MAX_SPEED);
+    const currentSpeed = clamp(Number(state.speed) || 0, -REVERSE_MAX_SPEED, MAX_SPEED);
     const gas = Boolean(input.accelerate);
     const brake = Boolean(input.brake);
     const gravel = Boolean(input.gravel);
-    // Gravel slows the car down and slightly reduces lateral grip.
     const drag = 1.4 + 0.006 * currentSpeed * currentSpeed + (gravel ? 7 : 0);
-    const acceleration = (gas ? 20 : 0) - (brake ? 31 : 0) - drag;
-    const speed = clamp(currentSpeed + acceleration * elapsed, 0, MAX_SPEED);
+    let speed;
+    let reverseHold = 0;
+
+    if (brake) {
+      if (currentSpeed > 0) {
+        speed = Math.max(0, currentSpeed - (BRAKE_DECELERATION + drag) * elapsed);
+        // Keep braking at zero before reverse engages; never leap into reverse.
+      } else {
+        reverseHold = Math.max(0, Number(state.reverseHold) || 0) + elapsed;
+        const reverseAcceleration = reverseHold >= REVERSE_DELAY ? REVERSE_ACCELERATION : 0;
+        speed = Math.max(-REVERSE_MAX_SPEED, currentSpeed - reverseAcceleration * elapsed);
+      }
+    } else if (gas) {
+      speed = clamp(currentSpeed + (20 - Math.sign(currentSpeed) * drag) * elapsed,
+        -REVERSE_MAX_SPEED, MAX_SPEED);
+    } else {
+      // Drag brings a rolling car to rest in either direction.
+      speed = Math.sign(currentSpeed) * Math.max(0, Math.abs(currentSpeed) - drag * elapsed);
+    }
+
     const steer = clamp(Number(input.steer) || 0, -1, 1);
-    // Full steering response begins at low speed without spinning while stopped.
     const grip = gravel ? 0.78 : 1;
-    const yaw = state.yaw - steer * Math.min(speed / 8.5, 1) *
-      MAX_STEER_RATE * grip * elapsed;
+    const yaw = state.yaw - steer * Math.sign(speed) *
+      Math.min(Math.abs(speed) / 14, 1) * MAX_STEER_RATE * grip * elapsed;
     return {
       x: state.x - Math.sin(yaw) * speed * elapsed,
       z: state.z - Math.cos(yaw) * speed * elapsed,
       yaw,
       speed,
+      reverseHold,
     };
   }
 
   // Airborne motion is independent from road steering/braking. Timer starts
   // immediately when the outer edge of the gravel is crossed.
   function startFall(state) {
-    const speed = Math.max(0, Number(state.speed) || 0);
+    const speed = Number(state.speed) || 0; // Preserve signed momentum while reversing.
     return {
       x: state.x, z: state.z, y: CAR_HEIGHT,
       vx: -Math.sin(state.yaw) * speed,
@@ -61,7 +82,8 @@ const GcvPhysics = (() => {
   }
 
   return Object.freeze({
-    MAX_SPEED, MAX_STEER_RATE, GRAVITY, FALL_SECONDS,
+    MAX_SPEED, MAX_STEER_RATE, BRAKE_DECELERATION,
+    REVERSE_DELAY, REVERSE_MAX_SPEED, GRAVITY, FALL_SECONDS,
     advance, startFall, advanceFall,
   });
 })();
