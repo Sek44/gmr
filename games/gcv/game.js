@@ -6,6 +6,7 @@
   const stage = document.getElementById("gcv-stage");
   const sceneHost = document.getElementById("gcv-scene");
   const speedLabel = document.getElementById("speed-value");
+  const lapLabel = document.getElementById("lap-value");
   const cameraButton = document.getElementById("camera-button");
   const fullscreenButton = document.getElementById("fullscreen-button");
   const notice = document.getElementById("gcv-notice");
@@ -15,6 +16,7 @@
   const brakeButton = document.getElementById("brake-button");
   const mapCanvas = document.getElementById("mini-map");
   const Physics = window.GcvPhysics;
+  const TrackProgress = window.GcvTrackProgress;
 
   function announce(message) {
     notice.textContent = message;
@@ -22,7 +24,7 @@
   }
 
   try {
-    if (!Physics) throw new Error("Le module de conduite est introuvable.");
+    if (!Physics || !TrackProgress) throw new Error("Les modules de conduite sont introuvables.");
     const THREE = await import("https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js");
     start(THREE);
   } catch (error) {
@@ -32,6 +34,8 @@
 
   function start(THREE) {
     const ROAD_HALF_WIDTH = 9;
+    const GRAVEL_WIDTH = 2; // Two metres of safety on each side of the asphalt.
+    const OUTER_HALF_WIDTH = ROAD_HALF_WIDTH + GRAVEL_WIDTH;
     const SAMPLE_COUNT = 420;
     const CURVE_POINTS = [
       [35, 68], [35, 30], [37, -22], [21, -54],
@@ -67,7 +71,7 @@
 
     const camera = new THREE.PerspectiveCamera(72, 1, 0.08, 460);
     const roadMaterial = new THREE.MeshStandardMaterial({ color: 0x303944, roughness: 0.95, side: THREE.DoubleSide });
-    const shoulderMaterial = new THREE.MeshStandardMaterial({ color: 0x777c84, roughness: 0.95, side: THREE.DoubleSide });
+    const gravelMaterial = new THREE.MeshStandardMaterial({ color: 0xb5a388, roughness: 1, side: THREE.DoubleSide });
     const stripeMaterial = new THREE.MeshStandardMaterial({ color: 0xf6f3dd, roughness: 0.8, side: THREE.DoubleSide });
 
     // Build ribbon meshes from a single closed centerline. The same geometry
@@ -94,8 +98,36 @@
       return mesh;
     }
 
-    strip(0, ROAD_HALF_WIDTH + 1.25, 0.02, shoulderMaterial);
+    strip(0, OUTER_HALF_WIDTH, 0.02, gravelMaterial);
     strip(0, ROAD_HALF_WIDTH, 0.07, roadMaterial);
+
+    // Sparse, low-poly stones on the 2 m gravel shoulders. Instancing keeps
+    // rendering cheap on Android and never places stones on the asphalt.
+    const pebbleCount = Math.ceil(SAMPLE_COUNT / 7) * 4;
+    const pebbles = new THREE.InstancedMesh(
+      new THREE.DodecahedronGeometry(0.12, 0),
+      new THREE.MeshStandardMaterial({ color: 0x736e61, roughness: 1 }),
+      pebbleCount
+    );
+    const pebble = new THREE.Object3D();
+    let pebbleIndex = 0;
+    for (let i = 0; i < SAMPLE_COUNT; i += 7) {
+      for (const side of [-1, 1]) {
+        for (let stone = 0; stone < 2; stone++) {
+          const proportion = ((i * 13 + stone * 43) % 97) / 97;
+          const offset = side * (ROAD_HALF_WIDTH + 0.22 + proportion * (GRAVEL_WIDTH - 0.44));
+          const center = positions[i], normal = sides[i];
+          pebble.position.set(center.x + normal.x * offset, 0.11,
+            center.z + normal.z * offset);
+          pebble.scale.set(0.5 + proportion * 0.6, 0.25, 0.7);
+          pebble.rotation.set(0, proportion * Math.PI, 0);
+          pebble.updateMatrix();
+          pebbles.setMatrixAt(pebbleIndex++, pebble.matrix);
+        }
+      }
+    }
+    pebbles.instanceMatrix.needsUpdate = true;
+    scene.add(pebbles);
     strip(-ROAD_HALF_WIDTH + 0.38, 0.14, 0.084, stripeMaterial);
     strip(ROAD_HALF_WIDTH - 0.38, 0.14, 0.084, stripeMaterial);
 
@@ -138,7 +170,7 @@
       new THREE.MeshStandardMaterial({ color: 0x476f80, roughness: 1 })
     );
     abyss.rotation.x = -Math.PI / 2;
-    abyss.position.y = -7;
+    abyss.position.y = -30;
     scene.add(abyss);
     const rockMaterial = new THREE.MeshStandardMaterial({ color: 0x65807b, roughness: 1, flatShading: true });
     const rockGeometry = new THREE.DodecahedronGeometry(1, 0);
@@ -149,7 +181,7 @@
       const height = 5 + (i % 5) * 3;
       const rock = new THREE.Mesh(rockGeometry, rockMaterial);
       rock.scale.set(4 + i % 4, height, 5 + (i % 3));
-      rock.position.set(Math.cos(angle) * radius, -6.1, Math.sin(angle) * radius);
+      rock.position.set(Math.cos(angle) * radius, -29.1, Math.sin(angle) * radius);
       scene.add(rock);
     }
 
@@ -265,7 +297,8 @@
       speed: 0,
     };
     let cameraMode = "inside";
-    let falling = false, fallRemaining = 0, respawnIndex = initialIndex;
+    let lapTracker = TrackProgress.create(SAMPLE_COUNT, startIndex, initialIndex);
+    let falling = false, fall = null, respawnIndex = initialIndex;
     let lastFrame = performance.now(), autosaveElapsed = 0, mapElapsed = 0;
     let initializedCamera = false;
     let binding = null;
@@ -291,7 +324,8 @@
       driver.yaw = Math.atan2(-directions[index].x, -directions[index].z);
       driver.speed = 0;
       falling = false;
-      fallRemaining = 0;
+      fall = null;
+      lapTracker = TrackProgress.relocate(lapTracker, index);
       announce("");
       if (binding) binding.changed();
     }
@@ -482,9 +516,15 @@
     resize();
 
     function snapshot() {
+      // A saved fall resumes at the nearest safe edge instead of mid-air.
+      const safe = falling ? positions[respawnIndex] : driver;
       return {
-        x: driver.x, z: driver.z, yaw: driver.yaw, speed: driver.speed,
+        x: safe.x, z: safe.z,
+        yaw: falling ? Math.atan2(-directions[respawnIndex].x, -directions[respawnIndex].z) : driver.yaw,
+        speed: falling ? 0 : driver.speed,
         camera: cameraMode,
+        progress: lapTracker.progress,
+        laps: lapTracker.laps,
       };
     }
     function restore(saved) {
@@ -496,8 +536,13 @@
           speed: clamp(saved.speed, 0, Physics.MAX_SPEED),
         };
         const near = closestRoad(driver.x, driver.z);
-        if (near.distanceSquared > Math.pow(ROAD_HALF_WIDTH + 1.2, 2)) snapBack(near.index);
+        if (near.distanceSquared > OUTER_HALF_WIDTH * OUTER_HALF_WIDTH) {
+          snapBack(near.index);
+        }
       }
+      const nearestIndex = closestRoad(driver.x, driver.z).index;
+      lapTracker = TrackProgress.create(SAMPLE_COUNT, startIndex, nearestIndex, saved);
+      lapLabel.textContent = String(lapTracker.laps);
       cameraMode = saved.camera === "outside" ? "outside" : "inside";
     }
     binding = window.GameState.create("gcv").bind({ snapshot, restore });
@@ -505,25 +550,45 @@
 
     function updateCar(dt) {
       if (falling) {
-        fallRemaining -= dt;
-        if (fallRemaining <= 0) snapBack(respawnIndex);
-        else announce("Sortie de piste ! Retour dans " + Math.ceil(fallRemaining) + " s");
+        fall = Physics.advanceFall(fall, dt);
+        if (fall.remaining <= 0.000001) {
+          snapBack(respawnIndex);
+        } else {
+          announce("Chute dans le vide ! Retour dans " + fall.remaining.toFixed(1) + " s");
+        }
       } else {
         const steer = refreshPad();
         const accelerate = gasPointers.size > 0 || keys.has("arrowup") || keys.has("w");
         const brake = brakePointers.size > 0 || keys.has("arrowdown") || keys.has("s");
-        driver = Physics.advance(driver, { steer, accelerate, brake }, dt);
+        const currentRoad = closestRoad(driver.x, driver.z);
+        const gravel = currentRoad.distanceSquared > ROAD_HALF_WIDTH * ROAD_HALF_WIDTH;
+        driver = Physics.advance(driver, { steer, accelerate, brake, gravel }, dt);
         const nearest = closestRoad(driver.x, driver.z);
-        if (nearest.distanceSquared > Math.pow(ROAD_HALF_WIDTH + 1.2, 2)) {
+        if (nearest.distanceSquared > OUTER_HALF_WIDTH * OUTER_HALF_WIDTH) {
+          // Keep the speed and forward momentum in the air. Begin both the
+          // gravity animation and the two-second countdown at this instant.
           falling = true;
-          fallRemaining = 2;
           respawnIndex = nearest.index;
-          driver.speed = 0;
+          fall = Physics.startFall(driver);
+          announce("Chute dans le vide ! Retour dans 2.0 s");
+        } else {
+          const previousLaps = lapTracker.laps;
+          lapTracker = TrackProgress.advance(lapTracker, nearest.index, SAMPLE_COUNT);
+          if (lapTracker.laps !== previousLaps) {
+            lapLabel.textContent = String(lapTracker.laps);
+            if (binding) binding.changed();
+          }
         }
       }
 
-      car.position.set(driver.x, falling ? -Math.max(0, 2 - fallRemaining) * 2 : 0.14, driver.z);
-      car.rotation.y = driver.yaw;
+      if (falling) {
+        car.position.set(fall.x, fall.y, fall.z);
+        // Nose dips as the car falls; this is an animation, not road steering.
+        car.rotation.set(Math.min(0.68, fall.elapsed * 0.42), driver.yaw, 0, "YXZ");
+      } else {
+        car.position.set(driver.x, 0.14, driver.z);
+        car.rotation.set(0, driver.yaw, 0, "YXZ");
+      }
       for (const wheel of wheelPivots) wheel.rotation.x -= driver.speed * dt / 0.46;
       car.updateMatrixWorld(true);
       speedLabel.textContent = String(Math.round(driver.speed * 3.6));
