@@ -38,8 +38,8 @@
 }
 .gcv-action:active { background: #234569; }
 .gcv-minimap {
-  width: 145px; height: 113px; border: 1px solid #d6e8f95a;
-  border-radius: 12px; background: #0c2439c9; padding: 3px;
+  width: 172px; height: 134px; border: 1px solid #d5caa7a8;
+  border-radius: 12px; background: #2b6778e6; padding: 3px;
 }
 .gcv-notice {
   position: absolute; z-index: 3; left: 50%; top: 31%;
@@ -94,7 +94,7 @@
   .gcv-speed #speed-value { font-size: clamp(3.4rem, 9vw, 4.8rem); }
   .gcv-actions { flex-direction: column; align-items: flex-end; gap: 5px; }
   .gcv-action { min-height: 31px; padding: 5px 8px; font-size: .72rem; }
-  .gcv-minimap { width: 114px; height: 89px; }
+  .gcv-minimap { width: 132px; height: 102px; }
   .gcv-controls { left: 8px; right: 8px; top: 72%; bottom: auto; gap: 6px; }
   .gcv-steer-pad { width: 155px; height: 94px; padding: 8px; }
   .gcv-steer-side { font-size: .78rem; }
@@ -109,7 +109,7 @@
   .gcv-controls { top: 79%; }
   .gcv-steer-pad { height: 78px; }
   .gcv-pedal { height: 76px; }
-  .gcv-minimap { width: 112px; height: 82px; }
+  .gcv-minimap { width: 123px; height: 95px; }
 }
 
 /* Fit both thumbs even on very narrow portrait phones. */
