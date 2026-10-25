@@ -44,7 +44,8 @@ const GcvPhysics = (() => {
   }
 
   function advanceFall(fall, dt) {
-    const step = Math.min(fall.remaining, clamp(Number.isFinite(dt) ? dt : 0, 0, 0.05));
+    // Unlike road integration, the fall timer uses real elapsed time even at low FPS.
+    const step = Math.min(fall.remaining, Math.max(0, Number.isFinite(dt) ? dt : 0));
     const elapsed = Math.min(FALL_SECONDS, fall.elapsed + step);
     const damping = Math.exp(-0.12 * step); // Air resistance, not abrupt stopping.
     return {
