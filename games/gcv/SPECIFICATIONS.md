@@ -232,3 +232,18 @@ Documentation : [Three.js — WebGLRenderer](https://threejs.org/docs/pages/WebG
 - [x] Tests automatisés étendus pour les nouvelles règles de direction, freinage, recul et chute.
 
 **À vérifier en navigateur réel :** qualité du cadrage du volant et du toit en vue intérieure, absence de masquage excessif par le tableau de bord, lisibilité des grands chiffres, interaction des pédales en disposition verticale et ressenti du freinage/recul sur Android.
+
+
+## 17. Course sur terre et décor maritime (25/10/2026) — v0.4
+
+- [x] **Décor :** les grandes formations rocheuses sont désormais posées sur de **petites îles avec un anneau de sable** ; la base du sable et du rocher pénètre dans le plan d'eau, sans rochers en suspension.
+- [x] **Eau :** plan agrandi de 520 × 520 m à **4 200 × 4 200 m**, avec distance d'affichage et brouillard adaptés pour masquer les bords.
+- [x] **Cockpit :** volant réduit et abaissé avec tout le faux tableau de bord, toit relevé, fenêtres latérales ouvertes (vitres latérales supprimées, montants conservés), caméra cockpit toujours rigidement solidaire de la voiture.
+- [x] **Piste :** terre et boue sur toute la chaussée, plusieurs nuances de brun irrégulières ; aucune bande de bitume ni ligne peinte blanche ou jaune. Accotements de 6 m conservés avec une couleur de terre plus claire. La ligne d'arrivée reste marquée par des dalles de couleurs de terre contrastées.
+- [x] **Mini-carte :** nouveau rendu type vue satellite avec mêmes couleurs pour la mer, les îles, les accotements et la piste ; symbole de **ligne d'arrivée**.
+- [x] **Performance :** vitesse maximale configurée à **250 km/h**, accélération ajustée pour rendre cette valeur atteignable.
+- [x] **Effets :** projections de boue par particules regroupées dans un rendu GPU léger dans les virages rapides, à fort freinage et sur accotements meubles.
+- [x] **Feux arrière :** éclairage rouge augmenté automatiquement tant que le joueur freine, y compris avec les commandes au clavier.
+- [x] **Tests :** vérifications du plafond de 250 km/h et du freinage depuis la vitesse maximale.
+
+**Tests réels encore requis :** vérifier le cadrage/visibilité du cockpit, les îles, les projections de boue et l'apparence satellite sur Chrome Android après le déploiement GitHub Pages.
