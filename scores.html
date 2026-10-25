@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f3f6fb">
+  <title>Mes scores — GMR</title>
+  <link rel="stylesheet" href="./shared/site.css">
+  <script defer src="./games/catalog.js"></script>
+  <script defer src="./shared/app-confirm.js"></script>
+  <script defer src="./shared/scores.js"></script>
+  <script defer src="./shared/scores-page.js"></script>
+</head>
+<body>
+  <main class="page">
+    <nav class="page-header" aria-label="Navigation">
+      <a id="scores-back" class="icon-button" href="./" aria-label="Retour à l'accueil" title="Retour">←</a>
+      <h1>Mes scores</h1>
+      <span></span>
+    </nav>
+    <nav id="score-filters" class="filters" aria-label="Filtrer les scores"></nav>
+    <section id="score-history" class="panel" aria-live="polite"></section>
+  </main>
+</body>
+</html>
