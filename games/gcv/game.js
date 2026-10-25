@@ -244,7 +244,7 @@
       color: 0x143448, roughness: 0.25, metalness: 0.24, side: THREE.DoubleSide
     });
     const lightMaterial = new THREE.MeshStandardMaterial({ color: 0xf9f9dc, emissive: 0xf1e7a4, emissiveIntensity: 0.48 });
-    const brakeLights = new THREE.MeshStandardMaterial({ color: 0xec1a38, emissive: 0xbc0717, emissiveIntensity: 0.4 });
+    const brakeLights = new THREE.MeshStandardMaterial({ color: 0x9c1828, emissive: 0xff2135, emissiveIntensity: 0.15 });
     const tyreMaterial = new THREE.MeshStandardMaterial({ color: 0x11161d, roughness: 1 });
     const rimMaterial = new THREE.MeshStandardMaterial({ color: 0xb4bbc4, metalness: 0.65, roughness: 0.32 });
 
@@ -261,9 +261,14 @@
     box(car, 1.92, 0.16, 0.22, redDetail, 0, 0.57, -2.10);
     box(car, 1.7, 0.07, 0.3, dark, 0, 1.25, 1.91);
     box(car, 1.8, 0.08, 0.2, redDetail, 0, 1.30, 1.94);
+    const rearBrakeGlows = [];
     for (const side of [-1, 1]) {
       box(car, 0.48, 0.13, 0.06, lightMaterial, side * 0.69, 0.93, -2.11);
       box(car, 0.48, 0.14, 0.06, brakeLights, side * 0.70, 0.88, 2.08);
+      const glow = new THREE.PointLight(0xff2739, 0, 7);
+      glow.position.set(side * 0.70, 0.89, 2.17);
+      car.add(glow);
+      rearBrakeGlows.push(glow);
       box(car, 0.07, 0.19, 0.48, dark, side * 1.03, 0.68, -1.55);
     }
 
@@ -281,15 +286,12 @@
       cabin.add(new THREE.Mesh(geometry, material));
     }
 
-    // Always render the roof and the structural pillars from inside AND outside.
-    // Omit the windscreen pane to keep the forward view unobstructed.
-    panel([[-0.72, 1.63, 0.75], [0.72, 1.63, 0.75],
+    // Open front and side windows: pillars provide the recognizable cockpit
+    // structure without tinted panes obstructing the road or sideways views.
+    // Only the rear window remains glazed.
+    panel([[-0.72, 1.89, 0.78], [0.72, 1.89, 0.78],
       [0.86, 1.01, 1.35], [-0.86, 1.01, 1.35]], glass);
-    for (const side of [-1, 1]) {
-      panel([[side * 0.86, 1.02, -1.01], [side * 0.72, 1.63, -0.43],
-        [side * 0.72, 1.63, 0.75], [side * 0.86, 1.01, 1.35]], glass);
-    }
-    function pillar(from, to, thickness = 0.085) {
+    function pillar(from, to, thickness = 0.068) {
       const a = new THREE.Vector3(...from), b = new THREE.Vector3(...to);
       const direction = b.clone().sub(a);
       const mesh = new THREE.Mesh(
@@ -300,15 +302,15 @@
       cabin.add(mesh);
     }
     for (const side of [-1, 1]) {
-      // Forward A pillars (no glass), central B pillars, rear C pillars.
-      pillar([side * 0.86, 1.01, -1.01], [side * 0.72, 1.63, -0.43], 0.075);
-      pillar([side * 0.83, 1.01, 0.25], [side * 0.72, 1.63, 0.25], 0.07);
-      pillar([side * 0.86, 1.01, 1.35], [side * 0.72, 1.63, 0.75], 0.075);
-      pillar([side * 0.72, 1.63, -0.43], [side * 0.72, 1.63, 0.75], 0.07);
+      pillar([side * 0.86, 1.02, -1.02], [side * 0.73, 1.89, -0.44], 0.07);
+      pillar([side * 0.84, 1.02, 0.32], [side * 0.73, 1.89, 0.32], 0.055);
+      pillar([side * 0.86, 1.02, 1.35], [side * 0.73, 1.89, 0.78], 0.07);
+      pillar([side * 0.73, 1.89, -0.44], [side * 0.73, 1.89, 0.78], 0.07);
+      box(cabin, 0.10, 0.15, 1.98, colored, side * 0.91, 0.96, -0.02);
     }
-    box(cabin, 1.54, 0.11, 1.28, colored, 0, 1.69, 0.15); // Solid roof.
-    box(cabin, 1.59, 0.105, 0.12, dark, 0, 1.62, -0.43); // Upper windscreen frame.
-    box(cabin, 1.54, 0.09, 0.13, dark, 0, 1.62, 0.76); // Rear roof frame.
+    box(cabin, 1.57, 0.11, 1.31, colored, 0, 1.97, 0.17);
+    box(cabin, 1.60, 0.10, 0.11, dark, 0, 1.89, -0.44);
+    box(cabin, 1.57, 0.09, 0.13, dark, 0, 1.89, 0.78);
 
     const wheelPivots = [];
     for (const side of [-1, 1]) {
@@ -375,7 +377,7 @@
       new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(dialCanvas) }));
     gauges.position.set(-0.22, 1.19, -0.786); // Faces the driver's seat.
     dashboard.add(gauges);
-    const steeringWheel = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.041, 8, 18), dark);
+    const steeringWheel = new THREE.Mesh(new THREE.TorusGeometry(0.21, 0.034, 8, 18), dark);
     steeringWheel.position.set(-0.42, 1.16, -0.54);
     steeringWheel.rotation.x = -0.33;
     dashboard.add(steeringWheel);
@@ -383,6 +385,8 @@
     box(dashboard, 0.43, 0.034, 0.044, rimMaterial, -0.42, 1.16, -0.53);
     box(dashboard, 0.045, 0.32, 0.05, rimMaterial, -0.42, 1.11, -0.53);
     box(dashboard, 0.30, 0.20, 0.43, redDetail, 0.64, 1.03, -0.75);
+    // Shift the entire dashboard and wheel down to reveal more road.
+    dashboard.position.y = -0.16;
     car.add(dashboard);
 
     // The number is on the car, independent of its position on the starting grid.
@@ -401,7 +405,7 @@
     numberTexture.colorSpace = THREE.SRGBColorSpace;
     const roofNumber = new THREE.Mesh(new THREE.PlaneGeometry(0.70, 0.70),
       new THREE.MeshBasicMaterial({ map: numberTexture, side: THREE.DoubleSide }));
-    roofNumber.position.set(0, 1.74, 0.15);
+    roofNumber.position.set(0, 2.035, 0.15);
     roofNumber.rotation.x = -Math.PI / 2;
     cabin.add(roofNumber);
     scene.add(car);
@@ -719,10 +723,10 @@
     function updateCamera(dt) {
       const inside = cameraMode === "inside";
       const desiredPosition = car.localToWorld(inside
-        ? new THREE.Vector3(-0.42, 1.43, 0.30) // Directly behind the wheel.
+        ? new THREE.Vector3(-0.42, 1.51, 0.34) // Higher view, fixed above the lowered wheel.
         : new THREE.Vector3(0, 4.5, 9.7));
       const desiredTarget = car.localToWorld(inside
-        ? new THREE.Vector3(-0.42, 1.42, -14)
+        ? new THREE.Vector3(-0.42, 1.49, -14)
         : new THREE.Vector3(0, 1.13, -8));
       if (inside) {
         // Fixed cockpit mount: no elastic camera movement, even while turning.
