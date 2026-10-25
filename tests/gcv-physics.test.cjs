@@ -87,3 +87,13 @@ test("the fall timer never runs past two seconds", () => {
   assert.equal(fall.remaining, 0);
   assert.equal(fall.elapsed, physics.FALL_SECONDS);
 });
+
+test("fall countdown uses elapsed seconds even when frames are slow", () => {
+  let fall = physics.startFall({ x: 0, z: 0, yaw: 0, speed: 20 });
+  fall = physics.advanceFall(fall, 1.2);
+  assert.ok(Math.abs(fall.remaining - 0.8) < 1e-10);
+  assert.ok(fall.z < -20);
+  fall = physics.advanceFall(fall, 1.1);
+  assert.equal(fall.remaining, 0);
+  assert.equal(fall.elapsed, 2);
+});
