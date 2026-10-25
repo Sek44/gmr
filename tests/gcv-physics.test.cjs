@@ -16,12 +16,13 @@ test("accelerating drives a stationary car forward", () => {
   assert.equal(car.yaw, 0);
 });
 
-test("braking reduces speed without driving backwards", () => {
+test("hard braking stops the car before the delayed reverse engages", () => {
   let car = { x: 0, z: 0, yaw: 0, speed: 30 };
-  for (let i = 0; i < 200; i++) {
+  for (let i = 0; i < 25; i++) {
     car = physics.advance(car, { brake: true, steer: 0 }, 1 / 60);
   }
   assert.equal(car.speed, 0);
+  assert.equal(car.reverseHold, 0);
 });
 
 test("left and right steering turn the car in opposite directions", () => {
@@ -53,10 +54,11 @@ test("no input allows the car to coast to a stop", () => {
   assert.equal(car.speed, 0);
 });
 
-test("steering has a stronger response than the prototype's original rate", () => {
+test("steering returns to its original 1.45 rad/s sensitivity", () => {
   const rolling = { x: 0, z: 0, yaw: 0, speed: 18 };
   const turned = physics.advance(rolling, { steer: 1 }, 1 / 60);
-  assert.ok(turned.yaw < -1.45 / 60);
+  assert.ok(Math.abs(turned.yaw + 1.45 / 60) < 1e-9);
+  assert.equal(physics.MAX_STEER_RATE, 1.45);
 });
 
 test("gravel lowers traction and slows a car more than asphalt", () => {
@@ -96,4 +98,54 @@ test("fall countdown uses elapsed seconds even when frames are slow", () => {
   fall = physics.advanceFall(fall, 1.1);
   assert.equal(fall.remaining, 0);
   assert.equal(fall.elapsed, 2);
+});
+
+test("the stronger brake reduces speed much faster than the old 31 m/s²", () => {
+  const before = { x: 0, z: 0, yaw: 0, speed: 30 };
+  const after = physics.advance(before, { brake: true }, 0.05);
+  assert.ok(before.speed - after.speed > 4, "brake should decelerate by over 4 m/s in 50 ms");
+  assert.ok(physics.BRAKE_DECELERATION > 2 * 31);
+});
+
+test("holding the brake while stationary engages a slow reverse after a delay", () => {
+  let car = standing();
+  for (let i = 0; i < 40; i++) {
+    car = physics.advance(car, { brake: true }, 1 / 60);
+  }
+  assert.equal(car.speed, 0, "must not reverse during initial hold");
+  for (let i = 0; i < 20; i++) {
+    car = physics.advance(car, { brake: true }, 1 / 60);
+  }
+  assert.ok(car.speed < 0, "reverse engages after 0.8 s at rest");
+  assert.ok(car.z > 0, "negative speed moves backward");
+});
+
+test("reverse is speed-limited and releasing brake stops reverse acceleration", () => {
+  let car = standing();
+  for (let i = 0; i < 210; i++) {
+    car = physics.advance(car, { brake: true }, 1 / 60);
+  }
+  assert.equal(car.speed, -physics.REVERSE_MAX_SPEED);
+  const moving = physics.advance(car, {}, 1 / 60);
+  assert.ok(moving.speed > car.speed, "releasing brake should coast towards rest");
+  assert.equal(moving.reverseHold, 0);
+});
+
+test("accelerator recovers from reverse and eventually drives forwards", () => {
+  let car = { ...standing(), speed: -physics.REVERSE_MAX_SPEED };
+  for (let i = 0; i < 40; i++) {
+    car = physics.advance(car, { accelerate: true }, 1 / 60);
+  }
+  assert.ok(car.speed > 0);
+});
+
+test("steering direction is reversed while driving backwards", () => {
+  const car = { ...standing(), speed: -3 };
+  const turned = physics.advance(car, { steer: 1, brake: true }, 1 / 60);
+  assert.ok(turned.yaw > car.yaw);
+});
+
+test("falling backward keeps the correct signed horizontal momentum", () => {
+  const falling = physics.startFall({ ...standing(), speed: -3 });
+  assert.ok(falling.vz > 0);
 });
