@@ -1,6 +1,6 @@
 # Grande Course Voiture (GCV) — Spécifications
 
-> **Statut :** cahier des charges initial, sans implémentation.  
+> **Statut :** spécifications du jeu complet ; prototype de conduite libre v0.1 implémenté (sans concurrents).  
 > **Date :** 25 octobre 2026.  
 > **Emplacement prévu :** `games/gcv/` dans le monorepo GMR.  
 > **Légende :** les sections « Règles demandées » sont des exigences du jeu ; les sections « Pistes techniques » et « À préciser » ne sont pas des décisions de gameplay supplémentaires.
@@ -181,4 +181,24 @@ Documentation : [Three.js — WebGLRenderer](https://threejs.org/docs/pages/WebG
 
 ---
 
-**Arrêt demandé pour cette étape :** uniquement la rédaction et le dépôt de ces spécifications. **Pas de code de jeu, de scène 3D, de catalogue GMR modifié ni de publication d'un prototype à ce stade.**
+## 14. Avancement du prototype (25/10/2026)
+
+**Version v0.1 — jouable en conduite libre :**
+- [x] Circuit simple fermé rendu en 3D avec Three.js, ligne de départ et repères visuels.
+- [x] Voiture sportive rouge **n° 9**, roues, éclairages et habitacle simplifié.
+- [x] Caméra **intérieure par défaut** et bouton de passage en caméra extérieure.
+- [x] Pavé tactile analogique à gauche, boutons multitouch accélération / freinage à droite.
+- [x] Commandes clavier supplémentaires (WASD et flèches).
+- [x] Accélération, freinage, inertie, direction et compteur de vitesse km/h.
+- [x] Mini-carte du circuit avec la position du joueur.
+- [x] Sortie de piste : chute puis retour à proximité du lieu de chute après **2 secondes**.
+- [x] Entrée/sortie du plein écran via l'API du navigateur, avec repli en cas de refus.
+- [x] Sauvegarde automatique locale de la position, de la vitesse et de la caméra via `shared/game-state.js`.
+- [x] Jeu inscrit au catalogue d'accueil GMR.
+- [x] Tests unitaires du module de physique de conduite ajoutés (`tests/gcv-physics.test.cjs`).
+
+**Pas encore réalisés :** les 9 concurrents et leur IA, la grille aléatoire, le décompte, les 5 tours, le classement, les flaques et les graviers, le résultat final et l'enregistrement des scores. Les graphismes et la conduite sont volontairement simples à ce stade.
+
+**Vérifications à faire sur appareils réels :** ergonomie multitouch, fluidité WebGL, fonctionnement de l'API plein écran et aspect de la vue intérieure sur Chrome Android / tablette.
+
+**Fichiers principaux :** `games/gcv/index.html`, `game.css`, `game.js`, `physics.js`. Three.js est chargé depuis un CDN sur une version fixée (`0.180.0`), ce qui nécessite une connexion pour son chargement initial.
