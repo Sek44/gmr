@@ -18,6 +18,7 @@
   const mapCanvas = document.getElementById("mini-map");
   const Physics = window.GcvPhysics;
   const TrackProgress = window.GcvTrackProgress;
+  const Scenery = window.GcvScenery;
 
   function announce(message) {
     notice.textContent = message;
@@ -25,7 +26,7 @@
   }
 
   try {
-    if (!Physics || !TrackProgress) throw new Error("Les modules de conduite sont introuvables.");
+    if (!Physics || !TrackProgress || !Scenery) throw new Error("Les modules de conduite sont introuvables.");
     const THREE = await import("https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js");
     start(THREE);
   } catch (error) {
@@ -192,48 +193,33 @@
     abyss.position.y = WATER_LEVEL;
     scene.add(abyss);
 
-    // Little sandy islands with giant rock formations rooted in the sea.
-    const sandMaterial = new THREE.MeshStandardMaterial({
-      color: 0xd8bb82, roughness: 1, flatShading: true,
-    });
-    const wetSandMaterial = new THREE.MeshStandardMaterial({
-      color: 0xbca579, roughness: 1, flatShading: true,
-    });
+    // Bare rock islets: the rocks rise directly out of the water, with
+    // no beaches or sandy discs. Validate against the ENTIRE winding circuit
+    // and previously placed rocks to avoid obstacles appearing on the road.
     const rockMaterial = new THREE.MeshStandardMaterial({
       color: 0x64737b, roughness: 1, flatShading: true,
     });
     const rockGeometry = new THREE.DodecahedronGeometry(1, 1);
-    const sandGeometry = new THREE.CylinderGeometry(1, 1.16, 0.85, 14, 1);
     const islands = [];
     for (let i = 0; i < 22; i++) {
       const index = Math.floor(i * SAMPLE_COUNT / 22);
-      const normal = sides[index], center = positions[index];
       const side = i % 2 === 0 ? -1 : 1;
-      const offset = side * (OUTER_HALF_WIDTH + 42 + (i % 3) * 13);
-      const x = center.x + normal.x * offset;
-      const z = center.z + normal.z * offset;
-      const sandRadius = 15 + i % 4 * 2.5;
       const rockRadius = 8.5 + (i % 4) * 1.4;
       const rockHeight = 22 + (i % 5) * 3.5;
-
-      const shoreline = new THREE.Mesh(sandGeometry, wetSandMaterial);
-      shoreline.position.set(x, WATER_LEVEL + 0.24, z);
-      shoreline.scale.set(sandRadius * 1.08, 0.75, sandRadius * 1.05);
-      shoreline.rotation.y = i * 0.72;
-      scene.add(shoreline);
-      const beach = new THREE.Mesh(sandGeometry, sandMaterial);
-      beach.position.set(x, WATER_LEVEL + 0.72, z);
-      beach.scale.set(sandRadius, 0.85, sandRadius);
-      beach.rotation.y = i * 0.54;
-      scene.add(beach);
-
-      // The rock penetrates the beach: its foot is never suspended in the air.
+      const location = Scenery.placeRock({
+        center: positions[index], normal: sides[index], side,
+        startOffset: OUTER_HALF_WIDTH + 42 + (i % 3) * 13,
+        radius: rockRadius, roadLimit: OUTER_HALF_WIDTH,
+        trackPoints: positions, existing: islands,
+      });
+      if (!location) continue;
       const rock = new THREE.Mesh(rockGeometry, rockMaterial);
       rock.scale.set(rockRadius, rockHeight, rockRadius * 0.9);
-      rock.position.set(x, WATER_LEVEL + rockHeight * 0.88, z);
+      // Centre low enough that the rock penetrates the water surface.
+      rock.position.set(location.x, WATER_LEVEL + rockHeight * 0.70, location.z);
       rock.rotation.y = i * 0.74;
       scene.add(rock);
-      islands.push({ x, z, sandRadius, rockRadius });
+      islands.push(location);
     }
 
     const car = new THREE.Group();
@@ -410,8 +396,7 @@
     cabin.add(roofNumber);
     scene.add(car);
 
-    // One batched particle system for little splashes of mud when the car
-    // loses grip in a fast corner or locks its wheels under hard braking.
+    // One batched particle system: only very severe fast steering produces mud.
     const MAX_MUD_PARTICLES = 240;
     const mudPositions = new Float32Array(MAX_MUD_PARTICLES * 3);
     const mudColors = new Float32Array(MAX_MUD_PARTICLES * 3);
@@ -693,10 +678,8 @@
       }
       for (const island of islands) {
         const [x, y] = toMap(island.x, island.z);
-        islandCircle(x, y, island.sandRadius * mapScale * 1.06, "#ab9c77");
-        islandCircle(x, y, island.sandRadius * mapScale, "#dbc08b");
-        islandCircle(x + 2, y + 2, island.rockRadius * mapScale * 0.74, "#53636b");
-        islandCircle(x - 1, y - 2, island.rockRadius * mapScale * 0.60, "#718086");
+        islandCircle(x, y, island.rockRadius * mapScale, "#485b64");
+        islandCircle(x - 2, y - 2, island.rockRadius * mapScale * 0.72, "#71828a");
       }
 
       function drawCourse(width, color) {
@@ -834,14 +817,10 @@
         const steer = refreshPad();
         const accelerate = gasPointers.size > 0 || keys.has("arrowup") || keys.has("w");
         const brake = brakePressed;
-        const currentRoad = closestRoad(driver.x, driver.z);
-        const gravel = currentRoad.distanceSquared > ROAD_HALF_WIDTH * ROAD_HALF_WIDTH;
-        driver = Physics.advance(driver, { steer, accelerate, brake, gravel }, dt);
-        const speed = Math.abs(driver.speed);
-        const steeringSkid = speed > 8 ? Math.abs(steer) * Math.min(1.4, (speed - 8) / 18) : 0;
-        const brakingSkid = brake && speed > 15 ? 0.85 : 0;
-        const looseDirt = gravel && speed > 10 ? 0.35 : 0;
-        mudSkidIntensity = Math.max(steeringSkid, brakingSkid, looseDirt);
+        // The dirt course now handles like the previous paved road, including
+        // its safety shoulders. Only truly extreme steering emits particles.
+        driver = Physics.advance(driver, { steer, accelerate, brake }, dt);
+        mudSkidIntensity = Physics.skidIntensity(driver.speed, steer);
         const nearest = closestRoad(driver.x, driver.z);
         if (nearest.distanceSquared > OUTER_HALF_WIDTH * OUTER_HALF_WIDTH) {
           // Keep the speed and forward momentum in the air. Begin both the
