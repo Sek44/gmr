@@ -31,10 +31,14 @@ const GcvRace = (() => {
     for (let slot = 0; slot < GRID_COUNT; slot++) {
       if (slot === PLAYER_SLOT) continue;
       const grid = gridSlot(slot);
+      const rank = opponents.length;
+      const targetLapSeconds = 35 + (50 - 35) * rank / (AI_COUNT - 1);
       opponents.push({
         id: slot, progress: -grid.distance, lateral: grid.lateral,
-        // Speeds 28.8–43.2 km/h, far below the player's 250 km/h.
-        speed: 8 + ((slot * 7) % 11) * 0.4,
+        // Pace is based on the actual circuit length, so full laps take
+        // 35, 36.875, ... 50 seconds, even after a track redesign.
+        targetLapSeconds,
+        speed: trackLength / targetLapSeconds,
         color: COLORS[slot % COLORS.length],
       });
     }
@@ -101,7 +105,12 @@ const GcvRace = (() => {
           !Number.isFinite(ai.lateral) || !Number.isFinite(ai.speed)))
       return null;
     return {
-      ...saved, trackLength, opponents: saved.opponents.map((ai) => ({ ...ai })),
+      ...saved, trackLength,
+      // Migrate ongoing races from the old slow AI model too.
+      opponents: saved.opponents.map((ai, index) => {
+        const targetLapSeconds = 35 + 15 * index / (AI_COUNT - 1);
+        return { ...ai, targetLapSeconds, speed: trackLength / targetLapSeconds };
+      }),
       countdown: Math.max(0, Number(saved.countdown) || 0),
     };
   }
