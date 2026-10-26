@@ -370,3 +370,17 @@ Documentation : [Three.js — WebGLRenderer](https://threejs.org/docs/pages/WebG
 - [x] Les anciennes courses sauvegardées passent aux nouvelles plages si leur temps cible n'est plus valide. Le menu ne révèle pas les temps de référence.
 - [x] Tests unitaires des nouvelles plages individuelles et de la restauration.
 
+
+
+## 27. Fin de tour et classement final complet (26/10/2026) — v0.14
+
+- [x] **Annonce de fin de tour** : à chaque tour complet chronométré, un grand panneau affiche le temps du tour. Si ce résultat entre dans le classement des trois meilleurs tours enregistrés, le panneau indique **1er, 2e ou 3e meilleur temps**. Le classement est calculé avant l'insertion du nouveau record.
+- [x] **Chrono de l'en-tête** : la durée du tour terminé remplace le chrono en cours pendant **2 secondes**, avec clignotement ; le chronomètre actif continue en arrière-plan et reprend son affichage après ce délai. L'annonce centrale reste visible légèrement plus longtemps, environ 2,7 secondes.
+- [x] **Mode Course** : durée de chacun des deux tours mesurée avec interpolation dans les frames. Si un tour n'a pas donné lieu à un enregistrement chronométré (ex. points intermédiaires manquants), la course affiche tout de même sa durée à l'issue du tour, sans inventer un nouveau record.
+- [x] **Écran final complet** : tableau de **10 voitures** avec position, numéro, temps final, et écart temporel vis-à-vis du concurrent immédiatement précédent. Le joueur n°9 bénéficie d'une ligne plus grande, contrastée et mise en évidence.
+- [x] **Concurrents derrière l'écran de résultat** : après l'arrivée du joueur, sa position et son temps sont verrouillés mais les autres voitures **poursuivent leur course 3D** jusqu'à leur propre arrivée. Le tableau se met à jour en direct au fur et à mesure ; seules les voitures ayant réellement terminé reçoivent un temps et un delta, les autres affichent « En course… ».
+- [x] **Classement précis** : le résultat est trié par temps d'arrivée réel avec interpolation des instants de passage, et non par distance finale identique pour tous. Les résultats sont conservés dans les sauvegardes, ainsi que les temps des deux tours et l'arrivée de chaque IA.
+- [x] **Flaques décoratives** : 19 flaques d'eau irrégulières bleu-gris avec petites réflexions, créées en deux lots instanciés sur la chaussée. Elles ne changent **ni l'adhérence, ni la vitesse, ni la physique**.
+- [x] Tests automatisés de l'ordre d'arrivée, des écarts successifs, de l'arrivée retardée des IA, des deux temps de tour du joueur, des sauvegardes et du classement des meilleurs chronos.
+
+**À confirmer sur navigateur réel** : présentation des panneaux sur tablette et téléphone, clignotement exact du chrono, lisibilité du tableau en paysage et aspects des flaques sur la piste.
