@@ -24,6 +24,8 @@
   line-height: 1.1; }
 .gcv-home-description { margin: 0 0 3px; color: #cbdce8; font-size: .89rem; }
 /* Author-level display rules must respect dynamically toggled hidden state. */
+.gcv-lap-announcement[hidden],
+.gcv-race-results[hidden],
 .gcv-home[hidden],
 .gcv-home-resume[hidden],
 .gcv-race-overlay[hidden],
@@ -124,6 +126,66 @@
 .gcv-race-position strong small { font-size: .9rem; }
 .gcv-race-position span { font-size: .83rem; font-weight: 800; }
 .gcv-race-position #race-lap-label { width: 100%; color: #e2e9f2; }
+.gcv-timing-clock.is-lap-hold { border: 2px solid #ffe6a6; }
+.gcv-timing-clock.is-lap-hold strong { color: #ffe092;
+  animation: gcv-lap-blink .45s steps(1, end) infinite; }
+@keyframes gcv-lap-blink { 50% { opacity: .24; } }
+.gcv-lap-announcement {
+  position: absolute; z-index: 6; left: 50%; top: 27%;
+  transform: translate(-50%, -50%); display: flex;
+  flex-direction: column; align-items: center; gap: 5px;
+  padding: 16px 25px; width: max-content; max-width: 88%;
+  color: white; text-align: center; pointer-events: none;
+  background: #0c2242ec; border: 2px solid #ffe8a0;
+  border-radius: 20px; box-shadow: 0 10px 36px #000a;
+  animation: gcv-lap-pop .24s ease-out;
+}
+.gcv-lap-announcement > span:first-child { font-size: .84rem;
+  letter-spacing: .07em; font-weight: 850; }
+.gcv-lap-announcement strong { font-size: clamp(2.5rem, 6.8vw, 4.8rem);
+  color: #ffe29a; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.gcv-lap-announcement #lap-announcement-rank {
+  font-size: clamp(.86rem, 2vw, 1.2rem); font-weight: 850;
+  color: #a1f2c4; }
+@keyframes gcv-lap-pop {
+  from { opacity: 0; transform: translate(-50%, -58%) scale(.86); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+.gcv-race-overlay.is-results {
+  top: 50%; width: min(610px, calc(100% - 20px)); max-width: none;
+  max-height: min(95%, 650px); padding: clamp(10px, 2vw, 20px);
+  gap: 6px; overflow-y: auto; overscroll-behavior: contain;
+}
+.gcv-race-overlay.is-results > strong {
+  font-size: clamp(1.6rem, 4.1vw, 2.75rem);
+}
+.gcv-race-overlay.is-results > span {
+  font-size: clamp(.74rem, 2vw, .98rem);
+}
+.gcv-race-results { width: 100%; min-height: 0;
+  overflow-x: auto; overflow-y: auto; }
+.gcv-race-results table { width: 100%; border-collapse: separate;
+  border-spacing: 0 3px; font-variant-numeric: tabular-nums;
+  text-align: left; font-size: clamp(.72rem, 1.6vw, .92rem); }
+.gcv-race-results th { color: #c0d7e9; font-size: .78em;
+  padding: 4px 9px; white-space: nowrap; }
+.gcv-race-results td { padding: 5px 9px; background: #ffffff14;
+  font-weight: 750; white-space: nowrap; }
+.gcv-race-results tr td:first-child { border-radius: 7px 0 0 7px; }
+.gcv-race-results tr td:last-child { border-radius: 0 7px 7px 0; }
+.gcv-race-results tr.is-player td {
+  background: #ffdf94; color: #142b43; font-weight: 950;
+  font-size: 1.2em; padding-block: 8px; }
+.gcv-race-results tr.is-pending td { color: #c6d7e5; }
+.gcv-race-results .gcv-car-swatch { display: inline-block;
+  width: 9px; height: 9px; border-radius: 50%;
+  margin-right: 7px; vertical-align: middle; border: 1px solid #fff7; }
+#gcv-stage .gcv-race-results[hidden],
+#gcv-stage .gcv-lap-announcement[hidden] { display: none; }
+.gcv-race-results #race-results-status {
+  margin: 3px; font-size: .72rem; font-weight: 800; color: #bdcfe0;
+}
 .gcv-race-overlay {
   position: absolute; z-index: 5; top: 39%; left: 50%;
   transform: translate(-50%, -50%); width: min(360px, 86%);
@@ -233,6 +295,15 @@
   .gcv-pedal { min-width: 75px; height: 94px; font-size: .86rem; border-radius: 19px; }
 }
 @media (max-height: 480px) and (orientation: landscape) {
+  .gcv-race-overlay.is-results { top: 50%; max-height: 98%;
+    width: min(710px, 95%); padding: 7px 12px; }
+  .gcv-race-results table { font-size: .7rem; border-spacing: 0 1px; }
+  .gcv-race-results td { padding: 2px 6px; }
+  .gcv-race-results tr.is-player td { padding-block: 3px; }
+  .gcv-race-results th { padding: 2px 6px; }
+  .gcv-lap-announcement { top: 35%; padding: 7px 13px; }
+  .gcv-lap-announcement strong { font-size: 2.5rem; }
+
   .gcv-home { padding: 7px; align-items: flex-start; }
   .gcv-home-panel { padding: 7px 16px; gap: 4px;
     width: min(540px, 100%); margin: auto; }
