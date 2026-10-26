@@ -11,12 +11,12 @@ const GcvRace = (() => {
   const COLUMN_OFFSET = 3;
   const ROW_SPACING = 9.5;
   const FIRST_ROW_DISTANCE = 12;
-  // Target seconds per lap: three strong racers (13–16 s),
+  // Target seconds per lap: three strong racers (17–21 s),
   // four mid-field racers (26–38 s), and two backmarkers (39–40 s).
   // Each target is randomized at race creation. Non-overlapping bands
   // preserve the difficulty order, regardless of the chosen random values.
   const PACE_RANGES = Object.freeze([
-    [13, 14], [14, 15], [15, 16],
+    [17, 18.5], [18.5, 20], [20, 21],
     [26, 29], [30, 33], [34, 36], [37, 38],
     [39, 39.5], [39.5, 40],
   ].map((range) => Object.freeze(range)));
