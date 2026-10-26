@@ -10,6 +10,7 @@ const GcvPhysics = (() => {
   const GRAVITY = 9.81;
   const FALL_SECONDS = 2;
   const CAR_HEIGHT = 0.14;
+  const INITIAL_FALL_VELOCITY = -7; // m/s: descent is immediate at the track edge.
   const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
   function advance(state, input, dt) {
@@ -70,7 +71,8 @@ const GcvPhysics = (() => {
       x: state.x, z: state.z, y: CAR_HEIGHT,
       vx: -Math.sin(state.yaw) * speed,
       vz: -Math.cos(state.yaw) * speed,
-      vy: 0, elapsed: 0, remaining: FALL_SECONDS,
+      initialVy: INITIAL_FALL_VELOCITY,
+      vy: INITIAL_FALL_VELOCITY, elapsed: 0, remaining: FALL_SECONDS,
     };
   }
 
@@ -82,10 +84,11 @@ const GcvPhysics = (() => {
     return {
       x: fall.x + fall.vx * step,
       z: fall.z + fall.vz * step,
-      y: CAR_HEIGHT - GRAVITY * elapsed * elapsed / 2,
+      y: CAR_HEIGHT + fall.initialVy * elapsed - GRAVITY * elapsed * elapsed / 2,
       vx: fall.vx * damping,
       vz: fall.vz * damping,
-      vy: -GRAVITY * elapsed,
+      vy: fall.initialVy - GRAVITY * elapsed,
+      initialVy: fall.initialVy,
       elapsed,
       remaining: Math.max(0, FALL_SECONDS - elapsed),
     };
@@ -94,6 +97,7 @@ const GcvPhysics = (() => {
   return Object.freeze({
     MAX_SPEED, MAX_STEER_RATE, BRAKE_DECELERATION,
     REVERSE_DELAY, REVERSE_MAX_SPEED, GRAVITY, FALL_SECONDS,
+    INITIAL_FALL_VELOCITY,
     advance, skidIntensity, startFall, advanceFall,
   });
 })();
