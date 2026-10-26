@@ -254,7 +254,7 @@ const GcvLapTimes = (() => {
   }
 
   return Object.freeze({ STORAGE_KEY, SPLIT_FRACTIONS, circuitKey,
-    circuitKey, sameCircuitRoute, createStore, format, formatDelta, qualifyingRank, initial, restore, advance,
+    sameCircuitRoute, createStore, format, formatDelta, qualifyingRank, initial, restore, advance,
     elapse, finishCrossing, crossFinish });
 })();
 if (typeof window !== "undefined") window.GcvLapTimes = GcvLapTimes;
