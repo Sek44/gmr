@@ -65,7 +65,11 @@ test("vehicle does not get stopped by repeated wall contact on straight segments
   const road = circularTrack(), i = 117;
   const { center, side, rail } = railAt(road, 19, i);
   const tangent = { x: -side.z, z: side.x };
-  let state = { ...center, speed: 32, yaw: -.1 };
+  let state = {
+    x: center.x + side.x * (rail.carLimit - 0.2),
+    z: center.z + side.z * (rail.carLimit - 0.2),
+    speed: 32, yaw: -.1,
+  };
   for (let k = 0; k < 20; k++) {
     const before = state;
     const proposed = {
