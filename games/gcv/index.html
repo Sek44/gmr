@@ -25,13 +25,29 @@
       <span class="gcv-number" aria-label="Voiture numéro 9">N° 9</span>
     </nav>
 
-    <div class="gcv-mode-chooser" aria-label="Mode de jeu">
-      <button type="button" id="free-mode-button" class="gcv-mode-choice is-selected" aria-pressed="true">Essais libres</button>
-      <button type="button" id="race-mode-button" class="gcv-mode-choice" aria-pressed="false">Course · 2 tours</button>
-    </div>
-
     <section class="gcv-stage" id="gcv-stage" aria-label="Jeu de conduite en 3D">
       <div class="gcv-scene" id="gcv-scene"></div>
+
+      <div class="gcv-home" id="gcv-home" aria-label="Accueil de Grande Course Voiture">
+        <div class="gcv-home-panel">
+          <p class="gcv-home-eyebrow">GRANDE COURSE VOITURE</p>
+          <h2>Choisis ton mode</h2>
+          <p class="gcv-home-description">Prends le volant de la voiture n° 9 !</p>
+          <button type="button" id="resume-button" class="gcv-home-button gcv-home-resume" hidden>Reprendre</button>
+          <div class="gcv-mode-chooser" aria-label="Mode de jeu">
+            <button type="button" id="free-mode-button" class="gcv-home-button gcv-mode-choice is-selected" aria-pressed="true">
+              <strong>Essais libres</strong><span>Conduire et battre ses records</span>
+            </button>
+            <button type="button" id="race-mode-button" class="gcv-home-button gcv-mode-choice" aria-pressed="false">
+              <strong>Course · 2 tours</strong><span>9 adversaires · 35 à 50 s par tour</span>
+            </button>
+          </div>
+          <div class="gcv-home-tools">
+            <button type="button" id="menu-fullscreen-button" class="gcv-home-tool">⛶ Plein écran</button>
+            <button type="button" id="menu-scores-button" class="gcv-home-tool">Mes scores</button>
+          </div>
+        </div>
+      </div>
 
       <div class="gcv-hud-left">
         <div class="gcv-speed" aria-label="Vitesse">
@@ -65,7 +81,8 @@
 
       <div class="gcv-hud-right">
         <div class="gcv-actions">
-          <a class="gcv-action" href="../../scores.html?game=gcv&amp;from=gcv" aria-label="Voir les meilleurs temps">Scores</a>
+          <button type="button" class="gcv-action" id="scores-button" aria-label="Voir les meilleurs temps">Scores</button>
+          <button type="button" class="gcv-action" id="menu-button" aria-label="Ouvrir le menu des modes">☰ Menu</button>
           <button type="button" class="gcv-action gcv-restart" id="restart-button" title="Repartir 10 m avant la ligne d’arrivée" aria-label="Redémarrer dix mètres avant la ligne d’arrivée">↻ Départ</button>
           <button type="button" class="gcv-action" id="camera-button" aria-label="Passer en vue extérieure">Caméra : intérieure</button>
           <button type="button" class="gcv-action" id="fullscreen-button" aria-label="Passer en plein écran">⛶ Plein écran</button>
@@ -74,6 +91,7 @@
       </div>
 
       <div class="gcv-notice" id="gcv-notice" hidden role="status"></div>
+      <iframe id="gcv-scores" class="gcv-scores-frame" title="Mes scores" hidden></iframe>
       <div class="gcv-race-overlay" id="race-overlay" hidden role="status" aria-live="polite">
         <strong id="race-overlay-title"></strong>
         <span id="race-overlay-subtitle"></span>
@@ -100,7 +118,7 @@
     </section>
 
     <p class="gcv-help">Maintiens <strong>Accélérer</strong> et dirige avec le pouce gauche. Sur ordinateur : <strong>↑ / W</strong> accélérer, <strong>↓ / S</strong> freiner et <strong>← / →</strong> tourner. Maintiens le frein à l'arrêt pour enclencher la marche arrière. La progression est enregistrée sur cet appareil.</p>
-    <p class="gcv-help gcv-prototype">Choisis <strong>Essais libres</strong> pour améliorer tes chronos, ou <strong>Course</strong> pour affronter neuf pilotes très faciles sur deux tours. Le bouton Départ replace la voiture 10 m avant la ligne. Les concurrents, le départ et la course officielle en cinq tours arriveront ensuite.</p>
+    <p class="gcv-help gcv-prototype">Le menu du jeu permet de choisir <strong>Essais libres</strong> ou <strong>Course</strong> (10 voitures, deux tours), et reste accessible en plein écran. Les scores s'ouvrent sans interrompre le mode plein écran.</p>
   </main>
 </body>
 </html>
