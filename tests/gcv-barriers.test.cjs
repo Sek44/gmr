@@ -35,12 +35,14 @@ test("guardrails are placed after every significant bend, each at least 30m", ()
     "long straight intervals should still permit falls");
 });
 
-test("straight centerline vertices do not create barriers", () => {
+test("straight sections alone do not create guardrail exits", () => {
   const road = circularTrack();
   const waypoints = [[0, 0], [40, 0], [80, 0], [120, 0]];
   const result = barriers.create(road.positions, waypoints, road.lapLength, 15);
-  assert.equal(result.sections.length, 0);
-  assert.ok(result.protectedSamples.every((n) => n === 0));
+  // This closed sequence contains two 180° turns where it wraps around;
+  // the two middle points are perfectly straight and must be ignored.
+  assert.deepEqual(result.sections.map((s) => s.waypointIndex), [0, 3]);
+  assert.ok(result.protectedSamples.some((n) => n === 0));
 });
 
 test("guardrail collision blocks outward motion while keeping forward slide", () => {
