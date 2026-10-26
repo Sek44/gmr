@@ -273,3 +273,19 @@ Documentation : [Three.js — WebGLRenderer](https://threejs.org/docs/pages/WebG
 - [x] Ajout de tests de configuration du circuit (longueur, fraction de ligne droite, position de départ), ainsi que d'un test vérifiant la descente verticale sans flottement initial.
 
 **À confirmer sur appareils réels** : perception de l'épaisseur depuis les bordures, vue sur la grande ligne droite, précision de la mini-carte et ergonomie du pavé de direction en plein écran.
+
+
+## 20. Chronomètre de tours, secteurs et records (26/10/2026) — v0.7
+
+- [x] **Chronomètre en haut au centre** : affichage MM:SS.cc du tour en cours ; le chronométrage commence après le premier franchissement de la ligne d'arrivée dans le bon sens. Le premier tronçon incomplet, entre la grille et ce premier passage, ne produit pas de record.
+- [x] **Trois points intermédiaires** : S1, S2 et S3 aux 25 %, 50 % et 75 % du tour après la ligne d'arrivée. Les marqueurs correspondants apparaissent sur la mini-carte.
+- [x] **Delta de temps à droite du chrono** : comparaison de la durée cumulée de chaque secteur avec celle du meilleur tour enregistré ; **vert** si plus rapide, **rouge** si plus lent, teinte neutre si identique ou sans référence.
+- [x] **Trois meilleurs chronos sous la vitesse et le nombre de tours** ; tri par temps croissant et conservation automatique uniquement des trois records les plus rapides avec les temps intermédiaires.
+- [x] **Page de scores existante** : onglet GCV et page générale affichent le classement des trois meilleurs tours et leurs trois temps intermédiaires ; lien « Scores » depuis le jeu.
+- [x] **Sauvegarde locale** : les temps records sont enregistrés sur l'appareil dans `gmr:v1:gcv:lap-records`. Le chrono en cours, les trois secteurs déjà passés et le nombre de tours chronométrés sont sauvegardés avec la partie.
+- [x] **Remise à zéro automatique au changement du circuit** : empreinte basée sur les points du tracé, départ/arrivée, nombre d'échantillons, largeur de piste et des accotements, et version du layout. Si elle change, les chronos et la session GCV précédente sont réinitialisés. Les scores des autres jeux sont inchangés.
+- [x] **Sécurité contre les faux tours** : tours uniquement complets dans le bon sens avec passage successif aux trois points intermédiaires ; une chute annule le tour partiel et impose de repasser la ligne d'arrivée pour reprendre le chrono.
+- [x] **Marche arrière** : vitesse maximale doublée de 4 à **8 m/s**, soit **28,8 km/h**. Les autres réglages de conduite sont conservés.
+- [x] Tests unitaires des records, du tri, de la restauration, du delta, des trois secteurs et de l'invalidation lorsque le circuit est modifié.
+
+**À valider en navigateur mobile :** placement du chronomètre en haut au centre (portrait/paysage), lisibilité des deltas et de la mini-carte, affichage des résultats sur la page Scores et suivi du chrono pendant une partie réelle.
