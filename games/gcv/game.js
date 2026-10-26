@@ -933,23 +933,30 @@
 
     function refreshFullscreen() {
       const full = document.fullscreenElement === stage;
-      fullscreenButton.textContent = full ? "⤢ Écran normal" : "⛶ Plein écran";
-      fullscreenButton.setAttribute("aria-label", full ? "Quitter le plein écran" : "Passer en plein écran");
+      for (const button of [fullscreenButton, menuFullscreenButton]) {
+        button.textContent = full ? "⤢ Écran normal" : "⛶ Plein écran";
+        button.setAttribute("aria-label",
+          full ? "Quitter le plein écran" : "Passer en plein écran");
+      }
     }
-    fullscreenButton.addEventListener("click", async () => {
+    async function toggleFullscreen() {
       try {
         if (document.fullscreenElement === stage) {
           await document.exitFullscreen();
         } else if (stage.requestFullscreen) {
           await stage.requestFullscreen();
         } else {
+          menuFullscreenButton.textContent = "Plein écran non disponible";
           announce("Plein écran non disponible dans ce navigateur.");
         }
       } catch (error) {
         console.warn("Fullscreen failed:", error);
+        menuFullscreenButton.textContent = "Plein écran refusé";
         announce("Le plein écran a été refusé par le navigateur.");
       }
-    });
+    }
+    fullscreenButton.addEventListener("click", toggleFullscreen);
+    menuFullscreenButton.addEventListener("click", toggleFullscreen);
     document.addEventListener("fullscreenchange", refreshFullscreen);
     refreshFullscreen();
 
