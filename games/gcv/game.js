@@ -996,6 +996,21 @@
       if (!map) return;
       map.clearRect(0, 0, mapWidth, mapHeight);
       if (satellite) map.drawImage(mapBackground, 0, 0);
+      if (gameMode === "race" && raceState) {
+        // Tiny opponent markers on the same map as the player.
+        for (const ai of raceState.opponents) {
+          const mesh = opponentMeshes.get(ai.id);
+          if (!mesh) continue;
+          const [ax, ay] = toMap(mesh.position.x, mesh.position.z);
+          map.beginPath();
+          map.arc(ax, ay, 4.4, 0, Math.PI * 2);
+          map.fillStyle = "#" + ai.color.toString(16).padStart(6, "0");
+          map.strokeStyle = "#152e42";
+          map.lineWidth = 1.5;
+          map.fill();
+          map.stroke();
+        }
+      }
       const x = falling && fall ? fall.x : driver.x;
       const z = falling && fall ? fall.z : driver.z;
       const [px, py] = toMap(x, z);
