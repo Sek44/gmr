@@ -1044,6 +1044,9 @@
         // On refresh during a fall the car respawns safely, but the active
         // stopwatch must continue from the preserved elapsed time.
         lapTimer,
+        mode: gameMode,
+        race: gameMode === "race" ? raceState : null,
+        freeSession: gameMode === "race" ? freeSession : null,
         circuitKey,
         layoutVersion: TrackLayout.VERSION,
       };
@@ -1077,8 +1080,18 @@
       lapLabel.textContent = String(timedLapCount);
       refreshChrono();
       cameraMode = saved.camera === "outside" ? "outside" : "inside";
+      const restoredRace = saved.mode === "race"
+        ? Race.restore(saved.race, trackLength) : null;
+      gameMode = restoredRace ? "race" : "free";
+      raceState = restoredRace;
+      freeSession = restoredRace && saved.freeSession?.circuitKey === circuitKey
+        ? saved.freeSession : null;
+      syncRaceCars();
+      syncRaceHud();
     }
     binding = window.GameState.create("gcv").bind({ snapshot, restore });
+    syncRaceCars();
+    syncRaceHud();
     refreshCameraButton();
 
     function updateCar(dt, fallDt = dt) {
