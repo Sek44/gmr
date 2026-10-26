@@ -45,13 +45,48 @@ test("countdown is three seconds and blocks all opponent movement", () => {
   assert.equal(state.playerProgress, -race.gridSlot(race.PLAYER_SLOT).distance);
 });
 
-test("AI are deliberately very slow and easy to overtake", () => {
+test("nine AI lap targets span exactly 35 to 50 seconds", () => {
+  const distance = 820;
+  const state = race.create(distance);
+  const lapSeconds = state.opponents.map((ai) => distance / ai.speed);
+  assert.equal(lapSeconds.length, 9);
+  assert.ok(Math.abs(lapSeconds[0] - 35) < 1e-9);
+  assert.ok(Math.abs(lapSeconds[8] - 50) < 1e-9);
+  for (let i = 1; i < lapSeconds.length; i++) {
+    assert.ok(lapSeconds[i] > lapSeconds[i - 1]);
+  }
+  assert.ok(state.opponents.every((ai, index) =>
+    Math.abs(ai.targetLapSeconds - lapSeconds[index]) < 1e-9));
+});
+
+test("AI pace adapts to track length, but full lap duration is unchanged", () => {
+  const first = race.create(820);
+  const extended = race.create(1200);
+  for (let i = 0; i < 9; i++) {
+    assert.ok(Math.abs(820 / first.opponents[i].speed -
+      1200 / extended.opponents[i].speed) < 1e-9);
+  }
+});
+
+test("player can overtake the nine AI at full speed", () => {
   const raceState = race.create(800);
-  assert.ok(raceState.opponents.every((ai) => ai.speed >= 8 && ai.speed < 13));
-  let started = race.advance(raceState, 3);
-  let active = race.advance(started, 6, 220);
+  const started = race.advance(raceState, 3);
+  const active = race.advance(started, 6, 380);
   assert.equal(race.position(active), 1);
-  assert.ok(active.opponents.every((ai) => ai.progress < 90));
+  assert.ok(active.opponents.every((ai) => ai.progress < 140));
+});
+
+test("older saved races automatically upgrade their slow AI speeds", () => {
+  const state = race.create(820);
+  const saved = JSON.parse(JSON.stringify(state));
+  for (const ai of saved.opponents) {
+    ai.speed = 9;
+    delete ai.targetLapSeconds;
+  }
+  const restored = race.restore(saved, 820);
+  assert.ok(restored);
+  assert.ok(Math.abs(820 / restored.opponents[0].speed - 35) < 1e-9);
+  assert.ok(Math.abs(820 / restored.opponents[8].speed - 50) < 1e-9);
 });
 
 test("race completes only after two full laps, not the first start crossing", () => {
