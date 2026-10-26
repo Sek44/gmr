@@ -1097,6 +1097,8 @@
     function updateCar(dt, fallDt = dt) {
       const brakePressed = brakePointers.size > 0 || keys.has("arrowdown") || keys.has("s");
       let mudSkidIntensity = 0;
+      let raceDistance = 0;
+      const mayDrive = gameMode === "free" || raceState?.phase === "racing";
       if (falling) {
         // Falling is part of this timed lap. Count only the actual remaining
         // fall duration (not a potential huge background-tab frame).
@@ -1108,7 +1110,7 @@
         } else {
           announce("Chute dans le vide ! Retour dans " + fall.remaining.toFixed(1) + " s");
         }
-      } else {
+      } else if (mayDrive) {
         const steer = refreshPad();
         const accelerate = gasPointers.size > 0 || keys.has("arrowup") || keys.has("w");
         const brake = brakePressed;
@@ -1132,6 +1134,10 @@
         } else {
           const progressBefore = lapTracker.progress;
           lapTracker = TrackProgress.advance(lapTracker, nearest.index, SAMPLE_COUNT);
+          // Forward distance tracked independently from the existing time-trial
+          // stopwatch. Reversing and respawning never award race distance.
+          raceDistance = Math.max(0, lapTracker.progress - progressBefore) *
+            trackLength / SAMPLE_COUNT;
           // Sector checkpoints use along-track samples; the finish line uses
           // the car's REAL movement across the painted line. A skipped road
           // sample must never prevent the chronometer from starting.
@@ -1162,6 +1168,18 @@
             }
           }
         }
+      }
+
+      if (gameMode === "race" && raceState) {
+        const wasRacing = raceState.phase === "racing";
+        raceState = Race.advance(raceState, dt, raceDistance);
+        if (wasRacing && raceState.phase === "finished") {
+          driver.speed = 0;
+          clearControls();
+          if (binding) binding.changed();
+        }
+        syncRaceCars();
+        syncRaceHud();
       }
 
       if (falling) {
