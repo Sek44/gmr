@@ -30,11 +30,39 @@
 .gcv-speed .gcv-gear:empty { display: none; }
 .gcv-speed small { font-size: .8rem; font-weight: 700; color: #d1e5f2; }
 .gcv-session-label { border-radius: 8px; background: #0d182aba; padding: 5px 9px; font-weight: 750; font-size: .75rem; letter-spacing: .025em; }
+
+.gcv-bests {
+  display: flex; flex-direction: column; gap: 3px; min-width: 135px;
+  padding: 8px 12px; border-radius: 11px; background: #0d182ac9;
+  font-size: .82rem; line-height: 1.3;
+}
+.gcv-bests-title { font-size: .7rem; color: #d4dfea; font-weight: 800; letter-spacing: .04em; }
+.gcv-bests strong { font-weight: 900; margin-left: 6px; color: #fff5c9; }
+.gcv-timing {
+  position: absolute; z-index: 3; top: 12px; left: 50%;
+  transform: translateX(-50%); display: flex; align-items: stretch;
+  gap: 8px; pointer-events: none; font-variant-numeric: tabular-nums;
+}
+.gcv-timing-clock, .gcv-timing-delta {
+  padding: 7px 12px; border-radius: 12px; background: #0d182ade;
+  display: flex; flex-direction: column; justify-content: center;
+  gap: 2px; box-shadow: 0 3px 12px #06152245;
+}
+.gcv-timing-clock { text-align: center; min-width: 120px; }
+.gcv-timing-title { font-size: .62rem; font-weight: 800; color: #cddceb; letter-spacing: .07em; }
+.gcv-timing-clock strong { font-size: clamp(1.28rem, 2.8vw, 2.05rem); line-height: 1.05; }
+.gcv-timing-delta { min-width: 88px; text-align: center; }
+.gcv-timing-delta span { font-size: .67rem; color: #cddceb; font-weight: 850; }
+.gcv-timing-delta strong { font-size: .98rem; color: #e4edf5; white-space: nowrap; }
+.gcv-timing-delta.is-faster strong { color: #5cf0a5; }
+.gcv-timing-delta.is-slower strong { color: #ff7880; }
+.gcv-timing-delta.is-even strong { color: #ffe39a; }
 .gcv-actions { display: flex; gap: 7px; pointer-events: auto; }
 .gcv-action {
   background: #0d182ad9; border: 1px solid #bad2e46b; color: white;
   min-height: 40px; padding: 7px 10px; border-radius: 11px;
-  font-size: .78rem; font-weight: 800;
+  font-size: .78rem; font-weight: 800; display: inline-flex;
+  align-items: center; justify-content: center; text-decoration: none;
 }
 .gcv-action:active { background: #234569; }
 .gcv-minimap {
@@ -86,10 +114,20 @@
 .gcv-pedal.is-active, .gcv-pedal:active { filter: brightness(1.27); transform: scale(.96); }
 .gcv-help { font-size: .86rem; color: #53667d; line-height: 1.45; margin: 9px 3px 0; }
 .gcv-prototype { color: #62768b; }
+@media (max-width: 700px) {
+  /* Keep the timer readable and centered; lower other HUD groups to prevent overlap. */
+  .gcv-timing { top: 8px; gap: 5px; }
+  .gcv-timing-clock { min-width: 112px; padding: 5px 7px; }
+  .gcv-timing-clock strong { font-size: 1.5rem; }
+  .gcv-timing-delta { min-width: 79px; padding: 5px 7px; }
+  .gcv-timing-delta strong { font-size: .84rem; }
+  .gcv-hud-left, .gcv-hud-right { top: 76px; }
+}
 @media (max-width: 600px) {
   .gcv-stage { border-radius: 12px; }
-  .gcv-hud-left { left: 9px; top: 9px; }
-  .gcv-hud-right { right: 9px; top: 9px; }
+  .gcv-hud-left { left: 9px; top: 74px; }
+  .gcv-hud-right { right: 9px; top: 74px; }
+  .gcv-bests { min-width: 116px; padding: 6px 8px; font-size: .75rem; }
   .gcv-speed { padding: 7px 9px; }
   .gcv-speed #speed-value { font-size: clamp(3.4rem, 9vw, 4.8rem); }
   .gcv-actions { flex-direction: column; align-items: flex-end; gap: 5px; }
@@ -103,6 +141,11 @@
   .gcv-pedal { min-width: 75px; height: 94px; font-size: .86rem; border-radius: 19px; }
 }
 @media (max-height: 480px) and (orientation: landscape) {
+  .gcv-timing { top: 5px; }
+  .gcv-timing-clock strong { font-size: 1.25rem; }
+  .gcv-hud-left, .gcv-hud-right { top: 54px; }
+  .gcv-bests { font-size: .7rem; gap: 1px; padding: 5px 8px; }
+
   .gcv-page { padding-top: 6px; }
   .gcv-page-header { margin-bottom: 5px; }
   .gcv-stage:not(:fullscreen) { height: max(280px, calc(100dvh - 82px)); }
