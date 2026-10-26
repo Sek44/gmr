@@ -1356,11 +1356,16 @@
             if (binding) binding.changed();
           }
           for (const event of timing.events) {
-            if (event.type === "lap" && lapRecords.record(event.ms, event.splits)) {
-              timedLapCount++;
-              lapLabel.textContent = String(timedLapCount);
-              refreshBests();
-              if (binding) binding.changed();
+            if (event.type === "lap") {
+              const rank = bestPosition(event.ms);
+              if (lapRecords.record(event.ms, event.splits)) {
+                timedLapCount++;
+                lapLabel.textContent = String(timedLapCount);
+                refreshBests();
+                announceLap(event.ms, rank,
+                  gameMode === "race" ? Math.min(Race.LAPS, timedLapCount) : null);
+                if (binding) binding.changed();
+              }
             }
           }
         }
@@ -1368,8 +1373,17 @@
 
       if (gameMode === "race" && raceState) {
         const wasRacing = raceState.phase === "racing";
+        const previousLapCount = raceState.playerLapTimes?.length || 0;
         raceState = Race.advance(raceState, dt, raceDistance);
+        const completedLaps = raceState.playerLapTimes?.length || 0;
+        if (completedLaps > previousLapCount && timedLapCount < completedLaps) {
+          // A fall or a missed sector can invalidate the time-trial record,
+          // but the actual race lap must always get a time announcement.
+          const lapMs = raceState.playerLapTimes[completedLaps - 1] * 1000;
+          announceLap(lapMs, null, completedLaps);
+        }
         if (wasRacing && raceState.phase === "finished") {
+          resultRefreshCooldown = 0;
           driver.speed = 0;
           clearControls();
           if (binding) binding.changed();
@@ -1421,7 +1435,12 @@
       const dt = Math.min(realDt, 0.05);
       lastFrame = now;
       if (document.hidden) return;
-      if (!menuOpen && !scoresOpen) updateCar(dt, realDt);
+      if (!menuOpen && !scoresOpen) {
+        resultRefreshCooldown = Math.max(0, resultRefreshCooldown - dt);
+        updateCar(dt, realDt);
+        tickLapAnnouncement(dt);
+        refreshChrono();
+      }
       updateCamera(dt);
       autosaveElapsed += dt;
       if (hasActiveSession && autosaveElapsed >= 1.5) {
