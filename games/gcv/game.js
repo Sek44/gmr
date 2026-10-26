@@ -230,6 +230,55 @@
     patches.instanceMatrix.needsUpdate = true;
     scene.add(patches);
 
+    // Shallow water puddles: purely decorative, no changes to grip or
+    // physics. Instancing allows all puddles to render in two draw calls.
+    // They sit slightly above the 0.07 m dirt road to prevent z-fighting.
+    const puddleIndices = Array.from({ length: 19 }, (_, i) =>
+      Math.round((i + 0.62) * SAMPLE_COUNT / 19));
+    const puddleShape = new THREE.CircleGeometry(1, 20);
+    const puddleWater = new THREE.InstancedMesh(
+      puddleShape,
+      new THREE.MeshStandardMaterial({
+        color: 0x527d89, roughness: 0.14, metalness: 0.18,
+        transparent: true, opacity: 0.77,
+        depthWrite: false, side: THREE.DoubleSide,
+      }),
+      puddleIndices.length
+    );
+    const puddleReflection = new THREE.InstancedMesh(
+      puddleShape,
+      new THREE.MeshBasicMaterial({
+        color: 0xadd6e0, transparent: true, opacity: 0.23,
+        depthWrite: false, side: THREE.DoubleSide,
+      }),
+      puddleIndices.length
+    );
+    const puddleTransform = new THREE.Object3D();
+    for (let i = 0; i < puddleIndices.length; i++) {
+      const j = puddleIndices[i] % SAMPLE_COUNT;
+      const center = positions[j], normal = sides[j];
+      const variation = ((i * 37 + 13) % 89) / 89;
+      const offset = (variation * 2 - 1) * (ROAD_HALF_WIDTH - 3.1);
+      const radius = 1.2 + ((i * 19) % 11) / 11 * 1.7;
+      const x = center.x + normal.x * offset;
+      const z = center.z + normal.z * offset;
+      const yaw = i * 0.71;
+      puddleTransform.position.set(x, 0.086, z);
+      puddleTransform.rotation.set(-Math.PI / 2, 0, yaw);
+      puddleTransform.scale.set(radius, radius * (0.55 + variation * 0.25), 1);
+      puddleTransform.updateMatrix();
+      puddleWater.setMatrixAt(i, puddleTransform.matrix);
+      // A narrow, pale reflected strip makes the standing water legible,
+      // even in the low-poly lighting of the rest of the circuit.
+      puddleTransform.position.set(x, 0.088, z);
+      puddleTransform.scale.set(radius * 0.59, radius * 0.17, 1);
+      puddleTransform.updateMatrix();
+      puddleReflection.setMatrixAt(i, puddleTransform.matrix);
+    }
+    puddleWater.instanceMatrix.needsUpdate = true;
+    puddleReflection.instanceMatrix.needsUpdate = true;
+    scene.add(puddleWater, puddleReflection);
+
     // Checkered line across a straight section of the circuit.
     const startIndex = TrackLayout.nearestIndex(positions, TrackLayout.FINISH);
     const startCenter = positions[startIndex], startSide = sides[startIndex];
