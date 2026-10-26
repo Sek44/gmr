@@ -302,3 +302,15 @@ Documentation : [Three.js — WebGLRenderer](https://threejs.org/docs/pages/WebG
 - [x] Réagencement des boutons supérieurs pour éviter de masquer le chronomètre.
 
 **À contrôler sur Chrome Android :** apparence du bouton Départ, remise en place à 10 mètres et déclenchement effectif du chrono au franchissement.
+
+
+## 22. Chute sans remise à zéro du chronomètre (26/10/2026) — v0.9
+
+- [x] Une chute n'invalide **plus** le tour chronométré en cours. Le joueur garde son temps cumulé, ses trois points intermédiaires déjà franchis et le delta affiché.
+- [x] Le temps continue à avancer pendant toute la chute et le retour automatique (environ 2 secondes) ; cette durée constitue la pénalité naturelle du joueur.
+- [x] Le retour sur piste conserve l'avancement du tour sans comptabiliser de raccourci ou de point intermédiaire artificiel lié au déplacement de respawn.
+- [x] La sauvegarde locale conserve désormais le chronomètre même si elle survient au milieu d'une chute. Le rechargement reprend au point de retour sûr sans perdre le temps déjà accumulé.
+- [x] Les comportements intentionnels de remise à zéro sont conservés : changement de circuit et bouton « ↻ Départ ».
+- [x] Tests ajoutés : conservation des secteurs et du delta, prise en compte des 2 secondes dans le temps final, arrêt du chrono avant son premier départ et restauration d'un tour en cours après une chute.
+
+**À vérifier sur Android :** continuité visuelle du chronomètre pendant les deux secondes de chute et juste après réapparition.
