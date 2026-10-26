@@ -259,3 +259,17 @@ Documentation : [Three.js — WebGLRenderer](https://threejs.org/docs/pages/WebG
 - [x] Ajout des tests de placement des rochers et révision des tests de physique/émission des particules.
 
 **À contrôler sur navigateur :** disposition finale des rochers, visibilité des structures rocheuses à la ligne d'horizon et sensations de conduite dans les virages.
+
+
+## 19. Circuit allongé, piste épaisse et chute immédiate (26/10/2026) — v0.6
+
+- [x] **Circuit environ deux fois plus long** : le périmètre approximatif de la ligne médiane passe de 389 m à 812 m (× 2,09), en conservant plusieurs virages.
+- [x] **Grande ligne droite de 240 mètres** ; **ligne d'arrivée située aux deux tiers** de cette ligne, soit à 160 m de son début. Le joueur commence sur cette même ligne droite, après la ligne d'arrivée, pour réaliser un tour complet.
+- [x] **Piste en volume** : le ruban de terre et ses accotements possèdent maintenant des parois latérales et une face inférieure, sur environ **4,8 mètres d'épaisseur**, pour être visibles depuis le vide.
+- [x] **Chute immédiate** : dès la sortie de piste, la voiture acquiert une vitesse verticale de **−7 m/s**, en plus de la gravité ; le premier pas de chute est appliqué dès la frame de sortie, tout en conservant l'inertie horizontale et le retour après 2 secondes.
+- [x] **Direction tactile plus haute** : le pavé a une hauteur de 148 px sur téléphone (120 px en mode paysage compact), avec une surface proportionnellement plus haute sur les autres écrans.
+- [x] **Adaptation des éléments de piste** à 840 points d'échantillonnage, pour conserver la finesse du contour, du gravier et des taches de boue sur le circuit allongé.
+- [x] **Progression sauvegardée versionnée** : les sauvegardes de l'ancien tracé sont incompatibles et une nouvelle session de conduite libre démarre sur la nouvelle piste ; les scores déjà enregistrés ne sont pas affectés.
+- [x] Ajout de tests de configuration du circuit (longueur, fraction de ligne droite, position de départ), ainsi que d'un test vérifiant la descente verticale sans flottement initial.
+
+**À confirmer sur appareils réels** : perception de l'épaisseur depuis les bordures, vue sur la grande ligne droite, précision de la mini-carte et ergonomie du pavé de direction en plein écran.
