@@ -374,8 +374,8 @@ Documentation : [Three.js — WebGLRenderer](https://threejs.org/docs/pages/WebG
 
 ## 27. Fin de tour et classement final complet (26/10/2026) — v0.14
 
-- [x] **Annonce de fin de tour** : à chaque tour complet chronométré, un grand panneau affiche le temps du tour. Si ce résultat entre dans le classement des trois meilleurs tours enregistrés, le panneau indique **1er, 2e ou 3e meilleur temps**. Le classement est calculé avant l'insertion du nouveau record.
-- [x] **Chrono de l'en-tête** : la durée du tour terminé remplace le chrono en cours pendant **2 secondes**, avec clignotement ; le chronomètre actif continue en arrière-plan et reprend son affichage après ce délai. L'annonce centrale reste visible légèrement plus longtemps, environ 2,7 secondes.
+- [x] **Annonce de fin de tour (mise à jour section 28)** : chaque tour terminé affiche son temps directement dans le chronomètre du haut, et non dans un panneau central. Si ce résultat entre dans le classement des trois meilleurs tours enregistrés, une mention discrète **1er, 2e ou 3e meilleur temps** apparaît sous le chronomètre. Le classement est calculé avant l'insertion du nouveau record.
+- [x] **Chrono de l'en-tête** : la durée du tour terminé remplace le chrono en cours pendant **2 secondes**, avec clignotement ; le chronomètre actif continue en arrière-plan et reprend son affichage après ce délai. Aucun panneau central supplémentaire n'apparaît.
 - [x] **Mode Course** : durée de chacun des deux tours mesurée avec interpolation dans les frames. Si un tour n'a pas donné lieu à un enregistrement chronométré (ex. points intermédiaires manquants), la course affiche tout de même sa durée à l'issue du tour, sans inventer un nouveau record.
 - [x] **Écran final complet** : tableau de **10 voitures** avec position, numéro, temps final, et écart temporel vis-à-vis du concurrent immédiatement précédent. Le joueur n°9 bénéficie d'une ligne plus grande, contrastée et mise en évidence.
 - [x] **Concurrents derrière l'écran de résultat** : après l'arrivée du joueur, sa position et son temps sont verrouillés mais les autres voitures **poursuivent leur course 3D** jusqu'à leur propre arrivée. Le tableau se met à jour en direct au fur et à mesure ; seules les voitures ayant réellement terminé reçoivent un temps et un delta, les autres affichent « En course… ».
@@ -384,3 +384,15 @@ Documentation : [Three.js — WebGLRenderer](https://threejs.org/docs/pages/WebG
 - [x] Tests automatisés de l'ordre d'arrivée, des écarts successifs, de l'arrivée retardée des IA, des deux temps de tour du joueur, des sauvegardes et du classement des meilleurs chronos.
 
 **À confirmer sur navigateur réel** : présentation des panneaux sur tablette et téléphone, clignotement exact du chrono, lisibilité du tableau en paysage et aspects des flaques sur la piste.
+
+
+## 28. Suppression du panneau central de fin de tour (26/10/2026)
+
+- [x] Supprimer totalement le gros panneau de fin de tour au centre de la piste (HTML, code JavaScript, CSS).
+- [x] Afficher exclusivement le **temps du tour achevé** à la place de l'horloge de la zone chronomètre en haut, **pendant deux secondes**.
+- [x] Faire clignoter uniquement ce temps dans son emplacement habituel ; laisser le chrono réel tourner en arrière-plan, puis reprendre la mesure du tour en cours.
+- [x] Lorsque le temps est dans les trois meilleurs, afficher une mention discrète sous ce chronomètre, sans panneau supplémentaire.
+- [x] Lors du second tour de course, retarder l'écran final de ces deux secondes, puis afficher les résultats complets.
+- [x] Conserver tous les autres mécanismes de jeu, les sauvegardes et les records.
+
+**Vérification** : 80 tests automatisés réussis, avec contrôle des références DOM et de l'absence de l'ancien panneau. Test visuel sur téléphone encore nécessaire.
