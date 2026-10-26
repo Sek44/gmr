@@ -72,13 +72,18 @@ test("prestart and countdown consume only their own portion of slow frames", () 
   assert.equal(state.playerProgress, -race.gridSlot(race.PLAYER_SLOT).distance);
 });
 
-test("hardest opponents take 16–24 seconds; slowest take 39–40 seconds", () => {
+test("hardest opponents take 15–18 seconds; slowest take 39–40 seconds", () => {
   const distance = 820;
   for (const randomValue of [0, 0.5, 1]) {
     const state = race.create(distance, () => randomValue);
     const times = state.opponents.map((ai) => distance / ai.speed);
     assert.equal(times.length, 9);
-    assert.ok(times.slice(0, 3).every((time) => time >= 16 && time <= 24));
+    assert.ok(times.slice(0, 3).every((time) => time >= 15 && time <= 18));
+    const expectedFastBands = [[15, 16], [16, 17], [17, 18]];
+    for (let i = 0; i < 3; i++) {
+      assert.ok(times[i] >= expectedFastBands[i][0] &&
+        times[i] <= expectedFastBands[i][1]);
+    }
     assert.ok(times.slice(3, 7).every((time) => time >= 26 && time <= 38));
     assert.ok(times.slice(7).every((time) => time >= 39 && time <= 40));
     for (let i = 1; i < times.length; i++) {
@@ -126,8 +131,12 @@ test("older saved races automatically upgrade their slow AI speeds", () => {
   }
   const restored = race.restore(saved, 820, () => 0.5);
   assert.ok(restored);
-  assert.ok(restored.opponents[0].targetLapSeconds >= 16 &&
-    restored.opponents[0].targetLapSeconds <= 24);
+  assert.ok(restored.opponents[0].targetLapSeconds >= 15 &&
+    restored.opponents[0].targetLapSeconds <= 16);
+  assert.ok(restored.opponents[1].targetLapSeconds >= 16 &&
+    restored.opponents[1].targetLapSeconds <= 17);
+  assert.ok(restored.opponents[2].targetLapSeconds >= 17 &&
+    restored.opponents[2].targetLapSeconds <= 18);
   assert.ok(restored.opponents[8].targetLapSeconds >= 39 &&
     restored.opponents[8].targetLapSeconds <= 40);
   // The randomized difficulty persists instead of changing at every reload.
