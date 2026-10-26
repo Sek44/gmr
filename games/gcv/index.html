@@ -70,8 +70,9 @@
 
       <div class="gcv-timing" aria-label="Chronométrage">
         <div class="gcv-timing-clock" id="lap-chrono-box">
-          <span class="gcv-timing-title">TOUR EN COURS</span>
+          <span class="gcv-timing-title" id="lap-chrono-title">TOUR EN COURS</span>
           <strong id="lap-chrono">—</strong>
+          <span id="lap-chrono-rank" class="gcv-timing-rank" hidden></span>
         </div>
         <div class="gcv-timing-delta" id="lap-delta" aria-live="off">
           <span id="lap-split-label">S1</span>
@@ -92,11 +93,6 @@
 
       <div class="gcv-notice" id="gcv-notice" hidden role="status"></div>
       <iframe id="gcv-scores" class="gcv-scores-frame" title="Mes scores" hidden></iframe>
-      <div class="gcv-lap-announcement" id="lap-announcement" hidden aria-live="polite">
-        <span id="lap-announcement-label">Tour terminé</span>
-        <strong id="lap-announcement-time">—</strong>
-        <span id="lap-announcement-rank"></span>
-      </div>
       <div class="gcv-race-overlay" id="race-overlay" hidden role="status" aria-live="polite">
         <strong id="race-overlay-title"></strong>
         <span id="race-overlay-subtitle"></span>
