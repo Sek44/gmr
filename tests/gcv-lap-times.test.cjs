@@ -195,3 +195,49 @@ test("touching the finish line without three sectors never earns a record", () =
   assert.equal(result.state.startAt, 1680);
   assert.equal(result.state.splits.length, 0);
 });
+
+test("fall adds time to the active lap without erasing previously reached sectors", () => {
+  const inProgress = {
+    running: true, startAt: 840, elapsedMs: 57500,
+    splits: [17000, 36000], delta: 900, splitNumber: 2,
+  };
+  const afterFall = timing.elapse(inProgress, 2000);
+  assert.equal(afterFall.elapsedMs, 59500);
+  assert.deepEqual(afterFall.splits, [17000, 36000]);
+  assert.equal(afterFall.startAt, 840);
+  assert.equal(afterFall.splitNumber, 2);
+  assert.equal(afterFall.delta, 900);
+  assert.equal(inProgress.elapsedMs, 57500, "fall must not mutate saved state");
+  const resumed = timing.advance(afterFall, 1469, 1471, 100, 840, null, false);
+  assert.equal(resumed.events[0].type, "split");
+  assert.ok(resumed.state.splits[2] > 59500);
+});
+
+test("the fall penalty is naturally included in the completed lap time", () => {
+  const before = { running: true, startAt: 840, elapsedMs: 76000,
+    splits: [19000, 40000, 60000], delta: -700, splitNumber: 3 };
+  const after = timing.elapse(before, 2000);
+  const finished = timing.crossFinish(after, 0.5, 100, 840);
+  const lap = finished.events.find((event) => event.type === "lap");
+  assert.ok(lap);
+  assert.equal(lap.ms, 78050);
+  assert.deepEqual(lap.splits, before.splits);
+});
+
+test("the falling timer remains paused before the first finish crossing", () => {
+  const waiting = timing.initial(840, 500);
+  assert.strictEqual(timing.elapse(waiting, 2000), waiting);
+  assert.equal(waiting.elapsedMs, 0);
+  assert.equal(waiting.running, false);
+});
+
+test("a lap timer survived by save/restore includes time elapsed while falling", () => {
+  const started = { running: true, startAt: 840, elapsedMs: 23000,
+    splits: [16000], delta: -300, splitNumber: 1 };
+  const falling = timing.elapse(started, 2000);
+  const persisted = JSON.parse(JSON.stringify(falling));
+  const resumed = timing.restore(persisted, 840, 1200);
+  assert.equal(resumed.elapsedMs, 25000);
+  assert.deepEqual(resumed.splits, started.splits);
+  assert.equal(resumed.delta, -300);
+});
