@@ -244,3 +244,28 @@ test("a lap timer survived by save/restore includes time elapsed while falling",
   assert.deepEqual(resumed.splits, started.splits);
   assert.equal(resumed.delta, -300);
 });
+
+test("completed lap ranks as first, second or third before saving the time", () => {
+  const store = timing.createStore(layout, memoryStorage());
+  assert.equal(timing.qualifyingRank(store.top(), 45000), 1);
+  store.record(50000, [10000, 20000, 35000]);
+  assert.equal(timing.qualifyingRank(store.top(), 42000), 1);
+  assert.equal(timing.qualifyingRank(store.top(), 56000), 2);
+  store.record(45000, [11000, 23000, 34000]);
+  assert.equal(timing.qualifyingRank(store.top(), 47000), 2);
+  store.record(65000, [19000, 34000, 50000]);
+  assert.equal(timing.qualifyingRank(store.top(), 60000), 3);
+  assert.equal(timing.qualifyingRank(store.top(), 71000), null);
+  assert.equal(timing.qualifyingRank(store.top(), -15), null);
+});
+
+test("after recording the new fastest lap, the top three are ordered", () => {
+  const store = timing.createStore(layout, memoryStorage());
+  for (const ms of [51000, 54000, 58000]) {
+    store.record(ms, [ms * .25, ms * .5, ms * .75]);
+  }
+  const rank = timing.qualifyingRank(store.top(), 50000);
+  assert.equal(rank, 1);
+  store.record(50000, [12500, 25000, 37500]);
+  assert.deepEqual(store.top().map((entry) => entry.ms), [50000, 51000, 54000]);
+});
