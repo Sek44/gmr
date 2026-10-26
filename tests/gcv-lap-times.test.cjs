@@ -127,3 +127,71 @@ test("invalid partial or malformed lap records are rejected", () => {
   assert.equal(store.record(-4, [100, 200, 300]), false);
   assert.equal(store.top().length, 0);
 });
+
+test("physical finish crossing starts the stopwatch despite skipped sample indexes", () => {
+  const line = { x: 78, z: -10 };
+  const forward = { x: 0, z: -1 };
+  // At speed the vehicle crosses the whole painted strip in one frame.
+  const fraction = timing.finishCrossing(
+    { x: 78, z: 1.2 }, { x: 78, z: -14.8 }, line, forward, 15);
+  assert.ok(Math.abs(fraction - 0.7) < 1e-8);
+  const waiting = timing.initial(840, 820);
+  // A missed or delayed sample index no longer decides if the stopwatch starts.
+  const noIndexCrossing = timing.advance(waiting, 825, 827, 100, 840, null, false);
+  assert.equal(noIndexCrossing.state.running, false);
+  const started = timing.crossFinish(noIndexCrossing.state, fraction, 100, 840, 840);
+  assert.deepEqual(started.events.map((e) => e.type), ["start"]);
+  assert.equal(started.state.running, true);
+  assert.ok(Math.abs(started.state.elapsedMs - 30) < 1e-8);
+  assert.equal(started.state.startAt, 840);
+});
+
+test("crossing backwards or outside the finish road width cannot start the clock", () => {
+  const line = { x: 78, z: -10 }, forward = { x: 0, z: -1 };
+  assert.equal(timing.finishCrossing(
+    { x: 78, z: -20 }, { x: 78, z: 8 }, line, forward, 15), null);
+  assert.equal(timing.finishCrossing(
+    { x: 105, z: 5 }, { x: 105, z: -15 }, line, forward, 15), null);
+  assert.equal(timing.finishCrossing(
+    { x: 78, z: -12 }, { x: 78, z: -17 }, line, forward, 15), null);
+  assert.equal(timing.finishCrossing(
+    { x: 78, z: 2 }, { x: 78, z: 1 }, line, forward, 15), null);
+});
+
+test("crossing near the outer dirt shoulder counts if the vehicle stays on the road", () => {
+  const fraction = timing.finishCrossing(
+    { x: 92, z: -4 }, { x: 92, z: -16 },
+    { x: 78, z: -10 }, { x: 0, z: -1 }, 15);
+  assert.equal(fraction, 0.5);
+  assert.equal(timing.finishCrossing(
+    { x: 94, z: -4 }, { x: 94, z: -16 },
+    { x: 78, z: -10 }, { x: 0, z: -1 }, 15), null);
+});
+
+test("valid physical crossing completes a timed lap without an index-triggered finish", () => {
+  const running = {
+    running: true, startAt: 840, elapsedMs: 72000,
+    splits: [17000, 36000, 54000], delta: -300, splitNumber: 3,
+  };
+  const noIndexFinish = timing.advance(
+    running, 1674, 1676, 100, 840, null, false);
+  assert.equal(noIndexFinish.events.length, 0);
+  const finished = timing.crossFinish(noIndexFinish.state, 0.25, 100, 840);
+  const lap = finished.events.find((event) => event.type === "lap");
+  assert.ok(lap);
+  assert.ok(Math.abs(lap.ms - 72025) < 1e-8);
+  assert.deepEqual(lap.splits, running.splits);
+  assert.equal(finished.state.startAt, 1680);
+  assert.ok(Math.abs(finished.state.elapsedMs - 75) < 1e-8);
+});
+
+test("touching the finish line without three sectors never earns a record", () => {
+  const incomplete = {
+    running: true, startAt: 840, elapsedMs: 3000,
+    splits: [1000], delta: null, splitNumber: 1,
+  };
+  const result = timing.crossFinish(incomplete, 0.5, 100, 840);
+  assert.equal(result.events.length, 0);
+  assert.equal(result.state.startAt, 1680);
+  assert.equal(result.state.splits.length, 0);
+});
