@@ -8,6 +8,7 @@
   const speedLabel = document.getElementById("speed-value");
   const gearLabel = document.getElementById("gear-value");
   const lapLabel = document.getElementById("lap-value");
+  const sessionModeLabel = document.getElementById("session-mode-label");
   const chronoLabel = document.getElementById("lap-chrono");
   const deltaLabel = document.getElementById("lap-delta");
   const deltaValue = document.getElementById("lap-delta-value");
@@ -615,6 +616,7 @@
       freeModeButton.setAttribute("aria-pressed", String(!racing));
       raceModeButton.setAttribute("aria-pressed", String(racing));
       racePositionBox.hidden = !racing;
+      sessionModeLabel.textContent = racing ? "Course · 10 voitures" : "Essais libres · N° 9";
       lapCountLabel.firstChild.textContent = racing ? "Tours en course : " : "Tours chronométrés : ";
       restartButton.textContent = racing ? "↻ Recommencer" : "↻ Départ";
       if (!racing) {
