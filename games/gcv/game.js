@@ -143,11 +143,10 @@
     strip(0, OUTER_HALF_WIDTH, 0.02, shoulderMaterial);
     strip(0, ROAD_HALF_WIDTH, 0.07, roadMaterial);
 
-    // 40-m guardrail stretches at every substantial bend exit, along BOTH
-    // shoulders. A shared protection mask governs visuals and collisions.
+    // Continuous guardrails on BOTH sides along the entire closed circuit.
+    // The same full-loop collision mask and limit drive their render geometry.
     const barriers = Barriers.create(
-      positions.slice(0, SAMPLE_COUNT), TrackLayout.WAYPOINTS,
-      trackLength, OUTER_HALF_WIDTH);
+      positions.slice(0, SAMPLE_COUNT), trackLength, OUTER_HALF_WIDTH);
     const railVertices = [], railIndices = [];
     function railQuad(a, b, low, high) {
       const v = railVertices.length / 3;
@@ -157,8 +156,6 @@
     }
     for (let i = 0; i < SAMPLE_COUNT; i++) {
       const next = (i + 1) % SAMPLE_COUNT;
-      if (!barriers.protectedSamples[i] || !barriers.protectedSamples[next])
-        continue;
       for (const side of [-1, 1]) {
         const a = positions[i].clone()
           .addScaledVector(sides[i], side * barriers.railOffset);
@@ -180,7 +177,7 @@
 
     const guardrailPostSamples = [];
     for (let i = 0; i < SAMPLE_COUNT; i += 5) {
-      if (barriers.protectedSamples[i]) guardrailPostSamples.push(i);
+      guardrailPostSamples.push(i);
     }
     const guardrailPosts = new THREE.InstancedMesh(
       new THREE.BoxGeometry(0.18, 1.55, 0.19),
