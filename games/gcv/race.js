@@ -8,17 +8,18 @@ const GcvRace = (() => {
   const LAPS = 2;
   const COUNTDOWN_SECONDS = 3;
   const GRID_WAIT_SECONDS = 2; // Pause on the grid before the 3-2-1 countdown.
+  const AI_ACCELERATION = 10; // m/s²; below the player's ~23.6 m/s² launch.
   const COLUMN_OFFSET = 3;
   const ROW_SPACING = 9.5;
   const FIRST_ROW_DISTANCE = 12;
-  // Target seconds per lap: three strong racers (17–21 s),
-  // four mid-field racers (26–38 s), and two backmarkers (39–40 s).
+  // Cruise lap targets: leaders 17–21 s, then a smooth 21.5–34 s field.
+  // Actual first laps include acceleration from rest, as for the player.
   // Each target is randomized at race creation. Non-overlapping bands
   // preserve the difficulty order, regardless of the chosen random values.
   const PACE_RANGES = Object.freeze([
     [17, 18.5], [18.5, 20], [20, 21],
-    [26, 29], [30, 33], [34, 36], [37, 38],
-    [39, 39.5], [39.5, 40],
+    [21.5, 23.5], [23.5, 25.5], [25.5, 27.5], [27.5, 29.5],
+    [30, 32], [32, 34],
   ].map((range) => Object.freeze(range)));
 
   const COLORS = Object.freeze([
@@ -115,6 +116,24 @@ const GcvRace = (() => {
       Math.floor(Math.max(0, race.playerProgress) / race.trackLength) + 1));
   }
 
+  // Integrate motion from rest with a limited starting acceleration, then
+  // cruise at the selected speed. Using absolute time makes large and small
+  // physics frames yield the same position and finish time.
+  function distanceAt(seconds, topSpeed) {
+    const t = Math.max(0, seconds);
+    const tTop = topSpeed / AI_ACCELERATION;
+    if (t <= tTop) return AI_ACCELERATION * t * t / 2;
+    return topSpeed * (t - tTop / 2);
+  }
+
+  function timeAtDistance(distance, topSpeed) {
+    const capDistance = topSpeed * topSpeed / (2 * AI_ACCELERATION);
+    if (distance <= capDistance)
+      return Math.sqrt(Math.max(0, 2 * distance / AI_ACCELERATION));
+    return topSpeed / AI_ACCELERATION +
+      (distance - capDistance) / topSpeed;
+  }
+
   function advance(race, elapsedSeconds, playerDistance = 0) {
     const dt = Number.isFinite(elapsedSeconds) ? Math.max(0, elapsedSeconds) : 0;
     if (!dt) return race;
@@ -138,14 +157,15 @@ const GcvRace = (() => {
     const elapsed = race.elapsed + dt;
     const opponents = race.opponents.map((item) => {
       if (Number.isFinite(item.finishTime)) return item;
-      const next = item.progress + item.speed * dt;
+      const before = distanceAt(race.elapsed, item.speed);
+      const after = distanceAt(elapsed, item.speed);
+      const next = item.progress + (after - before);
       if (next >= finishDistance) {
-        // Interpolate precisely within the current frame, so the time is
-        // independent of rendering FPS and remains correct behind results.
-        const fraction = Math.max(0, Math.min(1,
-          (finishDistance - item.progress) / (item.speed * dt)));
+        // Solve the exact time reached under the acceleration ramp, not a
+        // constant-speed guess. Works for slow or large rendering frames.
         return { ...item, progress: finishDistance,
-          finishTime: race.elapsed + dt * fraction };
+          finishTime: timeAtDistance(before + finishDistance -
+            item.progress, item.speed) };
       }
       return { ...item, progress: next };
     });
@@ -222,7 +242,8 @@ const GcvRace = (() => {
   }
 
   return Object.freeze({ GRID_COUNT, AI_COUNT, PLAYER_SLOT, LAPS,
-    COUNTDOWN_SECONDS, GRID_WAIT_SECONDS, PACE_RANGES, gridSlot, create, advance, standings, position, classification,
+    COUNTDOWN_SECONDS, GRID_WAIT_SECONDS, AI_ACCELERATION, PACE_RANGES,
+    gridSlot, create, advance, distanceAt, standings, position, classification,
     currentLap, restore });
 })();
 if (typeof window !== "undefined") window.GcvRace = GcvRace;
