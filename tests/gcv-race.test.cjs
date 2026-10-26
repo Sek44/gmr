@@ -72,14 +72,14 @@ test("prestart and countdown consume only their own portion of slow frames", () 
   assert.equal(state.playerProgress, -race.gridSlot(race.PLAYER_SLOT).distance);
 });
 
-test("hardest opponents take 13–16 seconds; slowest take 39–40 seconds", () => {
+test("hardest opponents take 17–21 seconds; slowest take 39–40 seconds", () => {
   const distance = 820;
   for (const randomValue of [0, 0.5, 1]) {
     const state = race.create(distance, () => randomValue);
     const times = state.opponents.map((ai) => distance / ai.speed);
     assert.equal(times.length, 9);
-    assert.ok(times.slice(0, 3).every((time) => time >= 13 && time <= 16));
-    const expectedFastBands = [[13, 14], [14, 15], [15, 16]];
+    assert.ok(times.slice(0, 3).every((time) => time >= 17 && time <= 21));
+    const expectedFastBands = [[17, 18.5], [18.5, 20], [20, 21]];
     for (let i = 0; i < 3; i++) {
       assert.ok(times[i] >= expectedFastBands[i][0] &&
         times[i] <= expectedFastBands[i][1]);
@@ -132,12 +132,12 @@ test("older saved races automatically upgrade their slow AI speeds", () => {
   }
   const restored = race.restore(saved, 820, () => 0.5);
   assert.ok(restored);
-  assert.ok(restored.opponents[0].targetLapSeconds >= 13 &&
-    restored.opponents[0].targetLapSeconds <= 14);
-  assert.ok(restored.opponents[1].targetLapSeconds >= 14 &&
-    restored.opponents[1].targetLapSeconds <= 15);
-  assert.ok(restored.opponents[2].targetLapSeconds >= 15 &&
-    restored.opponents[2].targetLapSeconds <= 16);
+  assert.ok(restored.opponents[0].targetLapSeconds >= 17 &&
+    restored.opponents[0].targetLapSeconds <= 18.5);
+  assert.ok(restored.opponents[1].targetLapSeconds >= 18.5 &&
+    restored.opponents[1].targetLapSeconds <= 20);
+  assert.ok(restored.opponents[2].targetLapSeconds >= 20 &&
+    restored.opponents[2].targetLapSeconds <= 21);
   assert.ok(restored.opponents[8].targetLapSeconds >= 39 &&
     restored.opponents[8].targetLapSeconds <= 40);
   // The randomized difficulty persists instead of changing at every reload.
