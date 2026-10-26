@@ -58,7 +58,7 @@
 .gcv-steering-wrap { display: flex; flex-direction: column; gap: 5px; align-items: center; }
 .gcv-control-caption { font-size: .72rem; font-weight: 800; color: white; text-shadow: 0 1px 4px #000a; letter-spacing: .08em; }
 .gcv-steer-pad {
-  width: clamp(165px, 30vw, 220px); height: clamp(88px, 16vw, 120px);
+  width: clamp(165px, 30vw, 220px); height: clamp(140px, 21vw, 185px);
   display: flex; align-items: center; justify-content: center; gap: 6px;
   padding: 9px; border: 2px solid #d5e4f9a0; border-radius: 23px;
   background: #0e2439b8; backdrop-filter: blur(5px);
@@ -96,9 +96,9 @@
   .gcv-action { min-height: 31px; padding: 5px 8px; font-size: .72rem; }
   .gcv-minimap { width: 132px; height: 102px; }
   .gcv-controls { left: 8px; right: 8px; top: 72%; bottom: auto; gap: 6px; }
-  .gcv-steer-pad { width: 155px; height: 94px; padding: 8px; }
+  .gcv-steer-pad { width: 155px; height: 148px; padding: 8px; }
   .gcv-steer-side { font-size: .78rem; }
-  .gcv-steer-knob { width: 29px; height: 39px; }
+  .gcv-steer-knob { width: 29px; height: 48px; }
   .gcv-pedals { gap: 6px; }
   .gcv-pedal { min-width: 75px; height: 94px; font-size: .86rem; border-radius: 19px; }
 }
@@ -106,15 +106,15 @@
   .gcv-page { padding-top: 6px; }
   .gcv-page-header { margin-bottom: 5px; }
   .gcv-stage:not(:fullscreen) { height: max(280px, calc(100dvh - 82px)); }
-  .gcv-controls { top: 79%; }
-  .gcv-steer-pad { height: 78px; }
+  .gcv-controls { top: 70%; }
+  .gcv-steer-pad { height: 120px; }
   .gcv-pedal { height: 76px; }
   .gcv-minimap { width: 123px; height: 95px; }
 }
 
 /* Fit both thumbs even on very narrow portrait phones. */
 @media (max-width: 350px) {
-  .gcv-steer-pad { width: 132px; height: 88px; }
+  .gcv-steer-pad { width: 132px; height: 138px; }
   .gcv-pedal { min-width: 67px; height: 88px; font-size: .77rem; }
   .gcv-pedals { gap: 5px; }
 }
