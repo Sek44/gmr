@@ -40,7 +40,7 @@
 .gcv-bests strong { font-weight: 900; margin-left: 6px; color: #fff5c9; }
 .gcv-timing {
   position: absolute; z-index: 3; top: 12px; left: 50%;
-  transform: translateX(-50%); display: flex; align-items: stretch;
+  transform: translateX(-60px); display: flex; align-items: stretch;
   gap: 8px; pointer-events: none; font-variant-numeric: tabular-nums;
 }
 .gcv-timing-clock, .gcv-timing-delta {
@@ -116,7 +116,7 @@
 .gcv-prototype { color: #62768b; }
 @media (max-width: 700px) {
   /* Keep the timer readable and centered; lower other HUD groups to prevent overlap. */
-  .gcv-timing { top: 8px; gap: 5px; }
+  .gcv-timing { top: 8px; gap: 5px; transform: translateX(-56px); }
   .gcv-timing-clock { min-width: 112px; padding: 5px 7px; }
   .gcv-timing-clock strong { font-size: 1.5rem; }
   .gcv-timing-delta { min-width: 79px; padding: 5px 7px; }
