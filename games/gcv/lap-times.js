@@ -102,6 +102,14 @@ const GcvLapTimes = (() => {
     };
   }
 
+  // Accumulate time without track progression. Used while falling: the player
+  // keeps the same lap, sectors and delta while the two-second recovery costs
+  // real time. No checkpoint or lap event can be created by the fall itself.
+  function elapse(state, dtMs) {
+    if (!state.running || !Number.isFinite(dtMs) || dtMs <= 0) return state;
+    return { ...state, elapsedMs: state.elapsedMs + dtMs };
+  }
+
   // Detect a true forward crossing of the VISIBLE line in world coordinates.
   // Sample indices alone may jump or skip the line at high speed, which used to
   // leave the stopwatch inactive despite the car passing the finish tiles.
@@ -211,7 +219,7 @@ const GcvLapTimes = (() => {
 
   return Object.freeze({ STORAGE_KEY, SPLIT_FRACTIONS, circuitKey,
     createStore, format, formatDelta, initial, restore, advance,
-    finishCrossing, crossFinish });
+    elapse, finishCrossing, crossFinish });
 })();
 if (typeof window !== "undefined") window.GcvLapTimes = GcvLapTimes;
 if (typeof module !== "undefined" && module.exports) module.exports = GcvLapTimes;
