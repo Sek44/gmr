@@ -22,12 +22,25 @@ const GcvTrackProgress = (() => {
     return { index: nextIndex, progress, laps };
   }
 
+  // Re-align the logical lap position to an actual physical line crossing.
+  // This repairs missed sample-index crossings without inventing distance.
+  function syncFinish(state, finishProgress, nearestIndex, sampleCount) {
+    if (!Number.isFinite(finishProgress) ||
+        !Number.isSafeInteger(nearestIndex) ||
+        !Number.isSafeInteger(sampleCount) || sampleCount < 2) return state;
+    return {
+      index: ((nearestIndex % sampleCount) + sampleCount) % sampleCount,
+      progress: finishProgress,
+      laps: Math.max(state.laps, Math.floor(finishProgress / sampleCount)),
+    };
+  }
+
   function relocate(state, nearestIndex) {
     // Respawn is not extra travel around the circuit.
     return { ...state, index: nearestIndex };
   }
 
-  return Object.freeze({ create, advance, relocate });
+  return Object.freeze({ create, advance, relocate, syncFinish });
 })();
 
 if (typeof window !== "undefined") window.GcvTrackProgress = GcvTrackProgress;
