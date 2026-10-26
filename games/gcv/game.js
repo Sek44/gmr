@@ -19,6 +19,7 @@
   const Physics = window.GcvPhysics;
   const TrackProgress = window.GcvTrackProgress;
   const Scenery = window.GcvScenery;
+  const TrackLayout = window.GcvTrackLayout;
 
   function announce(message) {
     notice.textContent = message;
@@ -26,7 +27,7 @@
   }
 
   try {
-    if (!Physics || !TrackProgress || !Scenery) throw new Error("Les modules de conduite sont introuvables.");
+    if (!Physics || !TrackProgress || !Scenery || !TrackLayout) throw new Error("Les modules de conduite sont introuvables.");
     const THREE = await import("https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js");
     start(THREE);
   } catch (error) {
@@ -38,12 +39,9 @@
     const ROAD_HALF_WIDTH = 9;
     const GRAVEL_WIDTH = 6; // Six metres of gravel on each side of the asphalt.
     const OUTER_HALF_WIDTH = ROAD_HALF_WIDTH + GRAVEL_WIDTH;
-    const SAMPLE_COUNT = 420;
-    const CURVE_POINTS = [
-      [35, 68], [35, 30], [37, -22], [21, -54],
-      [-15, -62], [-43, -44], [-50, -9], [-40, 19],
-      [-46, 51], [-21, 76], [9, 81],
-    ].map(([x, z]) => new THREE.Vector3(x, 0, z));
+    const SAMPLE_COUNT = TrackLayout.SAMPLE_COUNT;
+    const CURVE_POINTS = TrackLayout.WAYPOINTS.map(([x, z]) =>
+      new THREE.Vector3(x, 0, z));
     const curve = new THREE.CatmullRomCurve3(CURVE_POINTS, true, "catmullrom", 0.55);
     const positions = [];
     const directions = [];
@@ -107,6 +105,39 @@
     strip(0, OUTER_HALF_WIDTH, 0.02, shoulderMaterial);
     strip(0, ROAD_HALF_WIDTH, 0.07, roadMaterial);
 
+    // The previously flat ribbon is now a solid-looking elevated island road:
+    // dark earth side walls and an underside along the complete closed curve.
+    const TRACK_BOTTOM = -4.8;
+    const solidVertices = [];
+    const solidIndices = [];
+    for (let i = 0; i <= SAMPLE_COUNT; i++) {
+      const p = positions[i], normal = sides[i];
+      const lx = p.x - normal.x * OUTER_HALF_WIDTH;
+      const lz = p.z - normal.z * OUTER_HALF_WIDTH;
+      const rx = p.x + normal.x * OUTER_HALF_WIDTH;
+      const rz = p.z + normal.z * OUTER_HALF_WIDTH;
+      solidVertices.push(
+        lx, 0.02, lz, lx, TRACK_BOTTOM, lz,
+        rx, 0.02, rz, rx, TRACK_BOTTOM, rz
+      );
+    }
+    for (let i = 0; i < SAMPLE_COUNT; i++) {
+      const a = i * 4, b = a + 4;
+      // Left/right cliff faces and a real bottom face.
+      solidIndices.push(
+        a, b, a + 1, a + 1, b, b + 1,
+        a + 2, a + 3, b + 2, a + 3, b + 3, b + 2,
+        a + 1, b + 1, a + 3, a + 3, b + 1, b + 3
+      );
+    }
+    const solidGeometry = new THREE.BufferGeometry();
+    solidGeometry.setAttribute("position", new THREE.Float32BufferAttribute(solidVertices, 3));
+    solidGeometry.setIndex(solidIndices);
+    solidGeometry.computeVertexNormals();
+    scene.add(new THREE.Mesh(solidGeometry, new THREE.MeshStandardMaterial({
+      color: 0x674934, roughness: 1, side: THREE.DoubleSide,
+    })));
+
     // Sparse, low-poly stones on the 6 m earth shoulders. Instancing keeps
     // rendering cheap on Android and never places stones on the asphalt.
     const pebbleCount = Math.ceil(SAMPLE_COUNT / 7) * 2 * 5;
@@ -161,7 +192,7 @@
     scene.add(patches);
 
     // Checkered line across a straight section of the circuit.
-    const startIndex = 10;
+    const startIndex = TrackLayout.nearestIndex(positions, TrackLayout.FINISH);
     const startCenter = positions[startIndex], startSide = sides[startIndex];
     const startYaw = Math.atan2(-directions[startIndex].x, -directions[startIndex].z);
     // The finish marking is made of dark and pale earth tiles, not paint.
@@ -471,7 +502,7 @@
     }
 
     // Start on a straight section, facing the road in its normal forward direction.
-    const initialIndex = 19;
+    const initialIndex = TrackLayout.nearestIndex(positions, TrackLayout.SPAWN);
     const initial = positions[initialIndex];
     let driver = {
       x: initial.x, z: initial.z,
@@ -779,10 +810,17 @@
         camera: cameraMode,
         progress: lapTracker.progress,
         laps: lapTracker.laps,
+        layoutVersion: TrackLayout.VERSION,
       };
     }
     function restore(saved) {
       if (!saved || typeof saved !== "object") return;
+      // The redesigned, longer circuit invalidates prior saved coordinates
+      // and lap progress; retain the view but start a clean free-drive session.
+      if (saved.layoutVersion !== TrackLayout.VERSION) {
+        cameraMode = saved.camera === "outside" ? "outside" : "inside";
+        return;
+      }
       const valid = ["x", "z", "yaw", "speed"].every((key) => Number.isFinite(saved[key]));
       if (valid && Math.abs(saved.x) < 220 && Math.abs(saved.z) < 220) {
         driver = {
