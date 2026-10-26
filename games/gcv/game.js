@@ -773,6 +773,19 @@
         islandCircle(x, y, 1.6 + (i % 3), "#6f523c");
       }
 
+      // Three visual sector checkpoints correspond exactly to the timer.
+      LapTimes.SPLIT_FRACTIONS.forEach((fraction, index) => {
+        const splitIndex = (startIndex + Math.round(SAMPLE_COUNT * fraction)) % SAMPLE_COUNT;
+        const [sx, sy] = toMap(positions[splitIndex].x, positions[splitIndex].z);
+        islandCircle(sx, sy, 7, "#15354d");
+        islandCircle(sx, sy, 5, "#f8d690");
+        satellite.font = "bold 9px system-ui";
+        satellite.textAlign = "center";
+        satellite.textBaseline = "middle";
+        satellite.fillStyle = "#1d2834";
+        satellite.fillText(String(index + 1), sx, sy);
+      });
+
       // Finish line marker: a short contrasting crossing and flag, separate
       // from roadway lane markings.
       const [fx, fy] = toMap(startCenter.x, startCenter.z);
