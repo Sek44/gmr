@@ -330,3 +330,18 @@ Documentation : [Three.js — WebGLRenderer](https://threejs.org/docs/pages/WebG
 - [x] Tests sans dépendance graphique de la taille de grille, du départ au milieu, du compte à rebours, de la vitesse des IA, de la durée de deux tours, des positions et de la sauvegarde.
 
 **À contrôler visuellement sur mobile** : lisibilité des boutons de mode et du classement, voiture et IA sur la grille, compte à rebours, deux franchissements complets, panneau de résultats et restauration des essais libres.
+
+
+## 24. Accueil intégré, modes en plein écran et IA calibrées (26/10/2026) — v0.11
+
+- [x] **Adversaires plus rapides** : 9 voitures IA calibrées sur les temps de tour cibles **35, 36,875, 38,75, 40,625, 42,5, 44,375, 46,25, 48,125 et 50 secondes**. La vitesse linéaire est calculée à partir de la longueur *réelle* du circuit (courbe de Three.js), de sorte que les temps visés restent stables après une future modification du tracé.
+- [x] **Migration des courses enregistrées** : les parties déjà sauvegardées avec l'ancienne lenteur des IA sont recalibrées automatiquement au rechargement ; la position des voitures est conservée.
+- [x] **Véritable écran d'accueil de GCV** : visible dès l'ouverture du jeu, avec présentation, boutons **Essais libres** / **Course · 2 tours**, reprise de la partie sauvegardée, accès aux scores et activation du plein écran.
+- [x] **Choix du mode depuis le plein écran** : tout le menu est dans l'élément `gcv-stage` qui devient plein écran. Le bouton **☰ Menu** pendant le jeu revient à l'accueil sans quitter le plein écran ni perdre la partie.
+- [x] **Pause du jeu dans le menu** : la physique de conduite, le compte à rebours et les adversaires ne progressent pas lorsque le menu ou les scores sont ouverts ; le bouton **Reprendre** relance l'état précédent.
+- [x] **Scores utilisables en plein écran** : le classement GCV est ouvert dans une iframe intégrée à `gcv-stage` ; le bouton Retour ferme les scores sans sortir du jeu ni du plein écran.
+- [x] **Plein écran disponible dans l'accueil et pendant le jeu** : boutons indépendants affichant correctement l'état du plein écran, fonction commune de bascule compatible avec le menu.
+- [x] **Ergonomie** : accueil adaptatif aux écrans portrait/paysage, disposition compacte des commandes du HUD sur téléphone, label du mode de jeu conservé.
+- [x] **Tests automatisés** : temps de tour des neuf IA, classement, sauvegarde et migration des vitesses d'une partie précédemment enregistrée ; contrôle des références DOM et de la syntaxe JavaScript.
+
+**Tests réels à effectuer** : menu d'accueil sur Chrome Android en plein écran portrait/paysage, changement de mode sans sortie du plein écran, pause/reprise d'un compte à rebours, page des scores et fermeture via le bouton Retour.
