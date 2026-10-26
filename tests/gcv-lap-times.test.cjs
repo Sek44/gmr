@@ -217,7 +217,10 @@ test("the fall penalty is naturally included in the completed lap time", () => {
   const before = { running: true, startAt: 840, elapsedMs: 76000,
     splits: [19000, 40000, 60000], delta: -700, splitNumber: 3 };
   const after = timing.elapse(before, 2000);
-  const finished = timing.crossFinish(after, 0.5, 100, 840);
+  // Just like the game frame: first advance the running timer, then adjust
+  // the finish time to the precise fraction of the frame.
+  const activeFrame = timing.advance(after, 1675, 1677, 100, 840, null, false);
+  const finished = timing.crossFinish(activeFrame.state, 0.5, 100, 840);
   const lap = finished.events.find((event) => event.type === "lap");
   assert.ok(lap);
   assert.equal(lap.ms, 78050);
