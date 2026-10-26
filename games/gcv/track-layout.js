@@ -5,7 +5,7 @@ const GcvTrackLayout = (() => {
   const VERSION = 2;
   const SAMPLE_COUNT = 840;
   const ROAD_HALF_WIDTH = 9;
-  const SHOULDER_WIDTH = 6;
+  const SHOULDER_WIDTH = 10; // Four extra metres of safe shoulder per side.
   const WAYPOINTS = Object.freeze([
     [78, 150], [78, 100], [78, 50], [78, 0], [78, -50], [78, -90],
     [53, -114], [4, -125], [-40, -117], [-75, -90], [-91, -52],
