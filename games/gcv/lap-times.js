@@ -102,9 +102,58 @@ const GcvLapTimes = (() => {
     };
   }
 
+  // Detect a true forward crossing of the VISIBLE line in world coordinates.
+  // Sample indices alone may jump or skip the line at high speed, which used to
+  // leave the stopwatch inactive despite the car passing the finish tiles.
+  // Return the crossing fraction of the frame, or null.
+  function finishCrossing(before, after, line, forward, halfWidth) {
+    if (![before?.x, before?.z, after?.x, after?.z,
+      line?.x, line?.z, forward?.x, forward?.z, halfWidth]
+      .every(Number.isFinite) || halfWidth <= 0) return null;
+    const length = Math.hypot(forward.x, forward.z);
+    if (length < 1e-8) return null;
+    const dx = forward.x / length, dz = forward.z / length;
+    const previousDistance = (before.x - line.x) * dx + (before.z - line.z) * dz;
+    const nextDistance = (after.x - line.x) * dx + (after.z - line.z) * dz;
+    if (!(previousDistance <= 0 && nextDistance > 0)) return null;
+    const fraction = -previousDistance / (nextDistance - previousDistance);
+    const x = before.x + (after.x - before.x) * fraction - line.x;
+    const z = before.z + (after.z - before.z) * fraction - line.z;
+    const sideways = -dz * x + dx * z;
+    return Math.abs(sideways) <= halfWidth ? fraction : null;
+  }
+
+  // Finish crossings are signalled by actual car movement across the physical
+  // finish line. Sector checkpoints still use progress around the full circuit.
+  function crossFinish(state, fraction, dtMs, sampleCount, startAt = state.startAt) {
+    if (!Number.isFinite(fraction) || fraction < 0 || fraction > 1 ||
+        !Number.isFinite(dtMs) || dtMs < 0) {
+      return { state, events: [] };
+    }
+    const remainingMs = dtMs * (1 - fraction);
+    const events = [];
+    const crossingProgress = state.running ? state.startAt + sampleCount : startAt;
+    if (state.running) {
+      const finishedMs = Math.max(0, state.elapsedMs - remainingMs);
+      if (state.splits.length === 3 && finishedMs > state.splits[2]) {
+        events.push({ type: "lap", ms: finishedMs, splits: state.splits.slice() });
+      }
+    } else {
+      events.push({ type: "start" });
+    }
+    return {
+      state: {
+        running: true, startAt: crossingProgress,
+        elapsedMs: remainingMs, splits: [], delta: null, splitNumber: 0,
+      },
+      events,
+    };
+  }
+
   // Progress is unwrapped around the track and comes from GcvTrackProgress.
   // A crossing interpolates the exact fraction of frame time.
-  function advance(state, previousProgress, nextProgress, dtMs, sampleCount, best = null) {
+  function advance(state, previousProgress, nextProgress, dtMs, sampleCount, best = null,
+    allowIndexFinish = true) {
     const stepMs = Number.isFinite(dtMs) ? Math.max(0, dtMs) : 0;
     let result = { ...state, splits: state.splits.slice() };
     const events = [];
@@ -119,7 +168,7 @@ const GcvLapTimes = (() => {
         (nextProgress - previousProgress)));
 
     if (!result.running) {
-      if (crossed(result.startAt)) {
+      if (allowIndexFinish && crossed(result.startAt)) {
         result.running = true;
         result.elapsedMs = stepMs * (1 - offset(result.startAt));
         result.splits = [];
@@ -144,7 +193,7 @@ const GcvLapTimes = (() => {
     }
 
     const finishAt = result.startAt + sampleCount;
-    if (crossed(finishAt)) {
+    if (allowIndexFinish && crossed(finishAt)) {
       const lapMs = Math.max(0, beforeMs + stepMs * offset(finishAt));
       if (result.splits.length === 3 && lapMs > result.splits[2]) {
         events.push({ type: "lap", ms: lapMs, splits: result.splits.slice() });
@@ -161,7 +210,8 @@ const GcvLapTimes = (() => {
   }
 
   return Object.freeze({ STORAGE_KEY, SPLIT_FRACTIONS, circuitKey,
-    createStore, format, formatDelta, initial, restore, advance });
+    createStore, format, formatDelta, initial, restore, advance,
+    finishCrossing, crossFinish });
 })();
 if (typeof window !== "undefined") window.GcvLapTimes = GcvLapTimes;
 if (typeof module !== "undefined" && module.exports) module.exports = GcvLapTimes;
