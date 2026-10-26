@@ -5,12 +5,53 @@
 .gcv-page-header h1 { font-size: clamp(1.15rem, 3.8vw, 1.65rem); }
 .gcv-number { justify-self: end; font-weight: 850; color: #ce273a; font-size: 1.05rem; }
 
-.gcv-mode-chooser { display: flex; gap: 9px; align-items: center; justify-content: center;
-  margin: 0 0 10px; }
-.gcv-mode-choice { background: #fff; border: 1px solid #a9bfd4; color: #264565;
-  border-radius: 12px; min-height: 40px; padding: 7px 15px; font-weight: 800; }
-.gcv-mode-choice.is-selected { background: #2265c5; border-color: #2265c5; color: #fff; }
-.gcv-mode-choice:focus-visible { outline: 3px solid #5a9be4; outline-offset: 2px; }
+.gcv-home {
+  position: absolute; inset: 0; z-index: 9; display: flex; align-items: center;
+  justify-content: center; padding: 16px; overflow-y: auto;
+  background: linear-gradient(145deg, #071626db, #142e43bc);
+  touch-action: pan-y;
+}
+.gcv-home-panel {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  width: min(470px, 100%); padding: clamp(14px, 3vw, 27px);
+  border-radius: 22px; border: 1px solid #aecbd58c;
+  background: #0b2036eb; box-shadow: 0 16px 54px #0009;
+  color: white; text-align: center;
+}
+.gcv-home-eyebrow { margin: 0; font-size: .78rem; color: #f6d581;
+  font-weight: 900; letter-spacing: .11em; }
+.gcv-home-panel h2 { margin: 0; font-size: clamp(1.4rem, 4.7vw, 2.35rem);
+  line-height: 1.1; }
+.gcv-home-description { margin: 0 0 3px; color: #cbdce8; font-size: .89rem; }
+.gcv-mode-chooser { display: grid; grid-template-columns: 1fr 1fr; width: 100%;
+  gap: 10px; margin-top: 3px; }
+.gcv-home-button {
+  min-height: 74px; padding: 12px; border-radius: 13px;
+  border: 1px solid #8caabf9e; background: #1d3b56;
+  color: white; font: inherit; text-align: left; cursor: pointer;
+  display: flex; flex-direction: column; justify-content: center; gap: 5px;
+}
+.gcv-home-button strong { font-size: .99rem; }
+.gcv-home-button span { font-size: .76rem; line-height: 1.35; color: #d1e2ee; }
+.gcv-home-button.is-selected { border: 2px solid #ffe094; background: #255375; }
+.gcv-home-resume {
+  width: 100%; min-height: 46px; text-align: center;
+  align-items: center; background: #e4b64e; color: #132d41;
+  border-color: #ffe8a7; font-size: 1rem; font-weight: 850;
+}
+.gcv-home-tools { display: flex; gap: 10px; justify-content: center;
+  flex-wrap: wrap; margin-top: 4px; }
+.gcv-home-tool { border: 1px solid #a4bdcf89; color: #edf4fa;
+  background: #1e3b56; border-radius: 11px; padding: 9px 13px;
+  min-height: 40px; font-weight: 800; font: inherit; cursor: pointer; }
+.gcv-scores-frame { position: absolute; inset: 0; width: 100%; height: 100%;
+  z-index: 12; border: 0; background: #f3f6fb; }
+.gcv-stage.gcv-in-menu .gcv-hud-left,
+.gcv-stage.gcv-in-menu .gcv-hud-right,
+.gcv-stage.gcv-in-menu .gcv-timing,
+.gcv-stage.gcv-in-menu .gcv-controls,
+.gcv-stage.gcv-in-menu .gcv-race-overlay,
+.gcv-stage.gcv-in-menu .gcv-notice { display: none; }
 .gcv-stage {
   position: relative; width: 100%; height: clamp(350px, 70dvh, 720px);
   overflow: hidden; isolation: isolate; border-radius: 18px;
@@ -157,8 +198,10 @@
   .gcv-hud-left, .gcv-hud-right { top: 76px; }
 }
 @media (max-width: 600px) {
-  .gcv-mode-chooser { margin-bottom: 6px; }
-  .gcv-mode-choice { min-height: 36px; padding: 5px 10px; font-size: .83rem; }
+  .gcv-home-panel { padding: 14px; gap: 8px; }
+  .gcv-home-button { padding: 10px; min-height: 62px; }
+  .gcv-home-button strong { font-size: .9rem; }
+  .gcv-home-button span { font-size: .7rem; }
   .gcv-race-position { padding: 4px 7px; gap: 3px; max-width: 146px; }
   .gcv-race-position strong { font-size: 2.15rem; }
   .gcv-race-position span { font-size: .75rem; }
@@ -181,8 +224,15 @@
   .gcv-pedal { min-width: 75px; height: 94px; font-size: .86rem; border-radius: 19px; }
 }
 @media (max-height: 480px) and (orientation: landscape) {
-  .gcv-mode-chooser { margin-bottom: 4px; }
-  .gcv-mode-choice { min-height: 30px; padding: 4px 11px; font-size: .77rem; }
+  .gcv-home { padding: 7px; align-items: flex-start; }
+  .gcv-home-panel { padding: 7px 16px; gap: 4px;
+    width: min(540px, 100%); margin: auto; }
+  .gcv-home-panel h2 { font-size: 1.2rem; }
+  .gcv-home-description { display: none; }
+  .gcv-home-button { min-height: 46px; padding: 6px 11px; }
+  .gcv-home-button span { font-size: .68rem; }
+  .gcv-home-resume { min-height: 32px; }
+  .gcv-home-tool { min-height: 30px; padding: 5px 10px; }
   .gcv-race-position strong { font-size: 1.65rem; }
   .gcv-race-position { padding: 3px 8px; }
   .gcv-race-overlay { top: 48%; padding: 10px 16px; }
