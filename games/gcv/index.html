@@ -14,6 +14,7 @@
   <script defer src="./scenery.js"></script>
   <script defer src="./track-layout.js"></script>
   <script defer src="./lap-times.js"></script>
+  <script defer src="./race.js"></script>
   <script type="module" src="./game.js"></script>
 </head>
 <body>
@@ -24,6 +25,11 @@
       <span class="gcv-number" aria-label="Voiture numéro 9">N° 9</span>
     </nav>
 
+    <div class="gcv-mode-chooser" aria-label="Mode de jeu">
+      <button type="button" id="free-mode-button" class="gcv-mode-choice is-selected" aria-pressed="true">Essais libres</button>
+      <button type="button" id="race-mode-button" class="gcv-mode-choice" aria-pressed="false">Course · 2 tours</button>
+    </div>
+
     <section class="gcv-stage" id="gcv-stage" aria-label="Jeu de conduite en 3D">
       <div class="gcv-scene" id="gcv-scene"></div>
 
@@ -32,7 +38,12 @@
           <span id="speed-value">0</span><span id="gear-value" class="gcv-gear" aria-label="Marche arrière"></span><small>km/h</small>
         </div>
         <span class="gcv-session-label">Essai libre · N° 9</span>
-        <span class="gcv-session-label">Tours chronométrés : <strong id="lap-value">0</strong></span>
+        <span class="gcv-session-label" id="lap-count-label">Tours chronométrés : <strong id="lap-value">0</strong></span>
+        <div class="gcv-race-position" id="race-position" hidden aria-live="off">
+          <strong id="position-value">5<small>e</small></strong>
+          <span>sur 10</span>
+          <span id="race-lap-label">Tour 1/2</span>
+        </div>
         <div class="gcv-bests" aria-label="Trois meilleurs temps au tour">
           <span class="gcv-bests-title">Meilleurs tours</span>
           <span>1. <strong id="best-lap-1">—</strong></span>
@@ -63,6 +74,14 @@
       </div>
 
       <div class="gcv-notice" id="gcv-notice" hidden role="status"></div>
+      <div class="gcv-race-overlay" id="race-overlay" hidden role="status" aria-live="polite">
+        <strong id="race-overlay-title"></strong>
+        <span id="race-overlay-subtitle"></span>
+        <div class="gcv-race-overlay-actions" id="race-overlay-actions" hidden>
+          <button type="button" id="race-replay-button">Rejouer</button>
+          <button type="button" id="race-free-button">Essais libres</button>
+        </div>
+      </div>
 
       <div class="gcv-controls" aria-label="Commandes de conduite">
         <div class="gcv-steering-wrap">
@@ -81,7 +100,7 @@
     </section>
 
     <p class="gcv-help">Maintiens <strong>Accélérer</strong> et dirige avec le pouce gauche. Sur ordinateur : <strong>↑ / W</strong> accélérer, <strong>↓ / S</strong> freiner et <strong>← / →</strong> tourner. Maintiens le frein à l'arrêt pour enclencher la marche arrière. La progression est enregistrée sur cet appareil.</p>
-    <p class="gcv-help gcv-prototype">Essai libre : le chrono se déclenche au franchissement de la ligne d’arrivée dans le bon sens. Le bouton Départ replace la voiture 10 m avant la ligne. Les concurrents, le départ et la course officielle en cinq tours arriveront ensuite.</p>
+    <p class="gcv-help gcv-prototype">Choisis <strong>Essais libres</strong> pour améliorer tes chronos, ou <strong>Course</strong> pour affronter neuf pilotes très faciles sur deux tours. Le bouton Départ replace la voiture 10 m avant la ligne. Les concurrents, le départ et la course officielle en cinq tours arriveront ensuite.</p>
   </main>
 </body>
 </html>
