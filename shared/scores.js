@@ -195,13 +195,62 @@ window.GameScores = (() => {
     });
   }
 
+  // Racing lap records use elapsed milliseconds instead of educational scores.
+  // Keep them in their own versioned store so faster times rank first and
+  // editing the circuit clears only GCV timing results, not other games.
+  function renderGcvLaps(container) {
+    if (!window.GcvLapTimes || !window.GcvTrackLayout) return;
+    const records = window.GcvLapTimes.createStore(window.GcvTrackLayout).top();
+    const section = node("section", "gcv-lap-results");
+    section.append(node("h3", "", "Grande Course Voiture · 3 meilleurs tours"));
+    if (!records.length) {
+      section.append(node("p", "muted", "Aucun tour chronométré sur ce circuit."));
+      container.append(section);
+      return;
+    }
+    const scroll = node("div", "table-scroll");
+    const table = node("table", "history-table");
+    const head = node("thead");
+    const columns = node("tr");
+    for (const heading of ["Rang", "Temps", "Date", "S1", "S2", "S3"]) {
+      columns.append(node("th", "", heading));
+    }
+    head.append(columns);
+    table.append(head);
+    const body = node("tbody");
+    for (const [index, record] of records.entries()) {
+      const row = node("tr");
+      const date = new Date(record.date);
+      const dateLabel = Number.isNaN(date.getTime())
+        ? "—" : date.toLocaleDateString("fr-FR");
+      for (const cell of [
+        index + 1,
+        window.GcvLapTimes.format(record.ms),
+        dateLabel,
+        ...record.splits.map(window.GcvLapTimes.format),
+      ]) row.append(node("td", "", String(cell)));
+      body.append(row);
+    }
+    table.append(body);
+    scroll.append(table);
+    section.append(scroll);
+    container.append(section);
+  }
+
   function render(container, gameId = null) {
     container.replaceChildren();
     const records = read().filter((record) => gameId === null || record.gameId === gameId);
     container.append(node("h2", "", gameId ? "Résultats · " + label({ gameId }) : "Tous mes résultats"));
+    if (gameId === "gcv") {
+      renderGcvLaps(container);
+      return;
+    }
     if (!records.length) {
-      container.append(node("p", "muted", "Aucune partie terminée pour le moment."));
-      if (gameId) chart(container, records);
+      if (gameId === null) renderGcvLaps(container);
+      else {
+        container.append(node("p", "muted", "Aucune partie terminée pour le moment."));
+        chart(container, records);
+      }
       return;
     }
     container.append(node("p", "muted", records.length + " partie(s) enregistrée(s)"));
@@ -229,6 +278,7 @@ window.GameScores = (() => {
     scroll.append(table);
     container.append(scroll);
     if (gameId) chart(container, records);
+    if (gameId === null) renderGcvLaps(container);
   }
 
   return { key: KEY, read, save, remove, render, encourage, time };
