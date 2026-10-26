@@ -197,11 +197,11 @@ test("each player lap records its real duration including sub-frame crossing", (
   let state = race.advance(race.create(800, () => 0.5), 5);
   state = race.advance(state, 22, 770);
   assert.equal(state.playerLapTimes.length, 0);
-  state = race.advance(state, 1, 60);
+  state = race.advance(state, 1, 65);
   assert.equal(state.playerLapTimes.length, 1);
-  const expectedFirst = 22 + (800 - (770 - race.gridSlot(race.PLAYER_SLOT).distance)) / 60;
+  const expectedFirst = 22 + (800 - (770 - race.gridSlot(race.PLAYER_SLOT).distance)) / 65;
   assert.ok(Math.abs(state.playerLapTimes[0] - expectedFirst) < 1e-9);
-  state = race.advance(state, 24, 790);
+  state = race.advance(state, 24, 800);
   assert.equal(state.phase, "finished");
   assert.equal(state.playerLapTimes.length, 2);
   assert.ok(state.playerLapTimes.every((x) => x > 0));
@@ -228,7 +228,7 @@ test("all nine opponents continue finishing behind the displayed results", () =>
 
 test("finish order uses actual times, not the identical clamped final distance", () => {
   let state = race.advance(race.create(800, () => 0.5), 5);
-  state = race.advance(state, 45, 1630);
+  state = race.advance(state, 45, 1640);
   for (let i = 0; i < 25; i++) state = race.advance(state, 4);
   const rows = race.classification(state);
   assert.equal(rows.length, 10);
