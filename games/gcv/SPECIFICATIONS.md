@@ -289,3 +289,16 @@ Documentation : [Three.js — WebGLRenderer](https://threejs.org/docs/pages/WebG
 - [x] Tests unitaires des records, du tri, de la restauration, du delta, des trois secteurs et de l'invalidation lorsque le circuit est modifié.
 
 **À valider en navigateur mobile :** placement du chronomètre en haut au centre (portrait/paysage), lisibilité des deltas et de la mini-carte, affichage des résultats sur la page Scores et suivi du chrono pendant une partie réelle.
+
+
+## 21. Correction de la ligne d'arrivée et bouton de redémarrage (26/10/2026) — v0.8
+
+- [x] **Déclenchement du chrono corrigé** : auparavant le chrono attendait le franchissement d'un index discret de la piste (840 échantillons) ; un franchissement réel pouvait être manqué.
+- [x] **Détection géométrique** : on contrôle le déplacement réel entre deux frames par rapport à la **ligne d'arrivée visible**, dans le bon sens et dans la largeur autorisée. Le temps exact du franchissement est interpolé dans la frame.
+- [x] **Tours valides** : le départ du chrono et la validation de la fin de tour n'utilisent plus le seul index du tracé. Les trois intermédiaires doivent avoir été passés ; la marche arrière et le passage hors piste ne valident rien.
+- [x] **Resynchronisation** : lors d'un véritable franchissement, la progression virtuelle est réalignée sur l'index du nouveau tour, pour que les points intermédiaires restent fiables.
+- [x] **Bouton « ↻ Départ »** : replacer et orienter la voiture à **10 mètres avant la ligne d'arrivée**, vitesse nulle, chrono et nombre de tours de la tentative remis à zéro, chute interrompue, sans passage ni tour artificiel. Les trois meilleurs temps existants sont **conservés**.
+- [x] Tests du franchissement rapide entre deux images, du passage inverse et hors circuit, de la resynchronisation et du franchissement avec trois secteurs.
+- [x] Réagencement des boutons supérieurs pour éviter de masquer le chronomètre.
+
+**À contrôler sur Chrome Android :** apparence du bouton Départ, remise en place à 10 mètres et déclenchement effectif du chrono au franchissement.
