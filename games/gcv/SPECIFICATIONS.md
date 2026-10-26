@@ -345,3 +345,18 @@ Documentation : [Three.js — WebGLRenderer](https://threejs.org/docs/pages/WebG
 - [x] **Tests automatisés** : temps de tour des neuf IA, classement, sauvegarde et migration des vitesses d'une partie précédemment enregistrée ; contrôle des références DOM et de la syntaxe JavaScript.
 
 **Tests réels à effectuer** : menu d'accueil sur Chrome Android en plein écran portrait/paysage, changement de mode sans sortie du plein écran, pause/reprise d'un compte à rebours, page des scores et fermeture via le bouton Retour.
+
+
+## 25. Difficulté IA avancée et attente de départ (26/10/2026) — v0.12
+
+- [x] **Temps des meilleurs adversaires** : trois pilotes rapides ciblent des temps aléatoires dans les intervalles **16–18,5 s**, **18,5–21 s** et **21–24 s** par tour.
+- [x] **Milieu du classement** : quatre concurrents supplémentaires ciblent **26–29 s**, **30–33 s**, **34–36 s** et **37–38 s**.
+- [x] **Deux derniers concurrents** : leurs temps visés restent dans **39–39,5 s** et **39,5–40 s**.
+- [x] **Aléatoire à chaque nouvelle course** : les neuf temps cibles sont tirés aléatoirement dans leur plage de difficulté ; les vitesses sont calculées à partir de la longueur réelle du circuit, puis restent stables au cours de cette course et lors de sa sauvegarde / restauration.
+- [x] **Menu sans divulgation des temps** : le bouton « Course · 2 tours » décrit simplement le défi contre neuf concurrents et ne dévoile pas leurs temps cibles.
+- [x] **Deux secondes d'attente sur la grille** : une phase de préparation (« Prépare-toi ! ») de 2 secondes précède le décompte traditionnel **3, 2, 1**, puis le feu vert et le déplacement des voitures.
+- [x] **Masquage fiable des panneaux** : les éléments de préparation, de décompte, de résultats, d'accueil et de scores respectent explicitement leur attribut `hidden`.
+- [x] **Sauvegardes existantes** : les anciens adversaires d'une course sauvegardée sont recalibrés automatiquement vers la nouvelle difficulté ; les records et essais libres restent inchangés.
+- [x] Tests automatisés des bornes de temps, de l'aléatoire, de la préparation de 2 s et des 3 s du compte à rebours, ainsi que des transitions en cas de frame lente.
+
+**À valider visuellement dans Chrome Android** : phase de préparation de 2 s, décompte, disparition de l'overlay au démarrage et bon déroulement de deux tours.
