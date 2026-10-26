@@ -420,3 +420,16 @@ Documentation : [Three.js — WebGLRenderer](https://threejs.org/docs/pages/WebG
 - [x] **Tests** : longueur minimale des rails, virages, segments non protégés, collision latérale bilatérale, conservation du mouvement longitudinal, variation de vitesse entre IA, comparaison de l'accélération avec le joueur et indépendance vis-à-vis de la fréquence d'image.
 
 **À vérifier sur appareil** : apparence des barrières et continuité visuelle autour des virages, glissement fluide à vitesse élevée, visibilité depuis les vues cockpit et extérieure, adaptation du HUD et de la mini-carte.
+
+
+## 31. Accotements élargis et barrières continues (26/10/2026)
+
+- [x] **Accotements +4 m de chaque côté** : passage de **6 m à 10 m** autour de la chaussée (largeur totale chaussée + accotements : 38 m, au lieu de 30 m). La piste roulable centrale et le tracé restent inchangés.
+- [x] **Deux barrières en continu** : rails métalliques et poteaux sur **100 % du périmètre fermé**, intérieur et extérieur, sans interruption dans les lignes droites ni aux raccords de fin/début de tour.
+- [x] **Collision partout** : chaque segment de piste est protégé sur les deux bords ; la voiture reste sur les accotements, contre le rail, au lieu de tomber.
+- [x] **Glissement conservé** : la voiture garde sa vitesse, sa direction et son mouvement tangent à la piste. Seul le dépassement latéral de la barrière est corrigé.
+- [x] **Performances** : rails regroupés dans une géométrie commune et poteaux regroupés dans un `InstancedMesh`, sans créer un objet individuel par barrière.
+- [x] **Compatibilité des sauvegardes** : les temps et parties sauvegardés avant cet élargissement sont repris, car le centre du circuit, la ligne d'arrivée et les distances de tour n'ont pas changé. Les clés de records sont migrées, sans effacer les trois meilleurs tours.
+- [x] **Tests** : couverture complète des barrières (y compris le raccord), glissement dans les deux sens, collision répétée, sécurité du véhicule, accotement de 10 m, et migration des records entre anciennes et nouvelles largeurs.
+
+**À contrôler visuellement** : raccord des rails autour de toute la boucle sur téléphone et tablette et comportement du véhicule appuyé contre la barrière dans un virage serré.
