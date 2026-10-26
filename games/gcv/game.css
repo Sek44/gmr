@@ -4,6 +4,13 @@
 .gcv-page-header { margin-bottom: 10px; grid-template-columns: 48px 1fr 60px; }
 .gcv-page-header h1 { font-size: clamp(1.15rem, 3.8vw, 1.65rem); }
 .gcv-number { justify-self: end; font-weight: 850; color: #ce273a; font-size: 1.05rem; }
+
+.gcv-mode-chooser { display: flex; gap: 9px; align-items: center; justify-content: center;
+  margin: 0 0 10px; }
+.gcv-mode-choice { background: #fff; border: 1px solid #a9bfd4; color: #264565;
+  border-radius: 12px; min-height: 40px; padding: 7px 15px; font-weight: 800; }
+.gcv-mode-choice.is-selected { background: #2265c5; border-color: #2265c5; color: #fff; }
+.gcv-mode-choice:focus-visible { outline: 3px solid #5a9be4; outline-offset: 2px; }
 .gcv-stage {
   position: relative; width: 100%; height: clamp(350px, 70dvh, 720px);
   overflow: hidden; isolation: isolate; border-radius: 18px;
@@ -57,6 +64,31 @@
 .gcv-timing-delta.is-faster strong { color: #5cf0a5; }
 .gcv-timing-delta.is-slower strong { color: #ff7880; }
 .gcv-timing-delta.is-even strong { color: #ffe39a; }
+
+.gcv-race-position {
+  display: flex; align-items: baseline; gap: 5px; flex-wrap: wrap;
+  border-radius: 12px; padding: 5px 11px;
+  background: #0d182ade; box-shadow: 0 2px 8px #06152240;
+}
+.gcv-race-position strong { color: #ffe398; font-size: clamp(2rem, 5.3vw, 3.1rem);
+  line-height: 1.1; }
+.gcv-race-position strong small { font-size: .9rem; }
+.gcv-race-position span { font-size: .83rem; font-weight: 800; }
+.gcv-race-position #race-lap-label { width: 100%; color: #e2e9f2; }
+.gcv-race-overlay {
+  position: absolute; z-index: 5; top: 39%; left: 50%;
+  transform: translate(-50%, -50%); width: min(360px, 86%);
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  background: #0d172fe8; border: 2px solid #f8dfa0; border-radius: 21px;
+  padding: 21px 25px; text-align: center; pointer-events: auto;
+  box-shadow: 0 12px 35px #0007;
+}
+.gcv-race-overlay strong { font-size: clamp(2.8rem, 8vw, 5rem);
+  line-height: 1.1; font-weight: 950; color: #fff0a4; }
+.gcv-race-overlay span { font-size: .97rem; font-weight: 800; }
+.gcv-race-overlay-actions { display: flex; gap: 10px; margin-top: 8px; }
+.gcv-race-overlay-actions button { padding: 10px 14px; color: #122b48;
+  background: #f5e4a1; border: none; border-radius: 11px; font-weight: 850; }
 .gcv-actions { display: flex; flex-wrap: wrap; justify-content: flex-end;
   max-width: min(25vw, 340px); gap: 7px; pointer-events: auto; }
 .gcv-action {
@@ -125,6 +157,12 @@
   .gcv-hud-left, .gcv-hud-right { top: 76px; }
 }
 @media (max-width: 600px) {
+  .gcv-mode-chooser { margin-bottom: 6px; }
+  .gcv-mode-choice { min-height: 36px; padding: 5px 10px; font-size: .83rem; }
+  .gcv-race-position { padding: 4px 7px; gap: 3px; max-width: 146px; }
+  .gcv-race-position strong { font-size: 2.15rem; }
+  .gcv-race-position span { font-size: .75rem; }
+
   .gcv-stage { border-radius: 12px; }
   .gcv-hud-left { left: 9px; top: 74px; }
   .gcv-hud-right { right: 9px; top: 74px; }
@@ -143,6 +181,13 @@
   .gcv-pedal { min-width: 75px; height: 94px; font-size: .86rem; border-radius: 19px; }
 }
 @media (max-height: 480px) and (orientation: landscape) {
+  .gcv-mode-chooser { margin-bottom: 4px; }
+  .gcv-mode-choice { min-height: 30px; padding: 4px 11px; font-size: .77rem; }
+  .gcv-race-position strong { font-size: 1.65rem; }
+  .gcv-race-position { padding: 3px 8px; }
+  .gcv-race-overlay { top: 48%; padding: 10px 16px; }
+  .gcv-race-overlay strong { font-size: 2.3rem; }
+
   .gcv-timing { top: 5px; }
   .gcv-timing-clock strong { font-size: 1.25rem; }
   .gcv-hud-left, .gcv-hud-right { top: 54px; }
