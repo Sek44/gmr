@@ -18,6 +18,13 @@
   const cameraButton = document.getElementById("camera-button");
   const fullscreenButton = document.getElementById("fullscreen-button");
   const restartButton = document.getElementById("restart-button");
+  const homePanel = document.getElementById("gcv-home");
+  const resumeButton = document.getElementById("resume-button");
+  const menuButton = document.getElementById("menu-button");
+  const menuFullscreenButton = document.getElementById("menu-fullscreen-button");
+  const scoresButton = document.getElementById("scores-button");
+  const menuScoresButton = document.getElementById("menu-scores-button");
+  const scoresFrame = document.getElementById("gcv-scores");
   const freeModeButton = document.getElementById("free-mode-button");
   const raceModeButton = document.getElementById("race-mode-button");
   const racePositionBox = document.getElementById("race-position");
@@ -574,6 +581,9 @@
     let gameMode = "free";
     let raceState = null;
     let freeSession = null;
+    let menuOpen = true;
+    let scoresOpen = false;
+    let hasActiveSession = false;
     let falling = false, fall = null, respawnIndex = initialIndex;
 
     function refreshBests() {
@@ -642,6 +652,57 @@
           LapTimes.format(raceState.raceTime * 1000);
       }
     }
+
+    function syncMenu() {
+      homePanel.hidden = !menuOpen;
+      stage.classList.toggle("gcv-in-menu", menuOpen);
+      resumeButton.hidden = !hasActiveSession;
+      resumeButton.textContent = gameMode === "race"
+        ? "Reprendre la course" : "Reprendre les essais libres";
+      scoresFrame.hidden = !scoresOpen;
+      stage.classList.toggle("gcv-scores-open", scoresOpen);
+    }
+
+    function resumeGame() {
+      menuOpen = false;
+      hasActiveSession = true;
+      syncMenu();
+      lastFrame = performance.now();
+      if (binding) binding.changed();
+    }
+
+    function openMenu() {
+      clearControls();
+      menuOpen = true;
+      syncMenu();
+      if (binding && hasActiveSession) binding.changed();
+    }
+
+    function openScores() {
+      clearControls();
+      scoresOpen = true;
+      syncMenu();
+      scoresFrame.src = "../../scores.html?game=gcv&from=gcv";
+      if (binding && hasActiveSession) binding.changed();
+    }
+
+    function closeScores() {
+      scoresOpen = false;
+      scoresFrame.hidden = true;
+      scoresFrame.removeAttribute("src");
+      syncMenu();
+      lastFrame = performance.now();
+    }
+
+    resumeButton.addEventListener("click", resumeGame);
+    menuButton.addEventListener("click", openMenu);
+    scoresButton.addEventListener("click", openScores);
+    menuScoresButton.addEventListener("click", openScores);
+    window.addEventListener("message", (event) => {
+      if (scoresOpen && event.origin === location.origin &&
+          event.source === scoresFrame.contentWindow &&
+          event.data?.type === "gmr-scores-back") closeScores();
+    });
 
     refreshBests();
     refreshChrono();
