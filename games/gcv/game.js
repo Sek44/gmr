@@ -453,6 +453,8 @@
     // Nine lightweight opponent cars. They use the same circuit as the player,
     // but a simple slow path follower rather than expensive vehicle physics.
     const opponentMeshes = new Map();
+    const opponentColors = new Map(Race.create(trackLength).opponents.map((ai) =>
+      [ai.id, ai.color]));
     const aiGlass = new THREE.MeshStandardMaterial({
       color: 0x193345, roughness: 0.34, metalness: 0.05,
     });
@@ -461,7 +463,7 @@
       if (gridSlot === Race.PLAYER_SLOT) continue;
       const group = new THREE.Group();
       const color = new THREE.MeshStandardMaterial({
-        color: Race.create(trackLength).opponents.find((o) => o.id === gridSlot).color,
+        color: opponentColors.get(gridSlot),
         roughness: 0.52, metalness: 0.16,
       });
       box(group, 1.96, 0.49, 3.65, color, 0, 0.75, 0);
@@ -568,6 +570,9 @@
     const circuitKey = LapTimes.circuitKey(TrackLayout);
     let lapTimer = LapTimes.initial(SAMPLE_COUNT, lapTracker.progress);
     let timedLapCount = 0;
+    let gameMode = "free";
+    let raceState = null;
+    let freeSession = null;
     let falling = false, fall = null, respawnIndex = initialIndex;
 
     function refreshBests() {
@@ -585,6 +590,57 @@
       deltaLabel.classList.toggle("is-slower", delta !== null && delta > 10);
       deltaLabel.classList.toggle("is-even", delta !== null && Math.abs(delta) <= 10);
     }
+    function syncRaceCars() {
+      const active = gameMode === "race" && raceState !== null;
+      for (const [id, mesh] of opponentMeshes) {
+        const ai = active ? raceState.opponents.find((entry) => entry.id === id) : null;
+        mesh.visible = Boolean(ai);
+        if (!ai) continue;
+        // The track is parametrized by arc length. Use it for all AI vehicles,
+        // including on the final long straight.
+        const t = (((startIndex / SAMPLE_COUNT + ai.progress / trackLength) % 1) + 1) % 1;
+        const center = curve.getPointAt(t);
+        const forward = curve.getTangentAt(t).normalize();
+        const sideX = -forward.z, sideZ = forward.x;
+        mesh.position.set(center.x + sideX * ai.lateral, 0.14,
+          center.z + sideZ * ai.lateral);
+        mesh.rotation.y = Math.atan2(-forward.x, -forward.z);
+      }
+    }
+
+    function syncRaceHud() {
+      const racing = gameMode === "race" && raceState !== null;
+      freeModeButton.classList.toggle("is-selected", !racing);
+      raceModeButton.classList.toggle("is-selected", racing);
+      freeModeButton.setAttribute("aria-pressed", String(!racing));
+      raceModeButton.setAttribute("aria-pressed", String(racing));
+      racePositionBox.hidden = !racing;
+      lapCountLabel.firstChild.textContent = racing ? "Tours en course : " : "Tours chronométrés : ";
+      restartButton.textContent = racing ? "↻ Recommencer" : "↻ Départ";
+      if (!racing) {
+        raceOverlay.hidden = true;
+        return;
+      }
+      racePositionValue.textContent = String(Race.position(raceState)) + "ᵉ";
+      raceLapLabel.textContent = raceState.phase === "finished"
+        ? "2 tours terminés" : "Tour " + Race.currentLap(raceState) + "/2";
+      lapLabel.textContent = String(Math.min(Race.LAPS,
+        Math.max(0, Math.floor(Math.max(0, raceState.playerProgress) / trackLength))));
+      const phase = raceState.phase;
+      raceOverlay.hidden = phase === "racing";
+      raceOverlayActions.hidden = phase !== "finished";
+      if (phase === "countdown") {
+        raceOverlayTitle.textContent = String(Math.max(1, Math.ceil(raceState.countdown)));
+        raceOverlaySubtitle.textContent = "Départ dans " +
+          String(Math.max(1, Math.ceil(raceState.countdown))) + "…";
+      } else if (phase === "finished") {
+        raceOverlayTitle.textContent = "Arrivée !";
+        raceOverlaySubtitle.textContent =
+          "Position : " + Race.position(raceState) + " / 10 · " +
+          LapTimes.format(raceState.raceTime * 1000);
+      }
+    }
+
     refreshBests();
     refreshChrono();
     let lastFrame = performance.now(), autosaveElapsed = 0, mapElapsed = 0;
