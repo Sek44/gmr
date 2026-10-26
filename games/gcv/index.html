@@ -69,7 +69,7 @@
       </div>
 
       <div class="gcv-timing" aria-label="Chronométrage">
-        <div class="gcv-timing-clock">
+        <div class="gcv-timing-clock" id="lap-chrono-box">
           <span class="gcv-timing-title">TOUR EN COURS</span>
           <strong id="lap-chrono">—</strong>
         </div>
@@ -92,9 +92,24 @@
 
       <div class="gcv-notice" id="gcv-notice" hidden role="status"></div>
       <iframe id="gcv-scores" class="gcv-scores-frame" title="Mes scores" hidden></iframe>
+      <div class="gcv-lap-announcement" id="lap-announcement" hidden aria-live="polite">
+        <span id="lap-announcement-label">Tour terminé</span>
+        <strong id="lap-announcement-time">—</strong>
+        <span id="lap-announcement-rank"></span>
+      </div>
       <div class="gcv-race-overlay" id="race-overlay" hidden role="status" aria-live="polite">
         <strong id="race-overlay-title"></strong>
         <span id="race-overlay-subtitle"></span>
+        <div class="gcv-race-results" id="race-results" hidden>
+          <table aria-label="Classement final de la course">
+            <thead><tr>
+              <th scope="col">Pos.</th><th scope="col">Voiture</th>
+              <th scope="col">Temps</th><th scope="col">Écart</th>
+            </tr></thead>
+            <tbody id="race-results-body"></tbody>
+          </table>
+          <p id="race-results-status" aria-live="polite"></p>
+        </div>
         <div class="gcv-race-overlay-actions" id="race-overlay-actions" hidden>
           <button type="button" id="race-replay-button">Rejouer</button>
           <button type="button" id="race-free-button">Essais libres</button>
