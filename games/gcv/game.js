@@ -8,6 +8,12 @@
   const speedLabel = document.getElementById("speed-value");
   const gearLabel = document.getElementById("gear-value");
   const lapLabel = document.getElementById("lap-value");
+  const chronoLabel = document.getElementById("lap-chrono");
+  const deltaLabel = document.getElementById("lap-delta");
+  const deltaValue = document.getElementById("lap-delta-value");
+  const splitLabel = document.getElementById("lap-split-label");
+  const bestLabels = [1, 2, 3].map((rank) =>
+    document.getElementById("best-lap-" + rank));
   const cameraButton = document.getElementById("camera-button");
   const fullscreenButton = document.getElementById("fullscreen-button");
   const notice = document.getElementById("gcv-notice");
@@ -20,6 +26,7 @@
   const TrackProgress = window.GcvTrackProgress;
   const Scenery = window.GcvScenery;
   const TrackLayout = window.GcvTrackLayout;
+  const LapTimes = window.GcvLapTimes;
 
   function announce(message) {
     notice.textContent = message;
@@ -27,7 +34,8 @@
   }
 
   try {
-    if (!Physics || !TrackProgress || !Scenery || !TrackLayout) throw new Error("Les modules de conduite sont introuvables.");
+    if (!Physics || !TrackProgress || !Scenery || !TrackLayout || !LapTimes)
+      throw new Error("Les modules de conduite sont introuvables.");
     const THREE = await import("https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js");
     start(THREE);
   } catch (error) {
@@ -36,8 +44,8 @@
   }
 
   function start(THREE) {
-    const ROAD_HALF_WIDTH = 9;
-    const GRAVEL_WIDTH = 6; // Six metres of gravel on each side of the asphalt.
+    const ROAD_HALF_WIDTH = TrackLayout.ROAD_HALF_WIDTH;
+    const GRAVEL_WIDTH = TrackLayout.SHOULDER_WIDTH;
     const OUTER_HALF_WIDTH = ROAD_HALF_WIDTH + GRAVEL_WIDTH;
     const SAMPLE_COUNT = TrackLayout.SAMPLE_COUNT;
     const CURVE_POINTS = TrackLayout.WAYPOINTS.map(([x, z]) =>
@@ -511,7 +519,29 @@
     };
     let cameraMode = "inside";
     let lapTracker = TrackProgress.create(SAMPLE_COUNT, startIndex, initialIndex);
+    const lapRecords = LapTimes.createStore(TrackLayout);
+    const circuitKey = LapTimes.circuitKey(TrackLayout);
+    let lapTimer = LapTimes.initial(SAMPLE_COUNT, lapTracker.progress);
+    let timedLapCount = 0;
     let falling = false, fall = null, respawnIndex = initialIndex;
+
+    function refreshBests() {
+      const records = lapRecords.top();
+      bestLabels.forEach((label, index) => {
+        label.textContent = records[index] ? LapTimes.format(records[index].ms) : "—";
+      });
+    }
+    function refreshChrono() {
+      chronoLabel.textContent = lapTimer.running ? LapTimes.format(lapTimer.elapsedMs) : "—";
+      const delta = lapTimer.delta;
+      deltaValue.textContent = LapTimes.formatDelta(delta);
+      splitLabel.textContent = "S" + (lapTimer.splitNumber || 1);
+      deltaLabel.classList.toggle("is-faster", delta !== null && delta < -10);
+      deltaLabel.classList.toggle("is-slower", delta !== null && delta > 10);
+      deltaLabel.classList.toggle("is-even", delta !== null && Math.abs(delta) <= 10);
+    }
+    refreshBests();
+    refreshChrono();
     let lastFrame = performance.now(), autosaveElapsed = 0, mapElapsed = 0;
     let initializedCamera = false;
     let binding = null;
@@ -540,6 +570,9 @@
       falling = false;
       fall = null;
       lapTracker = TrackProgress.relocate(lapTracker, index);
+      // Falling invalidates the partial lap, so no shortcut can become a record.
+      lapTimer = LapTimes.initial(SAMPLE_COUNT, lapTracker.progress);
+      refreshChrono();
       announce("");
       if (binding) binding.changed();
     }
@@ -810,6 +843,9 @@
         camera: cameraMode,
         progress: lapTracker.progress,
         laps: lapTracker.laps,
+        timedLaps: timedLapCount,
+        lapTimer: falling ? null : lapTimer,
+        circuitKey,
         layoutVersion: TrackLayout.VERSION,
       };
     }
@@ -817,7 +853,8 @@
       if (!saved || typeof saved !== "object") return;
       // The redesigned, longer circuit invalidates prior saved coordinates
       // and lap progress; retain the view but start a clean free-drive session.
-      if (saved.layoutVersion !== TrackLayout.VERSION) {
+      if (saved.circuitKey !== circuitKey ||
+          saved.layoutVersion !== TrackLayout.VERSION) {
         cameraMode = saved.camera === "outside" ? "outside" : "inside";
         return;
       }
@@ -835,7 +872,11 @@
       }
       const nearestIndex = closestRoad(driver.x, driver.z).index;
       lapTracker = TrackProgress.create(SAMPLE_COUNT, startIndex, nearestIndex, saved);
-      lapLabel.textContent = String(lapTracker.laps);
+      timedLapCount = Number.isSafeInteger(saved.timedLaps) && saved.timedLaps >= 0
+        ? saved.timedLaps : 0;
+      lapTimer = LapTimes.restore(saved.lapTimer, SAMPLE_COUNT, lapTracker.progress);
+      lapLabel.textContent = String(timedLapCount);
+      refreshChrono();
       cameraMode = saved.camera === "outside" ? "outside" : "inside";
     }
     binding = window.GameState.create("gcv").bind({ snapshot, restore });
@@ -864,17 +905,26 @@
           // Keep the speed and forward momentum in the air. Begin both the
           // gravity animation and the two-second countdown at this instant.
           falling = true;
+          // Partial timed lap is discarded immediately on leaving the island.
+          lapTimer = LapTimes.initial(SAMPLE_COUNT, lapTracker.progress);
           respawnIndex = nearest.index;
           // Advance the fall on this very first rendering frame: no
           // horizontal glide before the car starts dropping visibly.
           fall = Physics.advanceFall(Physics.startFall(driver), dt);
           announce("Chute dans le vide ! Retour dans " + fall.remaining.toFixed(1) + " s");
         } else {
-          const previousLaps = lapTracker.laps;
+          const progressBefore = lapTracker.progress;
           lapTracker = TrackProgress.advance(lapTracker, nearest.index, SAMPLE_COUNT);
-          if (lapTracker.laps !== previousLaps) {
-            lapLabel.textContent = String(lapTracker.laps);
-            if (binding) binding.changed();
+          const timing = LapTimes.advance(lapTimer, progressBefore, lapTracker.progress,
+            fallDt * 1000, SAMPLE_COUNT, lapRecords.best());
+          lapTimer = timing.state;
+          for (const event of timing.events) {
+            if (event.type === "lap" && lapRecords.record(event.ms, event.splits)) {
+              timedLapCount++;
+              lapLabel.textContent = String(timedLapCount);
+              refreshBests();
+              if (binding) binding.changed();
+            }
           }
         }
       }
@@ -894,6 +944,7 @@
       tickMudParticles(dt, falling ? 0 : mudSkidIntensity);
       speedLabel.textContent = String(Math.round(Math.abs(driver.speed) * 3.6));
       gearLabel.textContent = driver.speed < -0.02 ? "R" : "";
+      refreshChrono();
     }
 
     function updateCamera(dt) {
