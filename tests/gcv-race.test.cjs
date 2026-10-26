@@ -72,7 +72,7 @@ test("prestart and countdown consume only their own portion of slow frames", () 
   assert.equal(state.playerProgress, -race.gridSlot(race.PLAYER_SLOT).distance);
 });
 
-test("hardest opponents take 17–21 seconds; slowest take 39–40 seconds", () => {
+test("AI cruise pacing remains ordered from 17–21s leaders to 32–34s backmarkers", () => {
   const distance = 820;
   for (const randomValue of [0, 0.5, 1]) {
     const state = race.create(distance, () => randomValue);
@@ -84,8 +84,12 @@ test("hardest opponents take 17–21 seconds; slowest take 39–40 seconds", () 
       assert.ok(times[i] >= expectedFastBands[i][0] &&
         times[i] <= expectedFastBands[i][1]);
     }
-    assert.ok(times.slice(3, 7).every((time) => time >= 26 && time <= 38));
-    assert.ok(times.slice(7).every((time) => time >= 39 && time <= 40));
+    const expectedOthers = [[21.5, 23.5], [23.5, 25.5],
+      [25.5, 27.5], [27.5, 29.5], [30, 32], [32, 34]];
+    for (let i = 0; i < expectedOthers.length; i++) {
+      const [min, max] = expectedOthers[i];
+      assert.ok(times[i + 3] >= min && times[i + 3] <= max);
+    }
     for (let i = 1; i < times.length; i++) {
       assert.ok(times[i] >= times[i - 1]);
     }
@@ -123,7 +127,7 @@ test("player can overtake the nine AI at full speed", () => {
     "AI should stay behind a 380 m player sprint after six seconds");
 });
 
-test("older saved races automatically upgrade their slow AI speeds", () => {
+test("older saved races adopt tighter AI pacing bands once", () => {
   const state = race.create(820);
   const saved = JSON.parse(JSON.stringify(state));
   for (const ai of saved.opponents) {
@@ -138,8 +142,8 @@ test("older saved races automatically upgrade their slow AI speeds", () => {
     restored.opponents[1].targetLapSeconds <= 20);
   assert.ok(restored.opponents[2].targetLapSeconds >= 20 &&
     restored.opponents[2].targetLapSeconds <= 21);
-  assert.ok(restored.opponents[8].targetLapSeconds >= 39 &&
-    restored.opponents[8].targetLapSeconds <= 40);
+  assert.ok(restored.opponents[8].targetLapSeconds >= 32 &&
+    restored.opponents[8].targetLapSeconds <= 34);
   // The randomized difficulty persists instead of changing at every reload.
   const reloaded = race.restore(JSON.parse(JSON.stringify(restored)), 820, () => 0);
   assert.deepEqual(reloaded, restored);
@@ -274,5 +278,46 @@ test("AI finish times do not depend on low frame rates", () => {
   for (let i = 0; i < original.opponents.length; i++) {
     assert.ok(Math.abs(oneFrame.opponents[i].finishTime -
       smallFrames.opponents[i].finishTime) < 1e-7);
+  }
+});
+
+test("all nine rivals accelerate from stationary instead of starting at cruising speed", () => {
+  let state = race.advance(race.create(800, () => 0.5), 5);
+  const before = state.opponents.map((ai) => ai.progress);
+  state = race.advance(state, 1);
+  assert.ok(state.opponents.every((ai, index) =>
+    Math.abs(ai.progress - before[index] - race.AI_ACCELERATION / 2) < 1e-9));
+  assert.equal(race.AI_ACCELERATION, 10);
+});
+
+test("AI start acceleration never exceeds the player's measured launch", () => {
+  const physics = require("../games/gcv/physics.js");
+  let car = { x: 0, z: 0, yaw: 0, speed: 0 };
+  const raceState = race.advance(race.create(800, () => 0.5), 5);
+  const initialProgress = raceState.opponents[0].progress;
+  for (let i = 1; i <= 90; i++) {
+    car = physics.advance(car, { accelerate: true, steer: 0 }, 1 / 60);
+    const state = race.advance(raceState, i / 60);
+    const aiSpeed = Math.min(state.opponents[0].speed,
+      race.AI_ACCELERATION * i / 60);
+    assert.ok(aiSpeed <= car.speed + 1e-6,
+      "AI speed cannot outpace the player's at any of the first 90 frames");
+    const distance = state.opponents[0].progress - initialProgress;
+    assert.ok(distance <= -car.z + 1,
+      "AI travel at launch cannot be much farther than the player's");
+  }
+});
+
+test("AI acceleration and arrival timestamps do not depend on frame size", () => {
+  const initial = race.advance(race.create(800, () => 0.5), 5);
+  const bigFrame = race.advance(initial, 50);
+  let smallFrames = initial;
+  for (let i = 0; i < 500; i++) smallFrames = race.advance(smallFrames, 0.1);
+  for (let i = 0; i < 9; i++) {
+    const big = bigFrame.opponents[i], small = smallFrames.opponents[i];
+    assert.ok(Math.abs(big.progress - small.progress) < 1e-6);
+    if (big.finishTime !== null) {
+      assert.ok(Math.abs(big.finishTime - small.finishTime) < 1e-6);
+    }
   }
 });
