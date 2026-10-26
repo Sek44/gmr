@@ -4,6 +4,8 @@
 const GcvTrackLayout = (() => {
   const VERSION = 2;
   const SAMPLE_COUNT = 840;
+  const ROAD_HALF_WIDTH = 9;
+  const SHOULDER_WIDTH = 6;
   const WAYPOINTS = Object.freeze([
     [78, 150], [78, 100], [78, 50], [78, 0], [78, -50], [78, -90],
     [53, -114], [4, -125], [-40, -117], [-75, -90], [-91, -52],
@@ -35,7 +37,8 @@ const GcvTrackLayout = (() => {
     return sum;
   }
 
-  return Object.freeze({ VERSION, SAMPLE_COUNT, WAYPOINTS, FINISH, SPAWN,
+  return Object.freeze({ VERSION, SAMPLE_COUNT, ROAD_HALF_WIDTH, SHOULDER_WIDTH,
+    WAYPOINTS, FINISH, SPAWN,
     nearestIndex, perimeter });
 })();
 if (typeof window !== "undefined") window.GcvTrackLayout = GcvTrackLayout;
