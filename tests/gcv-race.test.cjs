@@ -156,7 +156,14 @@ test("race completes only after two full laps, not the first start crossing", ()
   assert.equal(state.phase, "finished");
   assert.ok(state.finishPosition >= 1 && state.finishPosition <= 10);
   assert.ok(state.raceTime > 0);
-  assert.deepEqual(race.advance(state, 20, 99999), state);
+  // The player's car stops, but all the AI keep driving after the finish.
+  const after = race.advance(state, 20, 99999);
+  assert.equal(after.phase, "finished");
+  assert.equal(after.raceTime, state.raceTime);
+  assert.equal(after.finishPosition, state.finishPosition);
+  assert.equal(after.playerProgress, state.playerProgress);
+  assert.ok(after.opponents.some((ai, index) =>
+    ai.progress > state.opponents[index].progress));
 });
 
 test("backward movement and falls do not advance player race position", () => {
@@ -184,4 +191,87 @@ test("finishing locks the rank and results stay stable", () => {
   assert.ok(result > 0 && result <= 10);
   state = race.advance(state, 10, 0);
   assert.equal(race.position(state), result);
+});
+
+test("each player lap records its real duration including sub-frame crossing", () => {
+  let state = race.advance(race.create(800, () => 0.5), 5);
+  state = race.advance(state, 22, 770);
+  assert.equal(state.playerLapTimes.length, 0);
+  state = race.advance(state, 1, 60);
+  assert.equal(state.playerLapTimes.length, 1);
+  const expectedFirst = 22 + (800 - (770 - race.gridSlot(race.PLAYER_SLOT).distance)) / 60;
+  assert.ok(Math.abs(state.playerLapTimes[0] - expectedFirst) < 1e-9);
+  state = race.advance(state, 24, 790);
+  assert.equal(state.phase, "finished");
+  assert.equal(state.playerLapTimes.length, 2);
+  assert.ok(state.playerLapTimes.every((x) => x > 0));
+  assert.ok(Math.abs(state.playerLapTimes[0] + state.playerLapTimes[1] -
+    state.raceTime) < 1e-9);
+});
+
+test("all nine opponents continue finishing behind the displayed results", () => {
+  let state = race.advance(race.create(800, () => 0.5), 5);
+  state = race.advance(state, 40, 1680);
+  assert.equal(state.phase, "finished");
+  const savedPosition = state.finishPosition, savedTime = state.raceTime;
+  const aiAfterFinish = state.opponents.filter((ai) =>
+    !Number.isFinite(ai.finishTime)).length;
+  assert.ok(aiAfterFinish > 0);
+  for (let i = 0; i < 30; i++) state = race.advance(state, 3, 500);
+  assert.equal(state.opponents.filter((ai) =>
+    Number.isFinite(ai.finishTime)).length, 9);
+  assert.equal(state.playerProgress, 1600);
+  assert.equal(state.raceTime, savedTime);
+  assert.equal(state.finishPosition, savedPosition);
+  assert.deepEqual(race.advance(state, 4), state);
+});
+
+test("finish order uses actual times, not the identical clamped final distance", () => {
+  let state = race.advance(race.create(800, () => 0.5), 5);
+  state = race.advance(state, 45, 1630);
+  for (let i = 0; i < 25; i++) state = race.advance(state, 4);
+  const rows = race.classification(state);
+  assert.equal(rows.length, 10);
+  assert.ok(rows.every((row) => Number.isFinite(row.finishTime)));
+  for (let i = 1; i < rows.length; i++) {
+    assert.ok(rows[i].finishTime >= rows[i - 1].finishTime);
+    assert.ok(rows[i].gap >= 0);
+    assert.ok(Math.abs(rows[i].gap -
+      (rows[i].finishTime - rows[i - 1].finishTime)) < 1e-8);
+  }
+  assert.equal(rows[0].gap, null);
+  const player = rows.find((row) => row.id === "player");
+  assert.equal(player.rank, race.position(state));
+});
+
+test("classification shows unfinished cars after all finishers with no invented times", () => {
+  let state = race.advance(race.create(800, () => 0.5), 5);
+  state = race.advance(state, 34, 1610);
+  const rows = race.classification(state);
+  const done = rows.filter((row) => Number.isFinite(row.finishTime));
+  const pending = rows.filter((row) => row.finishTime === null);
+  assert.ok(done.length > 0);
+  assert.ok(pending.length > 0);
+  assert.equal(rows[done.length].finishTime, null);
+  assert.ok(pending.every((row) => row.gap === null));
+});
+
+test("race save restores AI finish times, player laps and locked player result", () => {
+  let state = race.advance(race.create(800, () => 0.5), 5);
+  state = race.advance(state, 42, 1640);
+  const saved = JSON.parse(JSON.stringify(state));
+  const restored = race.restore(saved, 800, () => 0);
+  assert.deepEqual(restored, state);
+  assert.deepEqual(race.classification(restored), race.classification(state));
+});
+
+test("AI finish times do not depend on low frame rates", () => {
+  const original = race.advance(race.create(800, () => 0.5), 5);
+  const oneFrame = race.advance(original, 80);
+  let smallFrames = original;
+  for (let i = 0; i < 80; i++) smallFrames = race.advance(smallFrames, 1);
+  for (let i = 0; i < original.opponents.length; i++) {
+    assert.ok(Math.abs(oneFrame.opponents[i].finishTime -
+      smallFrames.opponents[i].finishTime) < 1e-7);
+  }
 });
