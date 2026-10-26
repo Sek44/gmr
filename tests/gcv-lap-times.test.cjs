@@ -269,3 +269,29 @@ test("after recording the new fastest lap, the top three are ordered", () => {
   store.record(50000, [12500, 25000, 37500]);
   assert.deepEqual(store.top().map((entry) => entry.ms), [50000, 51000, 54000]);
 });
+
+test("widening only the shoulders migrates the old three best lap records", () => {
+  const storage = memoryStorage();
+  const formerLayout = { ...layout, SHOULDER_WIDTH: 6 };
+  const previousStore = timing.createStore(formerLayout, storage);
+  previousStore.record(62000, [15000, 30000, 48000]);
+  previousStore.record(61000, [14000, 30000, 45000]);
+  assert.ok(timing.sameCircuitRoute(timing.circuitKey(formerLayout),
+    timing.circuitKey(layout)));
+  assert.notEqual(timing.circuitKey(formerLayout), timing.circuitKey(layout));
+  assert.deepEqual(timing.createStore(layout, storage).top()
+    .map((record) => record.ms), [61000, 62000]);
+  assert.deepEqual(timing.createStore(layout, storage).top()
+    .map((record) => record.ms), [61000, 62000]);
+});
+
+test("track shape or finish changes are not compatible with old records", () => {
+  const currentKey = timing.circuitKey(layout);
+  assert.equal(timing.sameCircuitRoute(null, currentKey), false);
+  assert.equal(timing.sameCircuitRoute("bad json", currentKey), false);
+  assert.equal(timing.sameCircuitRoute(currentKey, currentKey), true);
+  assert.equal(timing.sameCircuitRoute(
+    timing.circuitKey({ ...layout, ROAD_HALF_WIDTH: 8 }), currentKey), false);
+  assert.equal(timing.sameCircuitRoute(
+    timing.circuitKey({ ...layout, FINISH: { x: 78, z: 0 } }), currentKey), false);
+});
