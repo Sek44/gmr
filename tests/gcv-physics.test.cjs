@@ -80,7 +80,7 @@ test("a falling car keeps forward momentum while gravity lowers it", () => {
   assert.ok(Math.abs(fall.remaining - 1) < 1e-8, "countdown starts with the fall");
   for (let i = 0; i < 60; i++) fall = physics.advanceFall(fall, 1 / 60);
   assert.ok(Math.abs(fall.remaining) < 1e-8);
-  assert.ok(Math.abs(fall.y - (0.14 - 0.5 * 9.81 * 4)) < 1e-6);
+  assert.ok(Math.abs(fall.y - (0.14 + physics.INITIAL_FALL_VELOCITY * 2 - 0.5 * 9.81 * 4)) < 1e-6);
 });
 
 test("the fall timer never runs past two seconds", () => {
@@ -181,4 +181,17 @@ test("mud only sprays during extreme fast cornering", () => {
   assert.ok(physics.skidIntensity(48, 1) > 0);
   assert.ok(physics.skidIntensity(physics.MAX_SPEED, 0.9) > 0);
   assert.ok(physics.skidIntensity(-physics.REVERSE_MAX_SPEED, 1) === 0);
+});
+
+test("fall begins descending immediately, without any initial floating arc", () => {
+  let fall = physics.startFall({ ...standing(), speed: 30 });
+  assert.ok(fall.vy < 0, "downward velocity begins at the edge");
+  let previousY = fall.y;
+  for (let i = 0; i < 12; i++) {
+    fall = physics.advanceFall(fall, 1 / 60);
+    assert.ok(fall.y < previousY, "altitude must decrease every frame");
+    previousY = fall.y;
+  }
+  assert.ok(fall.y < -1.2, "descent is visible within 0.2 seconds");
+  assert.ok(fall.remaining < physics.FALL_SECONDS);
 });
