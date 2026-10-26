@@ -43,3 +43,9 @@ test("nearest sample index finds the line and spawn independently", () => {
 test("track layout version is distinct from earlier saved sessions", () => {
   assert.equal(layout.VERSION, 2);
 });
+
+test("each roadside shoulder is widened four metres from six to ten", () => {
+  assert.equal(layout.ROAD_HALF_WIDTH, 9);
+  assert.equal(layout.SHOULDER_WIDTH, 10);
+  assert.equal(layout.ROAD_HALF_WIDTH + layout.SHOULDER_WIDTH, 19);
+});
