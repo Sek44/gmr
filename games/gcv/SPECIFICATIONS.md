@@ -398,9 +398,9 @@ Documentation : [Three.js — WebGLRenderer](https://threejs.org/docs/pages/WebG
 **Vérification** : 80 tests automatisés réussis, avec contrôle des références DOM et de l'absence de l'ancien panneau. Test visuel sur téléphone encore nécessaire.
 
 
-## 29. Accélération des trois IA de tête (26/10/2026)
+## 29. Ralentissement des trois IA de tête (26/10/2026)
 
-- [x] Diminuer de **2 secondes** le temps cible au tour de chacun des trois adversaires les plus rapides : **13–14 s**, **14–15 s** et **15–16 s**.
+- [x] Corriger la demande précédente : **ralentir**, et non accélérer, les trois meilleurs adversaires. Leurs temps cibles sont désormais **17–18,5 s**, **18,5–20 s** et **20–21 s** par tour (ensemble **17 à 21 s**).
 - [x] Garder les six autres adversaires inchangés, notamment les deux derniers à **39–40 s**.
 - [x] Conserver la part aléatoire à chaque nouvelle course et mettre à niveau les vitesses des trois meilleurs pilotes dans les parties sauvegardées.
 - [x] Maintenir ces durées indicatives invisibles depuis le menu du jeu.
