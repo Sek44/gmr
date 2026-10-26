@@ -861,11 +861,11 @@
       updateCar(0);
       updateCamera(0);
       drawMap();
-      if (binding) binding.changed();
+      resumeGame();
     }
 
     function chooseFree() {
-      if (gameMode === "free") return;
+      if (gameMode === "free") { resumeGame(); return; }
       const priorFree = freeSession;
       clearControls();
       gameMode = "free";
@@ -883,7 +883,7 @@
       updateCar(0);
       updateCamera(0);
       drawMap();
-      if (binding) binding.changed();
+      resumeGame();
     }
     freeModeButton.addEventListener("click", chooseFree);
     raceModeButton.addEventListener("click", startRace);
@@ -1166,13 +1166,16 @@
         ? saved.freeSession : null;
       syncRaceCars();
       syncRaceHud();
+      hasActiveSession = true;
     }
     binding = window.GameState.create("gcv").bind({ snapshot, restore });
     syncRaceCars();
     syncRaceHud();
+    syncMenu(); // Always open on the home screen, even for saved games.
     refreshCameraButton();
 
     function updateCar(dt, fallDt = dt) {
+      if ((menuOpen || scoresOpen) && dt > 0) return;
       const brakePressed = brakePointers.size > 0 || keys.has("arrowdown") || keys.has("s");
       let mudSkidIntensity = 0;
       let raceDistance = 0;
@@ -1303,10 +1306,10 @@
       const dt = Math.min(realDt, 0.05);
       lastFrame = now;
       if (document.hidden) return;
-      updateCar(dt, realDt);
+      if (!menuOpen && !scoresOpen) updateCar(dt, realDt);
       updateCamera(dt);
       autosaveElapsed += dt;
-      if (autosaveElapsed >= 1.5) {
+      if (hasActiveSession && autosaveElapsed >= 1.5) {
         autosaveElapsed = 0;
         binding.changed();
       }
