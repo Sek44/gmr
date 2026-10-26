@@ -1066,7 +1066,7 @@
       gameMode = "free";
       raceState = null;
       freeSession = null;
-      if (priorFree && priorFree.circuitKey === circuitKey) {
+      if (priorFree && LapTimes.sameCircuitRoute(priorFree.circuitKey, circuitKey)) {
         restore(priorFree);
       } else {
         restartNearFinish();
@@ -1337,7 +1337,7 @@
       if (!saved || typeof saved !== "object") return;
       // The redesigned, longer circuit invalidates prior saved coordinates
       // and lap progress; retain the view but start a clean free-drive session.
-      if (saved.circuitKey !== circuitKey ||
+      if (!LapTimes.sameCircuitRoute(saved.circuitKey, circuitKey) ||
           saved.layoutVersion !== TrackLayout.VERSION) {
         cameraMode = saved.camera === "outside" ? "outside" : "inside";
         return;
@@ -1366,7 +1366,8 @@
         ? Race.restore(saved.race, trackLength) : null;
       gameMode = restoredRace ? "race" : "free";
       raceState = restoredRace;
-      freeSession = restoredRace && saved.freeSession?.circuitKey === circuitKey
+      freeSession = restoredRace &&
+        LapTimes.sameCircuitRoute(saved.freeSession?.circuitKey, circuitKey)
         ? saved.freeSession : null;
       syncRaceCars();
       syncRaceHud();
