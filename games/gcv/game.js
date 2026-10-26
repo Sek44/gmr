@@ -772,7 +772,63 @@
     // Prevent a context menu from appearing after long touches.
     stage.addEventListener("contextmenu", (event) => event.preventDefault());
 
+    function startRace() {
+      // Preserve a running time trial when switching to race mode.
+      if (gameMode === "free") freeSession = snapshot();
+      clearControls();
+      gameMode = "race";
+      raceState = Race.create(trackLength);
+      const grid = Race.gridSlot(Race.PLAYER_SLOT);
+      const start = startCenter.clone()
+        .addScaledVector(directions[startIndex], -grid.distance)
+        .addScaledVector(startSide, grid.lateral);
+      const current = closestRoad(start.x, start.z).index;
+      driver = { x: start.x, z: start.z, yaw: startYaw, speed: 0, reverseHold: 0 };
+      falling = false;
+      fall = null;
+      respawnIndex = current;
+      lapTracker = TrackProgress.create(SAMPLE_COUNT, startIndex, current);
+      lapTimer = LapTimes.initial(SAMPLE_COUNT, lapTracker.progress);
+      timedLapCount = 0;
+      announce("");
+      initializedCamera = false;
+      syncRaceCars();
+      syncRaceHud();
+      refreshChrono();
+      updateCar(0);
+      updateCamera(0);
+      drawMap();
+      if (binding) binding.changed();
+    }
+
+    function chooseFree() {
+      if (gameMode === "free") return;
+      const priorFree = freeSession;
+      clearControls();
+      gameMode = "free";
+      raceState = null;
+      freeSession = null;
+      if (priorFree && priorFree.circuitKey === circuitKey) {
+        restore(priorFree);
+      } else {
+        restartNearFinish();
+      }
+      syncRaceCars();
+      syncRaceHud();
+      refreshChrono();
+      initializedCamera = false;
+      updateCar(0);
+      updateCamera(0);
+      drawMap();
+      if (binding) binding.changed();
+    }
+    freeModeButton.addEventListener("click", chooseFree);
+    raceModeButton.addEventListener("click", startRace);
+    replayButton.addEventListener("click", startRace);
+    raceFreeButton.addEventListener("click", chooseFree);
+
     function restartNearFinish() {
+      if (gameMode === "race") { startRace(); return; }
       // Put the car exactly ten metres before the visible finish line,
       // facing in the racing direction. This resets the CURRENT attempt,
       // not the permanent top-three lap records.
