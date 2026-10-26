@@ -56,6 +56,7 @@ const GcvRace = (() => {
         // Speed is fixed at launch but randomized between races. Its target
         // is based on the real circuit length, not a constant speed value.
         targetLapSeconds,
+        finishTime: null,
         speed: trackLength / targetLapSeconds,
         color: COLORS[slot % COLORS.length],
       });
@@ -65,22 +66,48 @@ const GcvRace = (() => {
       countdown: COUNTDOWN_SECONDS, elapsed: 0,
       trackLength, playerProgress: -gridSlot(PLAYER_SLOT).distance,
       opponents, finishPosition: null, raceTime: null,
+      playerLapTimes: [],
     };
   }
 
   function standings(race) {
     const competitors = [
-      { id: "player", progress: race.playerProgress },
-      ...race.opponents.map(({ id, progress }) => ({ id, progress })),
+      { id: "player", progress: race.playerProgress,
+        finishTime: race.raceTime },
+      ...race.opponents.map(({ id, progress, finishTime }) =>
+        ({ id, progress, finishTime })),
     ];
-    competitors.sort((a, b) => b.progress - a.progress ||
-      (a.id === "player" ? -1 : b.id === "player" ? 1 : a.id - b.id));
+    // Completed cars are ranked by their actual finish times, never by
+    // their clamped identical distance at the finish line. Cars still
+    // circulating follow all finishers in current distance order.
+    competitors.sort((a, b) => {
+      const aDone = Number.isFinite(a.finishTime);
+      const bDone = Number.isFinite(b.finishTime);
+      if (aDone && bDone) return a.finishTime - b.finishTime ||
+        (a.id === "player" ? -1 : b.id === "player" ? 1 : a.id - b.id);
+      if (aDone !== bDone) return aDone ? -1 : 1;
+      return b.progress - a.progress ||
+        (a.id === "player" ? -1 : b.id === "player" ? 1 : a.id - b.id);
+    });
     return competitors;
   }
 
   function position(race) {
     if (race.finishPosition !== null) return race.finishPosition;
     return standings(race).findIndex((item) => item.id === "player") + 1;
+  }
+
+  function classification(race) {
+    return standings(race).map((entry, i, rows) => {
+      const predecessor = i > 0 ? rows[i - 1] : null;
+      return {
+        rank: i + 1, id: entry.id, finishTime: entry.finishTime,
+        progress: entry.progress,
+        gap: Number.isFinite(entry.finishTime) &&
+          Number.isFinite(predecessor?.finishTime)
+          ? Math.max(0, entry.finishTime - predecessor.finishTime) : null,
+      };
+    });
   }
 
   function currentLap(race) {
@@ -90,32 +117,67 @@ const GcvRace = (() => {
 
   function advance(race, elapsedSeconds, playerDistance = 0) {
     const dt = Number.isFinite(elapsedSeconds) ? Math.max(0, elapsedSeconds) : 0;
-    if (!dt || race.phase === "finished") return race;
+    if (!dt) return race;
     if (race.phase === "staging") {
       const remaining = race.gridWait - dt;
       if (remaining > 0) return { ...race, gridWait: remaining };
-      // The grid settles for two full seconds BEFORE 3-2-1 begins.
       return advance({ ...race, phase: "countdown", gridWait: 0 },
         Math.max(0, -remaining), 0);
     }
     if (race.phase === "countdown") {
       const remaining = race.countdown - dt;
       if (remaining > 0) return { ...race, countdown: remaining };
-      // A frame spanning GO may include race time after the signal, not before.
       return advance({ ...race, phase: "racing", countdown: 0 },
         Math.max(0, -remaining), 0);
     }
-    const opponents = race.opponents.map((item) => ({
-      ...item, progress: Math.min(LAPS * race.trackLength,
-        item.progress + item.speed * dt),
-    }));
-    const progress = race.playerProgress + Math.max(0, playerDistance);
+
+    const finishDistance = LAPS * race.trackLength;
+    const allFinished = race.opponents.every((ai) =>
+      Number.isFinite(ai.finishTime));
+    if (race.phase === "finished" && allFinished) return race;
     const elapsed = race.elapsed + dt;
-    const updated = { ...race, elapsed, opponents,
-      playerProgress: Math.min(LAPS * race.trackLength, progress) };
-    if (progress >= LAPS * race.trackLength) {
-      return { ...updated, phase: "finished",
-        finishPosition: position(updated), raceTime: elapsed };
+    const opponents = race.opponents.map((item) => {
+      if (Number.isFinite(item.finishTime)) return item;
+      const next = item.progress + item.speed * dt;
+      if (next >= finishDistance) {
+        // Interpolate precisely within the current frame, so the time is
+        // independent of rendering FPS and remains correct behind results.
+        const fraction = Math.max(0, Math.min(1,
+          (finishDistance - item.progress) / (item.speed * dt)));
+        return { ...item, progress: finishDistance,
+          finishTime: race.elapsed + dt * fraction };
+      }
+      return { ...item, progress: next };
+    });
+
+    if (race.phase === "finished") {
+      // Continue the race in the 3D world after the player has stopped.
+      return { ...race, opponents, elapsed };
+    }
+
+    const traveled = Math.max(0, playerDistance);
+    const newProgress = race.playerProgress + traveled;
+    const lapTimes = (race.playerLapTimes || []).slice();
+    for (let lap = lapTimes.length + 1; lap <= LAPS; lap++) {
+      const milestone = lap * race.trackLength;
+      if (newProgress < milestone) break;
+      const fraction = traveled > 0 ?
+        Math.max(0, Math.min(1,
+          (milestone - race.playerProgress) / traveled)) : 1;
+      const crossingTime = race.elapsed + dt * fraction;
+      const previousTime = lapTimes.length
+        ? lapTimes.reduce((a, b) => a + b, 0) : 0;
+      lapTimes.push(Math.max(0, crossingTime - previousTime));
+    }
+    const updated = {
+      ...race, elapsed, opponents, playerLapTimes: lapTimes,
+      playerProgress: Math.min(finishDistance, newProgress),
+    };
+    if (newProgress >= finishDistance) {
+      const crossingTime = lapTimes.reduce((a, b) => a + b, 0);
+      const finished = { ...updated, phase: "finished",
+        raceTime: crossingTime };
+      return { ...finished, finishPosition: position(finished) };
     }
     return updated;
   }
@@ -140,17 +202,27 @@ const GcvRace = (() => {
           ai.targetLapSeconds >= min && ai.targetLapSeconds <= max;
         const targetLapSeconds = validTarget
           ? ai.targetLapSeconds : lapTarget(index, random);
-        return { ...ai, targetLapSeconds, speed: trackLength / targetLapSeconds };
+        const speed = trackLength / targetLapSeconds;
+        const finishTime = Number.isFinite(ai.finishTime) && ai.finishTime >= 0
+          ? ai.finishTime : ai.progress >= LAPS * trackLength
+            ? (LAPS * trackLength + gridSlot(ai.id).distance) / speed : null;
+        return { ...ai, targetLapSeconds, speed, finishTime };
       }),
       gridWait: saved.phase === "staging"
         ? Math.max(0, Math.min(GRID_WAIT_SECONDS, Number(saved.gridWait) || GRID_WAIT_SECONDS))
         : 0,
       countdown: Math.max(0, Number(saved.countdown) || 0),
+      playerLapTimes: Array.isArray(saved.playerLapTimes) &&
+        saved.playerLapTimes.length <= LAPS &&
+        saved.playerLapTimes.every((x) => Number.isFinite(x) && x >= 0)
+        ? saved.playerLapTimes.slice()
+        : saved.phase === "finished" && Number.isFinite(saved.raceTime)
+          ? [saved.raceTime] : [],
     };
   }
 
   return Object.freeze({ GRID_COUNT, AI_COUNT, PLAYER_SLOT, LAPS,
-    COUNTDOWN_SECONDS, GRID_WAIT_SECONDS, PACE_RANGES, gridSlot, create, advance, standings, position,
+    COUNTDOWN_SECONDS, GRID_WAIT_SECONDS, PACE_RANGES, gridSlot, create, advance, standings, position, classification,
     currentLap, restore });
 })();
 if (typeof window !== "undefined") window.GcvRace = GcvRace;
