@@ -173,7 +173,7 @@
         color: 0x614a37, roughness: 1, transparent: true, opacity: 0.42,
         depthWrite: false, side: THREE.DoubleSide,
       }),
-      210
+      Math.floor((SAMPLE_COUNT - 1) / 2)
     );
     const patch = new THREE.Object3D();
     let patchIndex = 0;
@@ -865,8 +865,10 @@
           // gravity animation and the two-second countdown at this instant.
           falling = true;
           respawnIndex = nearest.index;
-          fall = Physics.startFall(driver);
-          announce("Chute dans le vide ! Retour dans 2.0 s");
+          // Advance the fall on this very first rendering frame: no
+          // horizontal glide before the car starts dropping visibly.
+          fall = Physics.advanceFall(Physics.startFall(driver), dt);
+          announce("Chute dans le vide ! Retour dans " + fall.remaining.toFixed(1) + " s");
         } else {
           const previousLaps = lapTracker.laps;
           lapTracker = TrackProgress.advance(lapTracker, nearest.index, SAMPLE_COUNT);
