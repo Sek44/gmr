@@ -53,6 +53,7 @@
   const TrackProgress = window.GcvTrackProgress;
   const Scenery = window.GcvScenery;
   const TrackLayout = window.GcvTrackLayout;
+  const Barriers = window.GcvBarriers;
   const LapTimes = window.GcvLapTimes;
   const Race = window.GcvRace;
 
@@ -62,7 +63,7 @@
   }
 
   try {
-    if (!Physics || !TrackProgress || !Scenery || !TrackLayout || !LapTimes || !Race)
+    if (!Physics || !TrackProgress || !Scenery || !TrackLayout || !LapTimes || !Race || !Barriers)
       throw new Error("Les modules de conduite sont introuvables.");
     const THREE = await import("https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js");
     start(THREE);
@@ -141,6 +142,66 @@
 
     strip(0, OUTER_HALF_WIDTH, 0.02, shoulderMaterial);
     strip(0, ROAD_HALF_WIDTH, 0.07, roadMaterial);
+
+    // 40-m guardrail stretches at every substantial bend exit, along BOTH
+    // shoulders. A shared protection mask governs visuals and collisions.
+    const barriers = Barriers.create(
+      positions.slice(0, SAMPLE_COUNT), TrackLayout.WAYPOINTS,
+      trackLength, OUTER_HALF_WIDTH);
+    const railVertices = [], railIndices = [];
+    function railQuad(a, b, low, high) {
+      const v = railVertices.length / 3;
+      railVertices.push(a.x, low, a.z, b.x, low, b.z,
+        a.x, high, a.z, b.x, high, b.z);
+      railIndices.push(v, v + 1, v + 2, v + 1, v + 3, v + 2);
+    }
+    for (let i = 0; i < SAMPLE_COUNT; i++) {
+      const next = (i + 1) % SAMPLE_COUNT;
+      if (!barriers.protectedSamples[i] || !barriers.protectedSamples[next])
+        continue;
+      for (const side of [-1, 1]) {
+        const a = positions[i].clone()
+          .addScaledVector(sides[i], side * barriers.railOffset);
+        const b = positions[next].clone()
+          .addScaledVector(sides[next], side * barriers.railOffset);
+        railQuad(a, b, 0.66, 0.91);
+        railQuad(a, b, 1.24, 1.45);
+      }
+    }
+    const railGeometry = new THREE.BufferGeometry();
+    railGeometry.setAttribute("position",
+      new THREE.Float32BufferAttribute(railVertices, 3));
+    railGeometry.setIndex(railIndices);
+    railGeometry.computeVertexNormals();
+    scene.add(new THREE.Mesh(railGeometry, new THREE.MeshStandardMaterial({
+      color: 0x9baeba, roughness: 0.57, metalness: 0.38,
+      side: THREE.DoubleSide,
+    })));
+
+    const guardrailPostSamples = [];
+    for (let i = 0; i < SAMPLE_COUNT; i += 5) {
+      if (barriers.protectedSamples[i]) guardrailPostSamples.push(i);
+    }
+    const guardrailPosts = new THREE.InstancedMesh(
+      new THREE.BoxGeometry(0.18, 1.55, 0.19),
+      new THREE.MeshStandardMaterial({ color: 0x4c6371, roughness: 0.7,
+        metalness: 0.33 }),
+      guardrailPostSamples.length * 2);
+    const postTransform = new THREE.Object3D();
+    let postNumber = 0;
+    for (const i of guardrailPostSamples) {
+      for (const side of [-1, 1]) {
+        postTransform.position.copy(positions[i])
+          .addScaledVector(sides[i], side * barriers.railOffset);
+        postTransform.position.y = 0.73;
+        postTransform.rotation.y = Math.atan2(
+          -directions[i].x, -directions[i].z);
+        postTransform.updateMatrix();
+        guardrailPosts.setMatrixAt(postNumber++, postTransform.matrix);
+      }
+    }
+    guardrailPosts.instanceMatrix.needsUpdate = true;
+    scene.add(guardrailPosts);
 
     // The previously flat ribbon is now a solid-looking elevated island road:
     // dark earth side walls and an underside along the complete closed curve.
@@ -1346,7 +1407,17 @@
         const previousPosition = { x: driver.x, z: driver.z };
         driver = Physics.advance(driver, { steer, accelerate, brake }, dt);
         mudSkidIntensity = Physics.skidIntensity(driver.speed, steer);
-        const nearest = closestRoad(driver.x, driver.z);
+        let nearest = closestRoad(driver.x, driver.z);
+        // Deflect only across the rail, not along it. Sliding preserves
+        // forward momentum and does not trigger a fall or a lap reset.
+        const barrierContact = Barriers.resolve(previousPosition, driver,
+          nearest.index, positions[nearest.index], sides[nearest.index],
+          barriers);
+        if (barrierContact.collided) {
+          driver.x = barrierContact.x;
+          driver.z = barrierContact.z;
+          nearest = closestRoad(driver.x, driver.z);
+        }
         if (nearest.distanceSquared > OUTER_HALF_WIDTH * OUTER_HALF_WIDTH) {
           // Keep the speed and forward momentum in the air. Begin both the
           // gravity animation and the two-second countdown at this instant.
