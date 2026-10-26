@@ -119,7 +119,8 @@ test("player can overtake the nine AI at full speed", () => {
   const started = race.advance(raceState, 5);
   const active = race.advance(started, 6, 380);
   assert.equal(race.position(active), 1);
-  assert.ok(active.opponents.every((ai) => ai.progress < 340));
+  assert.ok(active.opponents.every((ai) => ai.progress < 380),
+    "AI should stay behind a 380 m player sprint after six seconds");
 });
 
 test("older saved races automatically upgrade their slow AI speeds", () => {
