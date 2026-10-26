@@ -10,6 +10,11 @@
   const lapLabel = document.getElementById("lap-value");
   const sessionModeLabel = document.getElementById("session-mode-label");
   const chronoLabel = document.getElementById("lap-chrono");
+  const chronoBox = document.getElementById("lap-chrono-box");
+  const lapAnnouncement = document.getElementById("lap-announcement");
+  const lapAnnouncementLabel = document.getElementById("lap-announcement-label");
+  const lapAnnouncementTime = document.getElementById("lap-announcement-time");
+  const lapAnnouncementRank = document.getElementById("lap-announcement-rank");
   const deltaLabel = document.getElementById("lap-delta");
   const deltaValue = document.getElementById("lap-delta-value");
   const splitLabel = document.getElementById("lap-split-label");
@@ -35,6 +40,9 @@
   const raceOverlayTitle = document.getElementById("race-overlay-title");
   const raceOverlaySubtitle = document.getElementById("race-overlay-subtitle");
   const raceOverlayActions = document.getElementById("race-overlay-actions");
+  const raceResults = document.getElementById("race-results");
+  const raceResultsBody = document.getElementById("race-results-body");
+  const raceResultsStatus = document.getElementById("race-results-status");
   const replayButton = document.getElementById("race-replay-button");
   const raceFreeButton = document.getElementById("race-free-button");
   const notice = document.getElementById("gcv-notice");
@@ -581,6 +589,9 @@
     let gameMode = "free";
     let raceState = null;
     let freeSession = null;
+    let lapHold = null; // {ms, remainingSeconds} freeze the top clock for 2s.
+    let lapCelebration = null; // Large visual feedback, independent of game physics.
+    let resultRefreshCooldown = 0;
     let menuOpen = true;
     let scoresOpen = false;
     let hasActiveSession = false;
@@ -592,8 +603,53 @@
         label.textContent = records[index] ? LapTimes.format(records[index].ms) : "—";
       });
     }
+    function bestPosition(ms) {
+      if (!Number.isFinite(ms) || ms <= 0) return null;
+      const rank = lapRecords.top().filter((entry) => entry.ms <= Math.round(ms)).length + 1;
+      return rank <= 3 ? rank : null;
+    }
+
+    function announceLap(ms, rank = null, lapNumber = null) {
+      lapHold = { ms, remainingSeconds: 2 };
+      lapCelebration = { remainingSeconds: 2.7 };
+      lapAnnouncementLabel.textContent = lapNumber !== null
+        ? "TOUR " + lapNumber + " TERMINÉ" : "TOUR TERMINÉ";
+      lapAnnouncementTime.textContent = LapTimes.format(ms);
+      lapAnnouncementRank.textContent = rank
+        ? ["", "1er meilleur temps !", "2e meilleur temps !", "3e meilleur temps !"][rank]
+        : "Tour terminé !";
+      lapAnnouncement.hidden = false;
+      chronoBox.classList.add("is-lap-hold");
+    }
+
+    function clearLapAnnouncement() {
+      lapHold = null;
+      lapCelebration = null;
+      chronoBox.classList.remove("is-lap-hold");
+      lapAnnouncement.hidden = true;
+    }
+
+    function tickLapAnnouncement(dt) {
+      if (lapHold) {
+        lapHold.remainingSeconds -= dt;
+        if (lapHold.remainingSeconds <= 0) {
+          lapHold = null;
+          chronoBox.classList.remove("is-lap-hold");
+        }
+      }
+      if (lapCelebration) {
+        lapCelebration.remainingSeconds -= dt;
+        if (lapCelebration.remainingSeconds <= 0) {
+          lapCelebration = null;
+          lapAnnouncement.hidden = true;
+        }
+      }
+    }
+
     function refreshChrono() {
-      chronoLabel.textContent = lapTimer.running ? LapTimes.format(lapTimer.elapsedMs) : "—";
+      chronoLabel.textContent = lapHold
+        ? LapTimes.format(lapHold.ms)
+        : lapTimer.running ? LapTimes.format(lapTimer.elapsedMs) : "—";
       const delta = lapTimer.delta;
       deltaValue.textContent = LapTimes.formatDelta(delta);
       splitLabel.textContent = "S" + (lapTimer.splitNumber || 1);
