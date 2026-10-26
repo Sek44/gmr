@@ -641,7 +641,10 @@
       const phase = raceState.phase;
       raceOverlay.hidden = phase === "racing";
       raceOverlayActions.hidden = phase !== "finished";
-      if (phase === "countdown") {
+      if (phase === "staging") {
+        raceOverlayTitle.textContent = "Prépare-toi !";
+        raceOverlaySubtitle.textContent = "Les voitures se mettent en place…";
+      } else if (phase === "countdown") {
         raceOverlayTitle.textContent = String(Math.max(1, Math.ceil(raceState.countdown)));
         raceOverlaySubtitle.textContent = "Départ dans " +
           String(Math.max(1, Math.ceil(raceState.countdown))) + "…";
