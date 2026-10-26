@@ -11,10 +11,8 @@
   const sessionModeLabel = document.getElementById("session-mode-label");
   const chronoLabel = document.getElementById("lap-chrono");
   const chronoBox = document.getElementById("lap-chrono-box");
-  const lapAnnouncement = document.getElementById("lap-announcement");
-  const lapAnnouncementLabel = document.getElementById("lap-announcement-label");
-  const lapAnnouncementTime = document.getElementById("lap-announcement-time");
-  const lapAnnouncementRank = document.getElementById("lap-announcement-rank");
+  const chronoTitle = document.getElementById("lap-chrono-title");
+  const chronoRank = document.getElementById("lap-chrono-rank");
   const deltaLabel = document.getElementById("lap-delta");
   const deltaValue = document.getElementById("lap-delta-value");
   const splitLabel = document.getElementById("lap-split-label");
@@ -638,8 +636,7 @@
     let gameMode = "free";
     let raceState = null;
     let freeSession = null;
-    let lapHold = null; // {ms, remainingSeconds} freeze the top clock for 2s.
-    let lapCelebration = null; // Large visual feedback, independent of game physics.
+    let lapHold = null; // {ms, rank, remainingSeconds}; top chrono only, for 2s.
     let resultRefreshCooldown = 0;
     let menuOpen = true;
     let scoresOpen = false;
@@ -656,47 +653,34 @@
       return LapTimes.qualifyingRank(lapRecords.top(), ms);
     }
 
-    function announceLap(ms, rank = null, lapNumber = null) {
-      lapHold = { ms, remainingSeconds: 2 };
-      lapCelebration = { remainingSeconds: 2.7 };
-      lapAnnouncementLabel.textContent = lapNumber !== null
-        ? "TOUR " + lapNumber + " TERMINÉ" : "TOUR TERMINÉ";
-      lapAnnouncementTime.textContent = LapTimes.format(ms);
-      lapAnnouncementRank.textContent = rank
-        ? ["", "1er meilleur temps !", "2e meilleur temps !", "3e meilleur temps !"][rank]
-        : "Tour terminé !";
-      lapAnnouncement.hidden = false;
+    function holdFinishedLap(ms, rank = null) {
+      // The stopwatch continues behind this short HUD-only display.
+      lapHold = { ms, rank, remainingSeconds: 2 };
       chronoBox.classList.add("is-lap-hold");
+      refreshChrono();
     }
 
-    function clearLapAnnouncement() {
+    function clearLapHold() {
       lapHold = null;
-      lapCelebration = null;
       chronoBox.classList.remove("is-lap-hold");
-      lapAnnouncement.hidden = true;
+      refreshChrono();
     }
 
-    function tickLapAnnouncement(dt) {
-      if (lapHold) {
-        lapHold.remainingSeconds -= dt;
-        if (lapHold.remainingSeconds <= 0) {
-          lapHold = null;
-          chronoBox.classList.remove("is-lap-hold");
-        }
-      }
-      if (lapCelebration) {
-        lapCelebration.remainingSeconds -= dt;
-        if (lapCelebration.remainingSeconds <= 0) {
-          lapCelebration = null;
-          lapAnnouncement.hidden = true;
-        }
-      }
+    function tickLapHold(dt) {
+      if (!lapHold) return;
+      lapHold.remainingSeconds -= dt;
+      if (lapHold.remainingSeconds <= 0) clearLapHold();
     }
 
     function refreshChrono() {
       chronoLabel.textContent = lapHold
         ? LapTimes.format(lapHold.ms)
         : lapTimer.running ? LapTimes.format(lapTimer.elapsedMs) : "—";
+      chronoTitle.textContent = lapHold ? "TOUR TERMINÉ" : "TOUR EN COURS";
+      chronoRank.textContent = lapHold?.rank
+        ? ["", "1er meilleur temps", "2e meilleur temps", "3e meilleur temps"][lapHold.rank]
+        : "";
+      chronoRank.hidden = !lapHold?.rank;
       const delta = lapTimer.delta;
       deltaValue.textContent = LapTimes.formatDelta(delta);
       splitLabel.textContent = "S" + (lapTimer.splitNumber || 1);
@@ -780,7 +764,7 @@
       const phase = raceState.phase;
       raceOverlay.classList.toggle("is-results", phase === "finished");
       raceOverlay.hidden = phase === "racing" ||
-        (phase === "finished" && lapCelebration !== null);
+        (phase === "finished" && lapHold !== null);
       raceOverlayActions.hidden = phase !== "finished";
       raceResults.hidden = phase !== "finished";
       if (phase === "finished" && resultRefreshCooldown <= 0) {
@@ -990,7 +974,7 @@
       clearControls();
       gameMode = "race";
       raceState = Race.create(trackLength);
-      clearLapAnnouncement();
+      clearLapHold();
       resultRefreshCooldown = 0;
       const grid = Race.gridSlot(Race.PLAYER_SLOT);
       const start = startCenter.clone()
@@ -1017,7 +1001,7 @@
 
     function chooseFree() {
       if (gameMode === "free") { resumeGame(); return; }
-      clearLapAnnouncement();
+      clearLapHold();
       resultRefreshCooldown = 0;
       const priorFree = freeSession;
       clearControls();
@@ -1046,7 +1030,7 @@
 
     function restartNearFinish() {
       if (gameMode === "race") { startRace(); return; }
-      clearLapAnnouncement();
+      clearLapHold();
       // Put the car exactly ten metres before the visible finish line,
       // facing in the racing direction. This resets the CURRENT attempt,
       // not the permanent top-three lap records.
@@ -1409,8 +1393,7 @@
                 timedLapCount++;
                 lapLabel.textContent = String(timedLapCount);
                 refreshBests();
-                announceLap(event.ms, rank,
-                  gameMode === "race" ? Math.min(Race.LAPS, timedLapCount) : null);
+                holdFinishedLap(event.ms, rank);
                 if (binding) binding.changed();
               }
             }
@@ -1427,7 +1410,7 @@
           // A fall or a missed sector can invalidate the time-trial record,
           // but the actual race lap must always get a time announcement.
           const lapMs = raceState.playerLapTimes[completedLaps - 1] * 1000;
-          announceLap(lapMs, null, completedLaps);
+          holdFinishedLap(lapMs);
         }
         if (wasRacing && raceState.phase === "finished") {
           resultRefreshCooldown = 0;
@@ -1485,7 +1468,7 @@
       if (!menuOpen && !scoresOpen) {
         resultRefreshCooldown = Math.max(0, resultRefreshCooldown - dt);
         updateCar(dt, realDt);
-        tickLapAnnouncement(dt);
+        tickLapHold(realDt);
         refreshChrono();
       }
       updateCamera(dt);
