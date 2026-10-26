@@ -675,6 +675,42 @@
       }
     }
 
+    function refreshClassification() {
+      if (!raceState) return;
+      const rows = Race.classification(raceState);
+      const fragment = document.createDocumentFragment();
+      for (const row of rows) {
+        const tr = document.createElement("tr");
+        const isPlayer = row.id === "player";
+        if (isPlayer) tr.classList.add("is-player");
+        if (!Number.isFinite(row.finishTime)) tr.classList.add("is-pending");
+        const rank = document.createElement("td");
+        rank.textContent = String(row.rank);
+        const vehicle = document.createElement("td");
+        if (!isPlayer) {
+          const opponent = raceState.opponents.find((ai) => ai.id === row.id);
+          const swatch = document.createElement("span");
+          swatch.className = "gcv-car-swatch";
+          swatch.style.backgroundColor = "#" + opponent.color.toString(16).padStart(6, "0");
+          vehicle.append(swatch);
+        }
+        vehicle.append(document.createTextNode(isPlayer
+          ? "Vous · n° 9" : "Voiture n° " + (10 + row.id)));
+        const time = document.createElement("td");
+        time.textContent = Number.isFinite(row.finishTime)
+          ? LapTimes.format(row.finishTime * 1000) : "En course…";
+        const gap = document.createElement("td");
+        gap.textContent = Number.isFinite(row.gap)
+          ? "+" + row.gap.toFixed(2) + " s" : "—";
+        tr.append(rank, vehicle, time, gap);
+        fragment.append(tr);
+      }
+      raceResultsBody.replaceChildren(fragment);
+      const count = rows.filter((row) => Number.isFinite(row.finishTime)).length;
+      raceResultsStatus.textContent = count === Race.GRID_COUNT
+        ? "Les 10 voitures ont terminé." : count + " / 10 voitures à l’arrivée · les autres poursuivent la course.";
+    }
+
     function syncRaceHud() {
       const racing = gameMode === "race" && raceState !== null;
       freeModeButton.classList.toggle("is-selected", !racing);
@@ -695,8 +731,15 @@
       lapLabel.textContent = String(Math.min(Race.LAPS,
         Math.max(0, Math.floor(Math.max(0, raceState.playerProgress) / trackLength))));
       const phase = raceState.phase;
-      raceOverlay.hidden = phase === "racing";
+      raceOverlay.classList.toggle("is-results", phase === "finished");
+      raceOverlay.hidden = phase === "racing" ||
+        (phase === "finished" && lapCelebration !== null);
       raceOverlayActions.hidden = phase !== "finished";
+      raceResults.hidden = phase !== "finished";
+      if (phase === "finished" && resultRefreshCooldown <= 0) {
+        refreshClassification();
+        resultRefreshCooldown = 0.25;
+      }
       if (phase === "staging") {
         raceOverlayTitle.textContent = "Prépare-toi !";
         raceOverlaySubtitle.textContent = "Les voitures se mettent en place…";
@@ -900,6 +943,8 @@
       clearControls();
       gameMode = "race";
       raceState = Race.create(trackLength);
+      clearLapAnnouncement();
+      resultRefreshCooldown = 0;
       const grid = Race.gridSlot(Race.PLAYER_SLOT);
       const start = startCenter.clone()
         .addScaledVector(directions[startIndex], -grid.distance)
@@ -925,6 +970,8 @@
 
     function chooseFree() {
       if (gameMode === "free") { resumeGame(); return; }
+      clearLapAnnouncement();
+      resultRefreshCooldown = 0;
       const priorFree = freeSession;
       clearControls();
       gameMode = "free";
@@ -952,6 +999,7 @@
 
     function restartNearFinish() {
       if (gameMode === "race") { startRace(); return; }
+      clearLapAnnouncement();
       // Put the car exactly ten metres before the visible finish line,
       // facing in the racing direction. This resets the CURRENT attempt,
       // not the permanent top-three lap records.
