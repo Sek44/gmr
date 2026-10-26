@@ -16,6 +16,7 @@
     document.getElementById("best-lap-" + rank));
   const cameraButton = document.getElementById("camera-button");
   const fullscreenButton = document.getElementById("fullscreen-button");
+  const restartButton = document.getElementById("restart-button");
   const notice = document.getElementById("gcv-notice");
   const pad = document.getElementById("steer-pad");
   const knob = document.getElementById("steer-knob");
@@ -670,6 +671,32 @@
     // Prevent a context menu from appearing after long touches.
     stage.addEventListener("contextmenu", (event) => event.preventDefault());
 
+    function restartNearFinish() {
+      // Put the car exactly ten metres before the visible finish line,
+      // facing in the racing direction. This resets the CURRENT attempt,
+      // not the permanent top-three lap records.
+      const beforeLine = startCenter.clone().addScaledVector(directions[startIndex], -10);
+      const index = closestRoad(beforeLine.x, beforeLine.z).index;
+      clearControls();
+      driver = { x: beforeLine.x, z: beforeLine.z, yaw: startYaw,
+        speed: 0, reverseHold: 0 };
+      falling = false;
+      fall = null;
+      respawnIndex = index;
+      lapTracker = TrackProgress.create(SAMPLE_COUNT, startIndex, index);
+      lapTimer = LapTimes.initial(SAMPLE_COUNT, lapTracker.progress);
+      timedLapCount = 0;
+      lapLabel.textContent = "0";
+      refreshChrono();
+      announce("");
+      initializedCamera = false;
+      updateCar(0);
+      updateCamera(0);
+      drawMap();
+      if (binding) binding.changed();
+    }
+    restartButton.addEventListener("click", restartNearFinish);
+
     function refreshCameraButton() {
       const outside = cameraMode === "outside";
       cameraButton.textContent = outside ? "Caméra : extérieure" : "Caméra : intérieure";
@@ -911,6 +938,7 @@
         const brake = brakePressed;
         // The dirt course now handles like the previous paved road, including
         // its safety shoulders. Only truly extreme steering emits particles.
+        const previousPosition = { x: driver.x, z: driver.z };
         driver = Physics.advance(driver, { steer, accelerate, brake }, dt);
         mudSkidIntensity = Physics.skidIntensity(driver.speed, steer);
         const nearest = closestRoad(driver.x, driver.z);
@@ -928,9 +956,27 @@
         } else {
           const progressBefore = lapTracker.progress;
           lapTracker = TrackProgress.advance(lapTracker, nearest.index, SAMPLE_COUNT);
+          // Sector checkpoints use along-track samples; the finish line uses
+          // the car's REAL movement across the painted line. A skipped road
+          // sample must never prevent the chronometer from starting.
           const timing = LapTimes.advance(lapTimer, progressBefore, lapTracker.progress,
-            fallDt * 1000, SAMPLE_COUNT, lapRecords.best());
+            fallDt * 1000, SAMPLE_COUNT, lapRecords.best(), false);
           lapTimer = timing.state;
+          const crossing = LapTimes.finishCrossing(
+            previousPosition, driver, startCenter, directions[startIndex], OUTER_HALF_WIDTH);
+          if (crossing !== null) {
+            const nextFinishProgress = lapTimer.running
+              ? lapTimer.startAt + SAMPLE_COUNT
+              : Math.max(lapTimer.startAt,
+                (Math.floor(progressBefore / SAMPLE_COUNT) + 1) * SAMPLE_COUNT);
+            const finish = LapTimes.crossFinish(
+              lapTimer, crossing, fallDt * 1000, SAMPLE_COUNT, nextFinishProgress);
+            lapTimer = finish.state;
+            lapTracker = TrackProgress.syncFinish(
+              lapTracker, lapTimer.startAt, nearest.index, SAMPLE_COUNT);
+            timing.events.push(...finish.events);
+            if (binding) binding.changed();
+          }
           for (const event of timing.events) {
             if (event.type === "lap" && lapRecords.record(event.ms, event.splits)) {
               timedLapCount++;
