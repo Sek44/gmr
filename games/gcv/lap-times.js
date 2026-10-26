@@ -76,6 +76,16 @@ const GcvLapTimes = (() => {
     return Object.freeze({ top, best, record });
   }
 
+  // Ranking of a new completed lap against the three saved records, before
+  // inserting the new time. Returns null if it is not a top-three result.
+  function qualifyingRank(records, ms) {
+    if (!Number.isFinite(ms) || ms <= 0 || !Array.isArray(records)) return null;
+    const value = Math.round(ms);
+    const rank = 1 + records.filter((record) =>
+      Number.isFinite(record?.ms) && record.ms <= value).length;
+    return rank <= 3 ? rank : null;
+  }
+
   function initial(sampleCount, progress) {
     return {
       running: false,
@@ -218,7 +228,7 @@ const GcvLapTimes = (() => {
   }
 
   return Object.freeze({ STORAGE_KEY, SPLIT_FRACTIONS, circuitKey,
-    createStore, format, formatDelta, initial, restore, advance,
+    createStore, format, formatDelta, qualifyingRank, initial, restore, advance,
     elapse, finishCrossing, crossFinish });
 })();
 if (typeof window !== "undefined") window.GcvLapTimes = GcvLapTimes;
