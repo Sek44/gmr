@@ -59,7 +59,7 @@ test("race completes only after two full laps, not the first start crossing", ()
   state = race.advance(state, 0.2, 40);
   assert.equal(state.phase, "racing");
   assert.equal(race.currentLap(state), 1);
-  state = race.advance(state, 20, 780);
+  state = race.advance(state, 20, 800);
   assert.equal(state.phase, "racing");
   assert.equal(race.currentLap(state), 2);
   state = race.advance(state, 20, 815);
