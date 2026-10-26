@@ -360,3 +360,13 @@ Documentation : [Three.js — WebGLRenderer](https://threejs.org/docs/pages/WebG
 - [x] Tests automatisés des bornes de temps, de l'aléatoire, de la préparation de 2 s et des 3 s du compte à rebours, ainsi que des transitions en cas de frame lente.
 
 **À valider visuellement dans Chrome Android** : phase de préparation de 2 s, décompte, disparition de l'overlay au démarrage et bon déroulement de deux tours.
+
+
+## 26. Trois adversaires de tête plus rapides (26/10/2026) — v0.13
+
+- [x] Les trois pilotes IA les plus rapides visent désormais, avec une part aléatoire à chaque course, **15–16 s**, **16–17 s** et **17–18 s** par tour.
+- [x] Les quatre adversaires intermédiaires (26–38 s) et les deux derniers (39–40 s) restent inchangés.
+- [x] La vitesse est adaptée automatiquement à la longueur réelle du tracé ; la vitesse d'un pilote reste stable dans la même course, y compris après rechargement de la sauvegarde.
+- [x] Les anciennes courses sauvegardées passent aux nouvelles plages si leur temps cible n'est plus valide. Le menu ne révèle pas les temps de référence.
+- [x] Tests unitaires des nouvelles plages individuelles et de la restauration.
+
