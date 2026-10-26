@@ -653,9 +653,7 @@
       });
     }
     function bestPosition(ms) {
-      if (!Number.isFinite(ms) || ms <= 0) return null;
-      const rank = lapRecords.top().filter((entry) => entry.ms <= Math.round(ms)).length + 1;
-      return rank <= 3 ? rank : null;
+      return LapTimes.qualifyingRank(lapRecords.top(), ms);
     }
 
     function announceLap(ms, rank = null, lapNumber = null) {
