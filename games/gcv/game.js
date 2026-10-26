@@ -570,9 +570,10 @@
       driver.reverseHold = 0;
       falling = false;
       fall = null;
+      // A fall only wastes time. Keep elapsed time, the three sectors
+      // already reached and the current reference delta intact. Relocation
+      // changes no accumulated lap progress and cannot count as a shortcut.
       lapTracker = TrackProgress.relocate(lapTracker, index);
-      // Falling invalidates the partial lap, so no shortcut can become a record.
-      lapTimer = LapTimes.initial(SAMPLE_COUNT, lapTracker.progress);
       refreshChrono();
       announce("");
       if (binding) binding.changed();
@@ -884,7 +885,9 @@
         progress: lapTracker.progress,
         laps: lapTracker.laps,
         timedLaps: timedLapCount,
-        lapTimer: falling ? null : lapTimer,
+        // On refresh during a fall the car respawns safely, but the active
+        // stopwatch must continue from the preserved elapsed time.
+        lapTimer,
         circuitKey,
         layoutVersion: TrackLayout.VERSION,
       };
@@ -926,7 +929,11 @@
       const brakePressed = brakePointers.size > 0 || keys.has("arrowdown") || keys.has("s");
       let mudSkidIntensity = 0;
       if (falling) {
-        fall = Physics.advanceFall(fall, fallDt);
+        // Falling is part of this timed lap. Count only the actual remaining
+        // fall duration (not a potential huge background-tab frame).
+        const fallingStep = Math.min(fall.remaining, fallDt);
+        lapTimer = LapTimes.elapse(lapTimer, fallingStep * 1000);
+        fall = Physics.advanceFall(fall, fallingStep);
         if (fall.remaining <= 0.000001) {
           snapBack(respawnIndex);
         } else {
@@ -946,8 +953,8 @@
           // Keep the speed and forward momentum in the air. Begin both the
           // gravity animation and the two-second countdown at this instant.
           falling = true;
-          // Partial timed lap is discarded immediately on leaving the island.
-          lapTimer = LapTimes.initial(SAMPLE_COUNT, lapTracker.progress);
+          // Keep the same timed lap: the recovery delay is the penalty.
+          lapTimer = LapTimes.elapse(lapTimer, dt * 1000);
           respawnIndex = nearest.index;
           // Advance the fall on this very first rendering frame: no
           // horizontal glide before the car starts dropping visibly.
