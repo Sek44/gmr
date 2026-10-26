@@ -17,6 +17,18 @@
   const cameraButton = document.getElementById("camera-button");
   const fullscreenButton = document.getElementById("fullscreen-button");
   const restartButton = document.getElementById("restart-button");
+  const freeModeButton = document.getElementById("free-mode-button");
+  const raceModeButton = document.getElementById("race-mode-button");
+  const racePositionBox = document.getElementById("race-position");
+  const racePositionValue = document.getElementById("position-value");
+  const raceLapLabel = document.getElementById("race-lap-label");
+  const lapCountLabel = document.getElementById("lap-count-label");
+  const raceOverlay = document.getElementById("race-overlay");
+  const raceOverlayTitle = document.getElementById("race-overlay-title");
+  const raceOverlaySubtitle = document.getElementById("race-overlay-subtitle");
+  const raceOverlayActions = document.getElementById("race-overlay-actions");
+  const replayButton = document.getElementById("race-replay-button");
+  const raceFreeButton = document.getElementById("race-free-button");
   const notice = document.getElementById("gcv-notice");
   const pad = document.getElementById("steer-pad");
   const knob = document.getElementById("steer-knob");
@@ -28,6 +40,7 @@
   const Scenery = window.GcvScenery;
   const TrackLayout = window.GcvTrackLayout;
   const LapTimes = window.GcvLapTimes;
+  const Race = window.GcvRace;
 
   function announce(message) {
     notice.textContent = message;
@@ -35,7 +48,7 @@
   }
 
   try {
-    if (!Physics || !TrackProgress || !Scenery || !TrackLayout || !LapTimes)
+    if (!Physics || !TrackProgress || !Scenery || !TrackLayout || !LapTimes || !Race)
       throw new Error("Les modules de conduite sont introuvables.");
     const THREE = await import("https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js");
     start(THREE);
@@ -52,6 +65,7 @@
     const CURVE_POINTS = TrackLayout.WAYPOINTS.map(([x, z]) =>
       new THREE.Vector3(x, 0, z));
     const curve = new THREE.CatmullRomCurve3(CURVE_POINTS, true, "catmullrom", 0.55);
+    const trackLength = curve.getLength();
     const positions = [];
     const directions = [];
     const sides = [];
@@ -435,6 +449,36 @@
     roofNumber.rotation.x = -Math.PI / 2;
     cabin.add(roofNumber);
     scene.add(car);
+
+    // Nine lightweight opponent cars. They use the same circuit as the player,
+    // but a simple slow path follower rather than expensive vehicle physics.
+    const opponentMeshes = new Map();
+    const aiGlass = new THREE.MeshStandardMaterial({
+      color: 0x193345, roughness: 0.34, metalness: 0.05,
+    });
+    const aiTyre = new THREE.MeshStandardMaterial({ color: 0x12181f, roughness: 1 });
+    for (let gridSlot = 0; gridSlot < Race.GRID_COUNT; gridSlot++) {
+      if (gridSlot === Race.PLAYER_SLOT) continue;
+      const group = new THREE.Group();
+      const color = new THREE.MeshStandardMaterial({
+        color: Race.create(trackLength).opponents.find((o) => o.id === gridSlot).color,
+        roughness: 0.52, metalness: 0.16,
+      });
+      box(group, 1.96, 0.49, 3.65, color, 0, 0.75, 0);
+      box(group, 1.48, 0.46, 1.64, aiGlass, 0, 1.16, 0.06);
+      box(group, 1.75, 0.10, 0.3, color, 0, 1.24, 1.77);
+      for (const side of [-1, 1]) {
+        for (const z of [-1.18, 1.18]) {
+          const tyre = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.29, 9), aiTyre);
+          tyre.rotation.z = Math.PI / 2;
+          tyre.position.set(side * 1.02, 0.45, z);
+          group.add(tyre);
+        }
+      }
+      group.visible = false;
+      scene.add(group);
+      opponentMeshes.set(gridSlot, group);
+    }
 
     // One batched particle system: only very severe fast steering produces mud.
     const MAX_MUD_PARTICLES = 240;
