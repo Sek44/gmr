@@ -61,3 +61,21 @@ test("an implausible index jump never counts as a lap", () => {
   assert.equal(jumped.progress, t.progress);
   assert.equal(jumped.laps, 0);
 });
+
+test("physical finish line realigns progression after an index was skipped", () => {
+  let state = track.create(840, 156, 814);
+  const oldProgress = state.progress;
+  const finished = track.syncFinish(state, 840, 157, 840);
+  assert.equal(finished.progress, 840);
+  assert.equal(finished.index, 157);
+  assert.ok(finished.progress > oldProgress);
+  assert.equal(track.advance(finished, 160, 840).progress, 843);
+});
+
+test("a new start just before the line does not invent a completed lap", () => {
+  const count = 840, finish = 160, before = 149;
+  const start = track.create(count, finish, before);
+  assert.equal(start.laps, 0);
+  assert.equal(start.progress, 829);
+  assert.equal(track.syncFinish(start, 840, finish + 1, count).progress, 840);
+});
