@@ -16,6 +16,27 @@ const GcvLapTimes = (() => {
     });
   }
 
+  // Widening a shoulder or fitting guardrails does not alter the lap length
+  // or timing line, so saved time-trial sessions and records remain compatible.
+  // Changes to the actual centerline, finish or sample count still invalidate.
+  function sameCircuitRoute(savedKey, currentKey) {
+    if (typeof savedKey !== "string" ||
+        typeof currentKey !== "string") return false;
+    if (savedKey === currentKey) return true;
+    try {
+      const previous = JSON.parse(savedKey);
+      const current = JSON.parse(currentKey);
+      if (!previous || !current ||
+          !Number.isFinite(previous.shoulderWidth) ||
+          !Number.isFinite(current.shoulderWidth)) return false;
+      delete previous.shoulderWidth;
+      delete current.shoulderWidth;
+      return JSON.stringify(previous) === JSON.stringify(current);
+    } catch {
+      return false;
+    }
+  }
+
   function format(ms) {
     if (!Number.isFinite(ms) || ms < 0) return "—";
     const hundredths = Math.floor(ms / 10);
@@ -47,10 +68,15 @@ const GcvLapTimes = (() => {
     if (storage) {
       try {
         const data = JSON.parse(storage.getItem(STORAGE_KEY));
-        if (data && data.circuit === key && Array.isArray(data.records)) {
-          records = data.records.filter(validRecord).slice().sort((a, b) => a.ms - b.ms).slice(0, 3);
+        if (data && sameCircuitRoute(data.circuit, key) &&
+            Array.isArray(data.records)) {
+          records = data.records.filter(validRecord).slice()
+            .sort((a, b) => a.ms - b.ms).slice(0, 3);
+          if (data.circuit !== key) {
+            storage.setItem(STORAGE_KEY, JSON.stringify({ circuit: key, records }));
+          }
         } else {
-          // Every track change invalidates all previous lap records.
+          // A change to the circuit centerline or finish invalidates records.
           storage.setItem(STORAGE_KEY, JSON.stringify({ circuit: key, records: [] }));
         }
       } catch {
@@ -228,7 +254,7 @@ const GcvLapTimes = (() => {
   }
 
   return Object.freeze({ STORAGE_KEY, SPLIT_FRACTIONS, circuitKey,
-    createStore, format, formatDelta, qualifyingRank, initial, restore, advance,
+    circuitKey, sameCircuitRoute, createStore, format, formatDelta, qualifyingRank, initial, restore, advance,
     elapse, finishCrossing, crossFinish });
 })();
 if (typeof window !== "undefined") window.GcvLapTimes = GcvLapTimes;
