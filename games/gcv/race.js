@@ -11,12 +11,13 @@ const GcvRace = (() => {
   const COLUMN_OFFSET = 3;
   const ROW_SPACING = 9.5;
   const FIRST_ROW_DISTANCE = 12;
-  // Targets, seconds per complete lap: three strong racers (20–28 s),
-  // four intermediate racers and two backmarkers (39–40 s).
-  // Nonoverlapping bands preserve difficulty order while varying every race.
+  // Target seconds per lap: three strong racers (16–24 s),
+  // four mid-field racers (26–38 s), and two backmarkers (39–40 s).
+  // Each target is randomized at race creation. Non-overlapping bands
+  // preserve the difficulty order, regardless of the chosen random values.
   const PACE_RANGES = Object.freeze([
-    [20, 22.5], [23, 25.5], [26, 28],
-    [29, 31.5], [32, 34.5], [35, 36.5], [37, 38],
+    [16, 18.5], [18.5, 21], [21, 24],
+    [26, 29], [30, 33], [34, 36], [37, 38],
     [39, 39.5], [39.5, 40],
   ].map((range) => Object.freeze(range)));
 
@@ -131,8 +132,8 @@ const GcvRace = (() => {
       return null;
     return {
       ...saved, trackLength,
-      // Preserve each randomized pace on reload. Older 35–50s opponents
-      // are upgraded once to a fresh pace in the new difficulty tier.
+      // Preserve each randomized pace on reload. Opponents from an older
+      // difficulty tier are upgraded once, then stay stable across reloads.
       opponents: saved.opponents.map((ai, index) => {
         const [min, max] = PACE_RANGES[index];
         const validTarget = Number.isFinite(ai.targetLapSeconds) &&
