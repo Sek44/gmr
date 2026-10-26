@@ -405,3 +405,18 @@ Documentation : [Three.js — WebGLRenderer](https://threejs.org/docs/pages/WebG
 - [x] Conserver la part aléatoire à chaque nouvelle course et mettre à niveau les vitesses des trois meilleurs pilotes dans les parties sauvegardées.
 - [x] Maintenir ces durées indicatives invisibles depuis le menu du jeu.
 - [x] Vérifier les bornes des nouvelles plages et le fonctionnement des autres tests.
+
+
+## 30. Barrières aux sorties de virages et progression des IA (26/10/2026)
+
+- [x] **Barrières des deux côtés de la piste** : identifier toutes les sorties de virage marquées (angle de direction supérieur à 18° entre les trois waypoints voisins) ; protéger chacune d'elles sur **40 mètres**, donc plus que les 30 mètres demandés.
+- [x] **Position avant la chute** : les rails sont placés sur la largeur externe de l'accotement, à 0,45 m du bord, avec environ 1,05 m de réserve pour la carrosserie.
+- [x] **Rendu 3D** : deux lisses horizontales métalliques et des poteaux sur les deux côtés, regroupés en une géométrie continue et un lot instancié de poteaux pour préserver les performances sur tablette/téléphone.
+- [x] **Collision de glissement** : au contact d'un rail, limiter la composante latérale sortante du déplacement sans supprimer la composante longitudinale, la direction ou la vitesse. La voiture continue à longer la barrière au lieu de tomber ; les sorties non protégées continuent de déclencher la chute habituelle.
+- [x] **Adversaires mieux équilibrés** : préserver les trois leaders (17 à 21 s par tour à vitesse de croisière), puis six IA de plus en plus lentes sur les nouvelles plages **21,5–23,5 s**, **23,5–25,5 s**, **25,5–27,5 s**, **27,5–29,5 s**, **30–32 s** et **32–34 s**.
+- [x] **Départ réaliste des IA** : au lieu de démarrer instantanément à leur vitesse de croisière, toutes les IA commencent à l'arrêt et accélèrent à **10 m/s²**, en dessous de l'accélération initiale du joueur (environ 23,6 m/s²). Cette accélération ajoute naturellement du temps à leur premier tour.
+- [x] **Temps précis** : intégration temporelle analytique de l'accélération, puis de la vitesse de croisière, donnant les mêmes positions et instants d'arrivée indépendamment du nombre de frames.
+- [x] **Sauvegardes existantes** : conserver les positions des voitures dans les courses reprises et recalibrer une seule fois les anciennes plages de vitesse en fonction des nouvelles.
+- [x] **Tests** : longueur minimale des rails, virages, segments non protégés, collision latérale bilatérale, conservation du mouvement longitudinal, variation de vitesse entre IA, comparaison de l'accélération avec le joueur et indépendance vis-à-vis de la fréquence d'image.
+
+**À vérifier sur appareil** : apparence des barrières et continuité visuelle autour des virages, glissement fluide à vitesse élevée, visibilité depuis les vues cockpit et extérieure, adaptation du HUD et de la mini-carte.
