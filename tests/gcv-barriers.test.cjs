@@ -4,111 +4,110 @@ const assert = require("node:assert/strict");
 const barriers = require("../games/gcv/barriers.js");
 
 function circularTrack() {
-  const radius = 100;
-  const sampleCount = 628;
-  const positions = Array.from({ length: sampleCount }, (_, i) => {
-    const t = 2 * Math.PI * i / sampleCount;
+  const radius = 100, count = 628;
+  const positions = Array.from({ length: count }, (_, i) => {
+    const t = 2 * Math.PI * i / count;
     return { x: radius * Math.cos(t), z: radius * Math.sin(t) };
   });
-  const waypoints = Array.from({ length: 4 }, (_, i) => {
-    const t = 2 * Math.PI * i / 4;
-    return [radius * Math.cos(t), radius * Math.sin(t)];
-  });
-  return { positions, waypoints, lapLength: 2 * Math.PI * radius };
+  return { positions, lapLength: 2 * Math.PI * radius };
 }
 
-test("guardrails are placed after every significant bend, each at least 30m", () => {
-  const road = circularTrack();
-  const result = barriers.create(road.positions, road.waypoints,
-    road.lapLength, 15);
-  assert.equal(result.sections.length, 4);
-  assert.ok(result.sections.every((section) =>
-    section.lengthMeters >= 30 && section.lengthMeters >= barriers.MIN_LENGTH));
-  assert.ok(result.sections.every((section) => {
-    for (let j = 0; j <= 30; j++) {
-      const sample = (section.startIndex + j) % road.positions.length;
-      if (!result.protectedSamples[sample]) return false;
-    }
-    return true;
-  }));
-  assert.ok(result.protectedSamples.some((n) => n === 0),
-    "long straight intervals should still permit falls");
-});
-
-test("straight sections alone do not create guardrail exits", () => {
-  const road = circularTrack();
-  const waypoints = [[0, 0], [40, 0], [80, 0], [120, 0]];
-  const result = barriers.create(road.positions, waypoints, road.lapLength, 15);
-  // This closed sequence contains two 180° turns where it wraps around;
-  // the two middle points are perfectly straight and must be ignored.
-  assert.deepEqual(result.sections.map((s) => s.waypointIndex), [0, 3]);
-  assert.ok(result.protectedSamples.some((n) => n === 0));
-});
-
-test("guardrail collision blocks outward motion while keeping forward slide", () => {
-  const road = circularTrack();
-  const result = barriers.create(road.positions, road.waypoints, road.lapLength, 15);
-  const index = result.sections[0].startIndex + 10;
-  const center = road.positions[index];
+function railAt(road, width, i, sign = 1) {
+  const rail = barriers.create(road.positions, road.lapLength, width);
+  const center = road.positions[i];
   const radius = Math.hypot(center.x, center.z);
-  const side = { x: center.x / radius, z: center.z / radius };
+  const side = { x: sign * center.x / radius,
+    z: sign * center.z / radius };
+  return { rail, center, side, index: i };
+}
+
+test("continuous roadside guardrails cover every sample, including the seam", () => {
+  const road = circularTrack();
+  const rail = barriers.create(road.positions, road.lapLength, 19);
+  assert.equal(rail.protectedSamples.length, road.positions.length);
+  assert.ok(rail.protectedSamples.every((value) => value === 1));
+  assert.equal(rail.protectedSamples[0], 1);
+  assert.equal(rail.protectedSamples.at(-1), 1);
+  assert.equal(rail.lengthMeters, road.lapLength);
+});
+
+test("barriers are placed before cliff and leave safe room for the whole car", () => {
+  const road = circularTrack();
+  const rail = barriers.create(road.positions, road.lapLength, 19);
+  assert.equal(rail.railOffset, 18.55);
+  assert.equal(rail.carLimit, 17.5);
+  assert.ok(rail.carLimit + barriers.CAR_RADIUS < 19);
+});
+
+test("contact against either barrier removes only lateral motion", () => {
+  const road = circularTrack(), i = 85;
+  for (const sign of [-1, 1]) {
+    const { rail, center, side } = railAt(road, 19, i, sign);
+    const tangent = { x: -side.z, z: side.x };
+    const before = { x: center.x + side.x * (rail.carLimit - 1),
+      z: center.z + side.z * (rail.carLimit - 1), speed: 38, yaw: .4 };
+    const proposed = {
+      x: center.x + side.x * (rail.carLimit + 4) + tangent.x * 3,
+      z: center.z + side.z * (rail.carLimit + 4) + tangent.z * 3,
+      speed: 38, yaw: .4,
+    };
+    const result = barriers.resolve(before, proposed, i, center, side, rail);
+    assert.equal(result.collided, true);
+    const dx = result.x - center.x, dz = result.z - center.z;
+    assert.ok(Math.abs(dx * side.x + dz * side.z - rail.carLimit) < 1e-8);
+    assert.ok(Math.abs(dx * tangent.x + dz * tangent.z - 3) < 1e-8);
+    assert.equal(result.speed, proposed.speed);
+    assert.equal(result.yaw, proposed.yaw);
+  }
+});
+
+test("vehicle does not get stopped by repeated wall contact on straight segments", () => {
+  const road = circularTrack(), i = 117;
+  const { center, side, rail } = railAt(road, 19, i);
   const tangent = { x: -side.z, z: side.x };
-  const preceding = {
-    x: center.x + side.x * (result.carLimit - 1),
-    z: center.z + side.z * (result.carLimit - 1),
-    speed: 30, yaw: 0,
-  };
-  const proposed = {
-    x: center.x + side.x * (result.carLimit + 4) + tangent.x * 2,
-    z: center.z + side.z * (result.carLimit + 4) + tangent.z * 2,
-    speed: 30, yaw: 0,
-  };
-  const collision = barriers.resolve(preceding, proposed,
-    index, center, side, result);
-  assert.equal(collision.collided, true);
-  const dx = collision.x - center.x, dz = collision.z - center.z;
-  assert.ok(Math.abs(dx * side.x + dz * side.z - result.carLimit) < 1e-8);
-  assert.ok(Math.abs(dx * tangent.x + dz * tangent.z - 2) < 1e-8);
-  assert.equal(collision.speed, 30);
-  assert.equal(collision.yaw, 0);
-  assert.ok(Math.hypot(dx, dz) < result.railOffset + 1);
+  let state = { ...center, speed: 32, yaw: -.1 };
+  for (let k = 0; k < 20; k++) {
+    const before = state;
+    const proposed = {
+      ...before, x: before.x + side.x * 3 + tangent.x * 1.5,
+      z: before.z + side.z * 3 + tangent.z * 1.5,
+    };
+    state = barriers.resolve(before, proposed, i, center, side, rail);
+    assert.equal(state.collided, true);
+    assert.equal(state.speed, 32);
+  }
+  assert.ok((state.x - center.x) * tangent.x +
+    (state.z - center.z) * tangent.z > 29);
 });
 
-test("barrier collision also protects the opposite side of the circuit", () => {
+test("unobstructed car preserves the exact proposed position on any sample", () => {
   const road = circularTrack();
-  const result = barriers.create(road.positions, road.waypoints, road.lapLength, 15);
-  const i = result.sections[0].startIndex;
-  const center = road.positions[i];
-  const side = { x: center.x / 100, z: center.z / 100 };
-  const before = { ...center, speed: 28, yaw: 0 };
-  const outside = {
-    ...before, x: before.x - side.x * (result.carLimit + 8),
-    z: before.z - side.z * (result.carLimit + 8),
-  };
-  const collision = barriers.resolve(before, outside, i, center, side, result);
-  assert.equal(collision.collided, true);
-  assert.ok(Math.abs((collision.x - center.x) * side.x +
-    (collision.z - center.z) * side.z + result.carLimit) < 1e-8);
+  const rail = barriers.create(road.positions, road.lapLength, 19);
+  for (const i of [0, 7, 150, 315, 627]) {
+    const center = road.positions[i], side = { x: 1, z: 0 };
+    const driver = { ...center, yaw: 0, speed: 40 };
+    assert.deepEqual(barriers.resolve(driver, driver, i, center, side, rail),
+      { ...driver, collided: false });
+  }
 });
 
-test("unprotected sections retain the original possibility of falling", () => {
-  const road = circularTrack();
-  const result = barriers.create(road.positions, road.waypoints, road.lapLength, 15);
-  const i = result.protectedSamples.findIndex((x) => x === 0);
-  const center = road.positions[i];
-  const side = { x: center.x / 100, z: center.z / 100 };
-  const proposed = { x: center.x + side.x * 19,
-    z: center.z + side.z * 19, speed: 42, yaw: 1.3 };
-  const hit = barriers.resolve(center, proposed, i, center, side, result);
-  assert.equal(hit.collided, false);
-  assert.equal(hit.x, proposed.x);
-  assert.equal(hit.z, proposed.z);
+test("seam collision remains active at both ends of the closed loop", () => {
+  const road = circularTrack(), rail = barriers.create(road.positions,
+    road.lapLength, 19);
+  for (const i of [road.positions.length - 1, 0]) {
+    const center = road.positions[i];
+    const side = { x: center.x / 100, z: center.z / 100 };
+    const outside = { x: center.x + side.x * 30,
+      z: center.z + side.z * 30, speed: 45, yaw: 0 };
+    const hit = barriers.resolve(center, outside, i, center, side, rail);
+    assert.equal(hit.collided, true);
+    assert.ok(Math.hypot(hit.x - center.x, hit.z - center.z) < 19);
+  }
 });
 
-test("track exits may wrap around the end of a closed sampled circuit", () => {
+test("guardrail module validates geometry and outside width", () => {
   const road = circularTrack();
-  const result = barriers.create(road.positions, road.waypoints,
-    road.lapLength, 15, 45);
-  assert.equal(result.protectedSamples[0], 1);
-  assert.ok(result.sections.every((section) => section.lengthMeters >= 45));
+  assert.throws(() => barriers.create([], road.lapLength, 19));
+  assert.throws(() => barriers.create(road.positions, -20, 19));
+  assert.throws(() => barriers.create(road.positions, road.lapLength, 1));
 });
