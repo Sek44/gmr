@@ -23,6 +23,14 @@
 .gcv-home-panel h2 { margin: 0; font-size: clamp(1.4rem, 4.7vw, 2.35rem);
   line-height: 1.1; }
 .gcv-home-description { margin: 0 0 3px; color: #cbdce8; font-size: .89rem; }
+/* Author-level display rules must respect dynamically toggled hidden state. */
+.gcv-home[hidden],
+.gcv-home-resume[hidden],
+.gcv-race-overlay[hidden],
+.gcv-race-overlay-actions[hidden],
+.gcv-race-position[hidden],
+.gcv-scores-frame[hidden] { display: none; }
+
 .gcv-mode-chooser { display: grid; grid-template-columns: 1fr 1fr; width: 100%;
   gap: 10px; margin-top: 3px; }
 .gcv-home-button {
