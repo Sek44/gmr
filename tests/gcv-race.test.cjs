@@ -247,7 +247,7 @@ test("finish order uses actual times, not the identical clamped final distance",
 
 test("classification shows unfinished cars after all finishers with no invented times", () => {
   let state = race.advance(race.create(800, () => 0.5), 5);
-  state = race.advance(state, 34, 1610);
+  state = race.advance(state, 41, 1610);
   const rows = race.classification(state);
   const done = rows.filter((row) => Number.isFinite(row.finishTime));
   const pending = rows.filter((row) => row.finishTime === null);
