@@ -5,7 +5,7 @@ const GcvPhysics = (() => {
   const MAX_STEER_RATE = 1.45; // Original steering sensitivity.
   const BRAKE_DECELERATION = 82; // m/s²; substantially stronger than before.
   const REVERSE_DELAY = 0.8; // Hold the brake this long *after stopping*.
-  const REVERSE_MAX_SPEED = 4; // 14.4 km/h
+  const REVERSE_MAX_SPEED = 8; // 28.8 km/h: twice the previous reverse speed.
   const REVERSE_ACCELERATION = 7;
   const GRAVITY = 9.81;
   const FALL_SECONDS = 2;
