@@ -628,7 +628,7 @@
       racePositionBox.hidden = !racing;
       sessionModeLabel.textContent = racing ? "Course · 10 voitures" : "Essais libres · N° 9";
       lapCountLabel.firstChild.textContent = racing ? "Tours en course : " : "Tours chronométrés : ";
-      restartButton.textContent = racing ? "↻ Recommencer" : "↻ Départ";
+      restartButton.textContent = racing ? "↻ Rejouer" : "↻ Départ";
       if (!racing) {
         raceOverlay.hidden = true;
         return;
@@ -878,6 +878,7 @@
       }
       syncRaceCars();
       syncRaceHud();
+      refreshCameraButton();
       refreshChrono();
       initializedCamera = false;
       updateCar(0);
