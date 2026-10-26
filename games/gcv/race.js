@@ -1,5 +1,5 @@
 "use strict";
-// Minimal deterministic race against nine deliberately slow opponents.
+// Simple ten-car race: nine AI opponents with a fixed randomized pace per race.
 // Distances are metres measured along the same closed centerline as the player.
 const GcvRace = (() => {
   const GRID_COUNT = 10;
@@ -7,9 +7,19 @@ const GcvRace = (() => {
   const PLAYER_SLOT = 4; // Fifth of ten positions: middle of the grid.
   const LAPS = 2;
   const COUNTDOWN_SECONDS = 3;
+  const GRID_WAIT_SECONDS = 2; // Pause on the grid before the 3-2-1 countdown.
   const COLUMN_OFFSET = 3;
   const ROW_SPACING = 9.5;
   const FIRST_ROW_DISTANCE = 12;
+  // Targets, seconds per complete lap: three strong racers (20–28 s),
+  // four intermediate racers and two backmarkers (39–40 s).
+  // Nonoverlapping bands preserve difficulty order while varying every race.
+  const PACE_RANGES = Object.freeze([
+    [20, 22.5], [23, 25.5], [26, 28],
+    [29, 31.5], [32, 34.5], [35, 36.5], [37, 38],
+    [39, 39.5], [39.5, 40],
+  ].map((range) => Object.freeze(range)));
+
   const COLORS = Object.freeze([
     0x39b6d5, 0xf5bd49, 0x80d78a, 0xa189df, 0xf08e64,
     0xe66eb0, 0xe6d765, 0x66bddc, 0x8ccea5,
@@ -23,7 +33,14 @@ const GcvRace = (() => {
     };
   }
 
-  function create(trackLength) {
+  function lapTarget(rank, random = Math.random) {
+    const [fast, slow] = PACE_RANGES[rank];
+    const roll = Number(random());
+    const fraction = Number.isFinite(roll) ? Math.min(1, Math.max(0, roll)) : 0.5;
+    return fast + (slow - fast) * fraction;
+  }
+
+  function create(trackLength, random = Math.random) {
     if (!Number.isFinite(trackLength) || trackLength <= 0) {
       throw new Error("Invalid track length");
     }
@@ -32,18 +49,19 @@ const GcvRace = (() => {
       if (slot === PLAYER_SLOT) continue;
       const grid = gridSlot(slot);
       const rank = opponents.length;
-      const targetLapSeconds = 35 + (50 - 35) * rank / (AI_COUNT - 1);
+      const targetLapSeconds = lapTarget(rank, random);
       opponents.push({
         id: slot, progress: -grid.distance, lateral: grid.lateral,
-        // Pace is based on the actual circuit length, so full laps take
-        // 35, 36.875, ... 50 seconds, even after a track redesign.
+        // Speed is fixed at launch but randomized between races. Its target
+        // is based on the real circuit length, not a constant speed value.
         targetLapSeconds,
         speed: trackLength / targetLapSeconds,
         color: COLORS[slot % COLORS.length],
       });
     }
     return {
-      phase: "countdown", countdown: COUNTDOWN_SECONDS, elapsed: 0,
+      phase: "staging", gridWait: GRID_WAIT_SECONDS,
+      countdown: COUNTDOWN_SECONDS, elapsed: 0,
       trackLength, playerProgress: -gridSlot(PLAYER_SLOT).distance,
       opponents, finishPosition: null, raceTime: null,
     };
@@ -72,6 +90,13 @@ const GcvRace = (() => {
   function advance(race, elapsedSeconds, playerDistance = 0) {
     const dt = Number.isFinite(elapsedSeconds) ? Math.max(0, elapsedSeconds) : 0;
     if (!dt || race.phase === "finished") return race;
+    if (race.phase === "staging") {
+      const remaining = race.gridWait - dt;
+      if (remaining > 0) return { ...race, gridWait: remaining };
+      // The grid settles for two full seconds BEFORE 3-2-1 begins.
+      return advance({ ...race, phase: "countdown", gridWait: 0 },
+        Math.max(0, -remaining), 0);
+    }
     if (race.phase === "countdown") {
       const remaining = race.countdown - dt;
       if (remaining > 0) return { ...race, countdown: remaining };
@@ -94,10 +119,10 @@ const GcvRace = (() => {
     return updated;
   }
 
-  function restore(saved, trackLength) {
+  function restore(saved, trackLength, random = Math.random) {
     if (!saved || !Number.isFinite(trackLength) ||
         Math.abs(saved.trackLength - trackLength) > 0.01 ||
-        !["countdown", "racing", "finished"].includes(saved.phase) ||
+        !["staging", "countdown", "racing", "finished"].includes(saved.phase) ||
         !Number.isFinite(saved.playerProgress) ||
         !Number.isFinite(saved.elapsed) || saved.elapsed < 0 ||
         !Array.isArray(saved.opponents) || saved.opponents.length !== AI_COUNT ||
@@ -106,17 +131,25 @@ const GcvRace = (() => {
       return null;
     return {
       ...saved, trackLength,
-      // Migrate ongoing races from the old slow AI model too.
+      // Preserve each randomized pace on reload. Older 35–50s opponents
+      // are upgraded once to a fresh pace in the new difficulty tier.
       opponents: saved.opponents.map((ai, index) => {
-        const targetLapSeconds = 35 + 15 * index / (AI_COUNT - 1);
+        const [min, max] = PACE_RANGES[index];
+        const validTarget = Number.isFinite(ai.targetLapSeconds) &&
+          ai.targetLapSeconds >= min && ai.targetLapSeconds <= max;
+        const targetLapSeconds = validTarget
+          ? ai.targetLapSeconds : lapTarget(index, random);
         return { ...ai, targetLapSeconds, speed: trackLength / targetLapSeconds };
       }),
+      gridWait: saved.phase === "staging"
+        ? Math.max(0, Math.min(GRID_WAIT_SECONDS, Number(saved.gridWait) || GRID_WAIT_SECONDS))
+        : 0,
       countdown: Math.max(0, Number(saved.countdown) || 0),
     };
   }
 
   return Object.freeze({ GRID_COUNT, AI_COUNT, PLAYER_SLOT, LAPS,
-    COUNTDOWN_SECONDS, gridSlot, create, advance, standings, position,
+    COUNTDOWN_SECONDS, GRID_WAIT_SECONDS, PACE_RANGES, gridSlot, create, advance, standings, position,
     currentLap, restore });
 })();
 if (typeof window !== "undefined") window.GcvRace = GcvRace;
