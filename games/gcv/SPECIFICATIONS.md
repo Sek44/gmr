@@ -314,3 +314,19 @@ Documentation : [Three.js — WebGLRenderer](https://threejs.org/docs/pages/WebG
 - [x] Tests ajoutés : conservation des secteurs et du delta, prise en compte des 2 secondes dans le temps final, arrêt du chrono avant son premier départ et restauration d'un tour en cours après une chute.
 
 **À vérifier sur Android :** continuité visuelle du chronomètre pendant les deux secondes de chute et juste après réapparition.
+
+
+## 23. Premier mode Course contre 9 IA (26/10/2026) — v0.10
+
+- [x] **Deux modes distincts** : `Essais libres` garde le fonctionnement précédent (chronomètre, secteurs, records personnels, chute avec pénalité naturelle) ; `Course · 2 tours` lance une course de 10 véhicules.
+- [x] **10 voitures au total** : la voiture n° 9 du joueur et **9 concurrents IA** (correction de la demande initiale de 19 concurrents).
+- [x] **Grille de départ** : cinq rangées de deux voitures, départ au milieu de la grille en **5ᵉ position sur 10**, alignement derrière la ligne d'arrivée et légèrement décalé latéralement.
+- [x] **Compte à rebours** : 3, 2, 1 ; le joueur et les neuf IA attendent le feu vert avant de rouler.
+- [x] **IA très faciles** : neuf voitures colorées suivant la ligne de la piste à environ **29–43 km/h**, contre un maximum de 250 km/h pour le joueur. Première version sans gestion élaborée des collisions ou des dépassements.
+- [x] **Deux tours complets** : classement par distance parcourue sur la piste et arrivée lorsque le joueur a achevé deux tours ; panneau final avec position, temps total et commandes Rejouer / Essais libres.
+- [x] **HUD** : position courante du joueur près du compteur de vitesse (ex. 5ᵉ / 10), compteur de tours et état du mode courant ; concurrents matérialisés sur la mini-carte.
+- [x] **Conservation de l'essai libre** : la partie en essais libres est conservée lors du passage temporaire au mode Course, puis restaurée au retour. Les records de temps au tour ne sont pas remis à zéro par le changement de mode.
+- [x] **Sauvegarde automatique** : l'état de la course (phase, décompte, progression, adversaires, classement final) et l'état des essais libres précédents sont conservés localement sur le même appareil.
+- [x] Tests sans dépendance graphique de la taille de grille, du départ au milieu, du compte à rebours, de la vitesse des IA, de la durée de deux tours, des positions et de la sauvegarde.
+
+**À contrôler visuellement sur mobile** : lisibilité des boutons de mode et du classement, voiture et IA sur la grille, compte à rebours, deux franchissements complets, panneau de résultats et restauration des essais libres.
