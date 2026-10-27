@@ -5,6 +5,16 @@ versions (nombre de tours, vitesses, sauvegardes, état des fonctionnalités) ne
 **pas** nécessairement le jeu actuel. Consulter [SPECIFICATIONS.md](SPECIFICATIONS.md)
 pour les règles en vigueur.
 
+## 15. Refactoring des commandes, du HUD et de la mini-carte (27/10/2026)
+
+- Extraction des commandes (clavier, volant tactile, pédales multi-touch,
+  remise à zéro au changement d'écran) dans `controls.js`.
+- Extraction de l'affichage du chrono, des records, du compteur, du classement
+  et des résultats dans `hud.js`, sans déplacer le calcul des temps ou des tours.
+- Extraction du rendu canvas et du fond précalculé de la mini-carte dans
+  `mini-map.js`.
+- Pas de modification volontaire de la physique, du tracé ni des sauvegardes.
+
 ## 14. Avancement du prototype (25/10/2026)
 
 **Version v0.1 — jouable en conduite libre :**

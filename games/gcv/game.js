@@ -5,19 +5,6 @@
 (async () => {
   const stage = document.getElementById("gcv-stage");
   const sceneHost = document.getElementById("gcv-scene");
-  const speedLabel = document.getElementById("speed-value");
-  const gearLabel = document.getElementById("gear-value");
-  const lapLabel = document.getElementById("lap-value");
-  const sessionModeLabel = document.getElementById("session-mode-label");
-  const chronoLabel = document.getElementById("lap-chrono");
-  const chronoBox = document.getElementById("lap-chrono-box");
-  const chronoTitle = document.getElementById("lap-chrono-title");
-  const chronoRank = document.getElementById("lap-chrono-rank");
-  const deltaLabel = document.getElementById("lap-delta");
-  const deltaValue = document.getElementById("lap-delta-value");
-  const splitLabel = document.getElementById("lap-split-label");
-  const bestLabels = [1, 2, 3].map((rank) =>
-    document.getElementById("best-lap-" + rank));
   const cameraButton = document.getElementById("camera-button");
   const fullscreenButton = document.getElementById("fullscreen-button");
   const restartButton = document.getElementById("restart-button");
@@ -30,25 +17,9 @@
   const scoresFrame = document.getElementById("gcv-scores");
   const freeModeButton = document.getElementById("free-mode-button");
   const raceModeButton = document.getElementById("race-mode-button");
-  const racePositionBox = document.getElementById("race-position");
-  const racePositionValue = document.getElementById("position-value");
-  const raceLapLabel = document.getElementById("race-lap-label");
-  const lapCountLabel = document.getElementById("lap-count-label");
-  const raceOverlay = document.getElementById("race-overlay");
-  const raceOverlayTitle = document.getElementById("race-overlay-title");
-  const raceOverlaySubtitle = document.getElementById("race-overlay-subtitle");
-  const raceOverlayActions = document.getElementById("race-overlay-actions");
-  const raceResults = document.getElementById("race-results");
-  const raceResultsBody = document.getElementById("race-results-body");
-  const raceResultsStatus = document.getElementById("race-results-status");
   const replayButton = document.getElementById("race-replay-button");
   const raceFreeButton = document.getElementById("race-free-button");
   const notice = document.getElementById("gcv-notice");
-  const pad = document.getElementById("steer-pad");
-  const knob = document.getElementById("steer-knob");
-  const gasButton = document.getElementById("accelerate-button");
-  const brakeButton = document.getElementById("brake-button");
-  const mapCanvas = document.getElementById("mini-map");
   const Physics = window.GcvPhysics;
   const TrackProgress = window.GcvTrackProgress;
   const Scenery = window.GcvScenery;
@@ -59,6 +30,9 @@
   const Race = window.GcvRace;
   const Vehicles = window.GcvVehicles;
   const VisualEffects = window.GcvVisualEffects;
+  const Controls = window.GcvControls;
+  const Hud = window.GcvHud;
+  const MiniMap = window.GcvMiniMap;
   // Bump this revision after incompatible GCV updates. Old sessions are canceled.
   const SAVE_REVISION = 7;
 
@@ -68,7 +42,7 @@
   }
 
   try {
-    if (!Physics || !TrackProgress || !Scenery || !World3D || !TrackLayout || !LapTimes || !Race || !Barriers || !Vehicles || !VisualEffects)
+    if (!Physics || !TrackProgress || !Scenery || !World3D || !TrackLayout || !LapTimes || !Race || !Barriers || !Vehicles || !VisualEffects || !Controls || !Hud || !MiniMap)
       throw new Error("Les modules de conduite sont introuvables.");
     const THREE = await import("https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js");
     start(THREE);
@@ -93,6 +67,7 @@
       Vehicles.create({ THREE, scene, Race, trackLength, document });
 
     const visualEffects = VisualEffects.create({ THREE, scene, car });
+    const hud = Hud.create({ document, LapTimes, Race });
 
     // Start on a straight section, facing the road in its normal forward direction.
     const initialIndex = TrackLayout.nearestIndex(positions, TrackLayout.SPAWN);
@@ -124,12 +99,7 @@
     let hasActiveSession = false;
     let falling = false, fall = null, respawnIndex = initialIndex;
 
-    function refreshBests() {
-      const records = lapRecords.top();
-      bestLabels.forEach((label, index) => {
-        label.textContent = records[index] ? LapTimes.format(records[index].ms) : "—";
-      });
-    }
+    function refreshBests() { hud.refreshBests(lapRecords.top()); }
     function bestPosition(ms) {
       return LapTimes.qualifyingRank(lapRecords.top(), ms);
     }
@@ -137,13 +107,11 @@
     function holdFinishedLap(ms, rank = null) {
       // The stopwatch continues behind this short HUD-only display.
       lapHold = { ms, rank, remainingSeconds: 2 };
-      chronoBox.classList.add("is-lap-hold");
       refreshChrono();
     }
 
     function clearLapHold() {
       lapHold = null;
-      chronoBox.classList.remove("is-lap-hold");
       refreshChrono();
     }
 
@@ -153,22 +121,7 @@
       if (lapHold.remainingSeconds <= 0) clearLapHold();
     }
 
-    function refreshChrono() {
-      chronoLabel.textContent = lapHold
-        ? LapTimes.format(lapHold.ms)
-        : lapTimer.running ? LapTimes.format(lapTimer.elapsedMs) : "—";
-      chronoTitle.textContent = lapHold ? "TOUR TERMINÉ" : "TOUR EN COURS";
-      chronoRank.textContent = lapHold?.rank
-        ? ["", "1er meilleur temps", "2e meilleur temps", "3e meilleur temps"][lapHold.rank]
-        : "";
-      chronoRank.hidden = !lapHold?.rank;
-      const delta = lapTimer.delta;
-      deltaValue.textContent = LapTimes.formatDelta(delta);
-      splitLabel.textContent = "S" + (lapTimer.splitNumber || 1);
-      deltaLabel.classList.toggle("is-faster", delta !== null && delta < -10);
-      deltaLabel.classList.toggle("is-slower", delta !== null && delta > 10);
-      deltaLabel.classList.toggle("is-even", delta !== null && Math.abs(delta) <= 10);
-    }
+    function refreshChrono() { hud.refreshChrono(lapTimer, lapHold); }
     function syncRaceCars() {
       const active = gameMode === "race" && raceState !== null;
       for (const [id, mesh] of opponentMeshes) {
@@ -187,85 +140,12 @@
       }
     }
 
-    function refreshClassification() {
-      if (!raceState) return;
-      const rows = Race.classification(raceState);
-      const fragment = document.createDocumentFragment();
-      for (const row of rows) {
-        const tr = document.createElement("tr");
-        const isPlayer = row.id === "player";
-        if (isPlayer) tr.classList.add("is-player");
-        if (!Number.isFinite(row.finishTime)) tr.classList.add("is-pending");
-        const rank = document.createElement("td");
-        rank.textContent = String(row.rank);
-        const vehicle = document.createElement("td");
-        if (!isPlayer) {
-          const opponent = raceState.opponents.find((ai) => ai.id === row.id);
-          const swatch = document.createElement("span");
-          swatch.className = "gcv-car-swatch";
-          swatch.style.backgroundColor = "#" + opponent.color.toString(16).padStart(6, "0");
-          vehicle.append(swatch);
-        }
-        vehicle.append(document.createTextNode(isPlayer
-          ? "Vous · n° 9" : "Voiture n° " + Race.opponentNumber(row.id)));
-        const time = document.createElement("td");
-        time.textContent = Number.isFinite(row.finishTime)
-          ? LapTimes.format(row.finishTime * 1000) : "En course…";
-        const gap = document.createElement("td");
-        gap.textContent = Number.isFinite(row.gap)
-          ? "+" + row.gap.toFixed(2) + " s" : "—";
-        tr.append(rank, vehicle, time, gap);
-        fragment.append(tr);
-      }
-      raceResultsBody.replaceChildren(fragment);
-      const count = rows.filter((row) => Number.isFinite(row.finishTime)).length;
-      raceResultsStatus.textContent = count === Race.GRID_COUNT
-        ? "Les 10 voitures ont terminé." : count + " / 10 voitures à l’arrivée · les autres poursuivent la course.";
-    }
-
     function syncRaceHud() {
-      const racing = gameMode === "race" && raceState !== null;
-      freeModeButton.classList.toggle("is-selected", !racing);
-      raceModeButton.classList.toggle("is-selected", racing);
-      freeModeButton.setAttribute("aria-pressed", String(!racing));
-      raceModeButton.setAttribute("aria-pressed", String(racing));
-      racePositionBox.hidden = !racing;
-      sessionModeLabel.textContent = racing ? "Course · 10 voitures" : "Essais libres · N° 9";
-      lapCountLabel.firstChild.textContent = racing ? "Tours en course : " : "Tours chronométrés : ";
-      restartButton.textContent = racing ? "↻ Rejouer" : "↻ Départ";
-      if (!racing) {
-        raceOverlay.hidden = true;
-        return;
-      }
-      racePositionValue.textContent = String(Race.position(raceState)) + "ᵉ";
-      raceLapLabel.textContent = raceState.phase === "finished"
-        ? Race.LAPS + " tours terminés" : "Tour " + Race.currentLap(raceState) + "/" + Race.LAPS;
-      // Display validated physical lap crossings, not rounded estimated
-      // distance (which can lag the finish when the samples jitter).
-      lapLabel.textContent = String(lapTracker.laps);
-      const phase = raceState.phase;
-      raceOverlay.classList.toggle("is-results", phase === "finished");
-      raceOverlay.hidden = phase === "racing" ||
-        (phase === "finished" && lapHold !== null);
-      raceOverlayActions.hidden = phase !== "finished";
-      raceResults.hidden = phase !== "finished";
-      if (phase === "finished" && resultRefreshCooldown <= 0) {
-        refreshClassification();
-        resultRefreshCooldown = 0.25;
-      }
-      if (phase === "staging") {
-        raceOverlayTitle.textContent = "Prépare-toi !";
-        raceOverlaySubtitle.textContent = "Les voitures se mettent en place…";
-      } else if (phase === "countdown") {
-        raceOverlayTitle.textContent = String(Math.max(1, Math.ceil(raceState.countdown)));
-        raceOverlaySubtitle.textContent = "Départ dans " +
-          String(Math.max(1, Math.ceil(raceState.countdown))) + "…";
-      } else if (phase === "finished") {
-        raceOverlayTitle.textContent = "Arrivée !";
-        raceOverlaySubtitle.textContent =
-          "Position : " + Race.position(raceState) + " / 10 · " +
-          LapTimes.format(raceState.raceTime * 1000);
-      }
+      const refreshed = hud.syncRace({
+        gameMode, raceState, lapCount: lapTracker.laps, lapHold,
+        refreshResults: resultRefreshCooldown <= 0,
+      });
+      if (refreshed) resultRefreshCooldown = 0.25;
     }
 
     function syncMenu() {
@@ -350,98 +230,15 @@
       if (binding) binding.changed();
     }
 
-    const keys = new Set();
-    let steerPointer = null, touchSteer = 0;
-    const gasPointers = new Set(), brakePointers = new Set();
-
+    const controls = Controls.create({
+      window, document, stage,
+      pad: document.getElementById("steer-pad"),
+      knob: document.getElementById("steer-knob"),
+      gasButton: document.getElementById("accelerate-button"),
+      brakeButton: document.getElementById("brake-button"),
+    });
+    const clearControls = controls.clear;
     const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
-    function refreshPad() {
-      const steering = steerPointer === null
-        ? ((keys.has("arrowright") || keys.has("d") ? 1 : 0) -
-            (keys.has("arrowleft") || keys.has("a") ? 1 : 0))
-        : touchSteer;
-      knob.style.left = (50 + clamp(steering, -1, 1) * 43) + "%";
-      pad.setAttribute("aria-valuenow", String(Math.round(steering * 100)));
-      pad.setAttribute("aria-valuetext", steering < -0.1 ? "Gauche" : steering > 0.1 ? "Droite" : "Tout droit");
-      return steering;
-    }
-    function updateSteering(event) {
-      const rect = pad.getBoundingClientRect();
-      touchSteer = clamp(2 * (event.clientX - rect.left) / rect.width - 1, -1, 1);
-      if (Math.abs(touchSteer) < 0.08) touchSteer = 0;
-      refreshPad();
-    }
-    pad.addEventListener("pointerdown", (event) => {
-      if (steerPointer !== null || (event.pointerType === "mouse" && event.button !== 0)) return;
-      event.preventDefault();
-      steerPointer = event.pointerId;
-      pad.setPointerCapture(event.pointerId);
-      updateSteering(event);
-    });
-    pad.addEventListener("pointermove", (event) => {
-      if (event.pointerId === steerPointer) updateSteering(event);
-    });
-    function finishSteer(event) {
-      if (event.pointerId !== steerPointer) return;
-      steerPointer = null;
-      touchSteer = 0;
-      refreshPad();
-    }
-    for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) {
-      pad.addEventListener(type, finishSteer);
-    }
-
-    function bindPedal(button, pointerSet) {
-      function sync() { button.classList.toggle("is-active", pointerSet.size !== 0); }
-      button.addEventListener("pointerdown", (event) => {
-        if (event.pointerType === "mouse" && event.button !== 0) return;
-        event.preventDefault();
-        pointerSet.add(event.pointerId);
-        button.setPointerCapture(event.pointerId);
-        sync();
-      });
-      function release(event) {
-        pointerSet.delete(event.pointerId);
-        sync();
-      }
-      for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) {
-        button.addEventListener(type, release);
-      }
-    }
-    bindPedal(gasButton, gasPointers);
-    bindPedal(brakeButton, brakePointers);
-
-    const drivingKeys = new Set(["arrowleft", "arrowright", "arrowup", "arrowdown", "a", "d", "w", "s"]);
-    window.addEventListener("keydown", (event) => {
-      if (event.altKey || event.ctrlKey || event.metaKey) return;
-      const key = event.key.toLowerCase();
-      if (!drivingKeys.has(key)) return;
-      event.preventDefault();
-      keys.add(key);
-      refreshPad();
-    });
-    window.addEventListener("keyup", (event) => {
-      const key = event.key.toLowerCase();
-      if (!drivingKeys.has(key)) return;
-      keys.delete(key);
-      refreshPad();
-    });
-    function clearControls() {
-      keys.clear();
-      gasPointers.clear();
-      brakePointers.clear();
-      steerPointer = null;
-      touchSteer = 0;
-      gasButton.classList.remove("is-active");
-      brakeButton.classList.remove("is-active");
-      refreshPad();
-    }
-    window.addEventListener("blur", clearControls);
-    document.addEventListener("visibilitychange", () => {
-      if (document.hidden) clearControls();
-    });
-    // Prevent a context menu from appearing after long touches.
-    stage.addEventListener("contextmenu", (event) => event.preventDefault());
 
     function startRace() {
       // Preserve a running time trial when switching to race mode.
@@ -519,7 +316,7 @@
       respawnIndex = index;
       lapTracker = TrackProgress.createMotion(trackLength, -10, index);
       lapTimer = LapTimes.initial(SAMPLE_COUNT, progressSamples(lapTracker.progress));
-      lapLabel.textContent = "0";
+      hud.setLapCount(0);
       refreshChrono();
       announce("");
       initializedCamera = false;
@@ -576,146 +373,17 @@
     document.addEventListener("fullscreenchange", refreshFullscreen);
     refreshFullscreen();
 
-    const map = mapCanvas.getContext("2d");
-    const bounds = positions.slice(0, SAMPLE_COUNT).reduce((acc, p) => ({
-      minX: Math.min(acc.minX, p.x), maxX: Math.max(acc.maxX, p.x),
-      minZ: Math.min(acc.minZ, p.z), maxZ: Math.max(acc.maxZ, p.z),
-    }), { minX: Infinity, maxX: -Infinity, minZ: Infinity, maxZ: -Infinity });
-    const mapWidth = mapCanvas.width, mapHeight = mapCanvas.height;
-    const mapScale = Math.min((mapWidth - 74) / (bounds.maxX - bounds.minX),
-      (mapHeight - 56) / (bounds.maxZ - bounds.minZ));
-    const mapCenterX = (bounds.minX + bounds.maxX) / 2;
-    const mapCenterZ = (bounds.minZ + bounds.maxZ) / 2;
-    const toMap = (x, z) => [
-      mapWidth / 2 + (x - mapCenterX) * mapScale,
-      mapHeight / 2 + (z - mapCenterZ) * mapScale,
-    ];
-
-    // Pre-render the static satellite-style minimap just once. Colors match
-    // sea, sandy islands, muddy roadway and light earth safety shoulders.
-    const mapBackground = document.createElement("canvas");
-    mapBackground.width = mapWidth;
-    mapBackground.height = mapHeight;
-    const satellite = mapBackground.getContext("2d");
-    if (satellite) {
-      const waterGradient = satellite.createLinearGradient(0, 0, 0, mapHeight);
-      waterGradient.addColorStop(0, "#376e7f");
-      waterGradient.addColorStop(1, "#28566b");
-      satellite.fillStyle = waterGradient;
-      satellite.fillRect(0, 0, mapWidth, mapHeight);
-
-      function islandCircle(x, y, radius, color) {
-        satellite.beginPath();
-        satellite.arc(x, y, radius, 0, Math.PI * 2);
-        satellite.fillStyle = color;
-        satellite.fill();
-      }
-      for (const island of islands) {
-        const [x, y] = toMap(island.x, island.z);
-        islandCircle(x, y, island.rockRadius * mapScale, "#485b64");
-        islandCircle(x - 2, y - 2, island.rockRadius * mapScale * 0.72, "#71828a");
-      }
-
-      function drawCourse(width, color) {
-        satellite.beginPath();
-        positions.forEach((p, index) => {
-          const [x, y] = toMap(p.x, p.z);
-          if (index === 0) satellite.moveTo(x, y);
-          else satellite.lineTo(x, y);
-        });
-        satellite.closePath();
-        satellite.lineCap = "round";
-        satellite.lineJoin = "round";
-        satellite.strokeStyle = color;
-        satellite.lineWidth = width;
-        satellite.stroke();
-      }
-      drawCourse(OUTER_HALF_WIDTH * 2 * mapScale + 3, "#534c3e");
-      drawCourse(OUTER_HALF_WIDTH * 2 * mapScale, "#b29871");
-      drawCourse(ROAD_HALF_WIDTH * 2 * mapScale, "#856044");
-
-      // Uneven muddy details visible from above; no painted centerline.
-      for (let i = 0; i < SAMPLE_COUNT; i += 9) {
-        const position = positions[i], normal = sides[i];
-        const offset = ((i * 17) % 19 - 9) * 0.65;
-        const [x, y] = toMap(position.x + normal.x * offset,
-          position.z + normal.z * offset);
-        islandCircle(x, y, 1.6 + (i % 3), "#6f523c");
-      }
-
-      // Three visual sector checkpoints correspond exactly to the timer.
-      LapTimes.SPLIT_FRACTIONS.forEach((fraction, index) => {
-        const splitIndex = (startIndex + Math.round(SAMPLE_COUNT * fraction)) % SAMPLE_COUNT;
-        const [sx, sy] = toMap(positions[splitIndex].x, positions[splitIndex].z);
-        islandCircle(sx, sy, 7, "#15354d");
-        islandCircle(sx, sy, 5, "#f8d690");
-        satellite.font = "bold 9px system-ui";
-        satellite.textAlign = "center";
-        satellite.textBaseline = "middle";
-        satellite.fillStyle = "#1d2834";
-        satellite.fillText(String(index + 1), sx, sy);
-      });
-
-      // Finish line marker: a short contrasting crossing and flag, separate
-      // from roadway lane markings.
-      const [fx, fy] = toMap(startCenter.x, startCenter.z);
-      satellite.save();
-      satellite.translate(fx, fy);
-      satellite.rotate(Math.atan2(startSide.z, startSide.x));
-      satellite.fillStyle = "#332b28";
-      satellite.fillRect(-ROAD_HALF_WIDTH * mapScale, -2, ROAD_HALF_WIDTH * 2 * mapScale, 4);
-      satellite.fillStyle = "#ebd2a0";
-      for (let i = 0; i < 8; i += 2) {
-        satellite.fillRect(-ROAD_HALF_WIDTH * mapScale + i * ROAD_HALF_WIDTH * mapScale / 4,
-          -2, ROAD_HALF_WIDTH * mapScale / 4, 2);
-      }
-      satellite.restore();
-      satellite.fillStyle = "#ffffff";
-      satellite.strokeStyle = "#243f4e";
-      satellite.lineWidth = 3;
-      satellite.font = "bold 17px system-ui";
-      satellite.strokeText("⚑", fx + 9, fy - 10);
-      satellite.fillText("⚑", fx + 9, fy - 10);
-    }
-
+    const miniMap = MiniMap.create({
+      document, canvas: document.getElementById("mini-map"),
+      positions, sides, SAMPLE_COUNT, ROAD_HALF_WIDTH, OUTER_HALF_WIDTH,
+      islands, LapTimes, startIndex, startCenter, startSide,
+    });
     function drawMap() {
-      if (!map) return;
-      map.clearRect(0, 0, mapWidth, mapHeight);
-      if (satellite) map.drawImage(mapBackground, 0, 0);
-      if (gameMode === "race" && raceState) {
-        // Tiny opponent markers on the same map as the player.
-        for (const ai of raceState.opponents) {
-          const mesh = opponentMeshes.get(ai.id);
-          if (!mesh) continue;
-          const [ax, ay] = toMap(mesh.position.x, mesh.position.z);
-          map.beginPath();
-          map.arc(ax, ay, 4.4, 0, Math.PI * 2);
-          map.fillStyle = "#" + ai.color.toString(16).padStart(6, "0");
-          map.strokeStyle = "#152e42";
-          map.lineWidth = 1.5;
-          map.fill();
-          map.stroke();
-        }
-      }
-      const x = falling && fall ? fall.x : driver.x;
-      const z = falling && fall ? fall.z : driver.z;
-      const [px, py] = toMap(x, z);
-      map.save();
-      map.shadowColor = "#16212a";
-      map.shadowBlur = 7;
-      map.fillStyle = "#ed4857";
-      map.strokeStyle = "#ffffff";
-      map.lineWidth = 3;
-      map.beginPath();
-      map.arc(px, py, 8, 0, Math.PI * 2);
-      map.fill();
-      map.stroke();
-      map.shadowBlur = 0;
-      map.beginPath();
-      map.moveTo(px, py);
-      map.lineTo(px - Math.sin(driver.yaw) * 17, py - Math.cos(driver.yaw) * 17);
-      map.stroke();
-      map.restore();
+      miniMap.draw(
+        falling && fall ? { x: fall.x, z: fall.z, yaw: driver.yaw } : driver,
+        gameMode === "race" && raceState ? raceState.opponents : null,
+        opponentMeshes
+      );
     }
 
     function resize() {
@@ -784,7 +452,7 @@
         trackLength, startOffset(nearestIndex), nearestIndex, saved.motion);
       lapTimer = LapTimes.restore(saved.lapTimer, SAMPLE_COUNT,
         progressSamples(lapTracker.progress));
-      lapLabel.textContent = String(lapTracker.laps);
+      hud.setLapCount(lapTracker.laps);
       refreshChrono();
       cameraMode = saved.camera === "outside" ? "outside" : "inside";
       const restoredRace = saved.mode === "race"
@@ -812,7 +480,7 @@
 
     function updateCar(dt, fallDt = dt) {
       if ((menuOpen || scoresOpen) && dt > 0) return;
-      const brakePressed = brakePointers.size > 0 || keys.has("arrowdown") || keys.has("s");
+      const brakePressed = controls.isBraking();
       let mudSkidIntensity = 0;
       let barrierSparkContact = null;
       let raceMotion = null;
@@ -830,9 +498,7 @@
           announce("Chute dans le vide ! Retour dans " + fall.remaining.toFixed(1) + " s");
         }
       } else if (mayDrive) {
-        const steer = refreshPad();
-        const accelerate = gasPointers.size > 0 || keys.has("arrowup") || keys.has("w");
-        const brake = brakePressed;
+        const { steer, accelerate, brake } = controls.read();
         // The dirt course now handles like the previous paved road, including
         // its safety shoulders. Only truly extreme steering emits particles.
         const previousPosition = { x: driver.x, z: driver.z };
@@ -910,7 +576,7 @@
               }
             }
           }
-          lapLabel.textContent = String(lapTracker.laps);
+          hud.setLapCount(lapTracker.laps);
         }
       }
 
@@ -950,8 +616,7 @@
       for (const glow of rearBrakeGlows) glow.intensity = brakePressed ? 3.5 : 0;
       visualEffects.update(dt, driver, falling ? 0 : mudSkidIntensity,
         falling ? null : barrierSparkContact);
-      speedLabel.textContent = String(Math.round(Math.abs(driver.speed) * 3.6));
-      gearLabel.textContent = driver.speed < -0.02 ? "R" : "";
+      hud.setSpeed(driver.speed);
       refreshChrono();
     }
 

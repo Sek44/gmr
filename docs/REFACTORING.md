@@ -26,8 +26,14 @@ visuels importants. Les priorités reflètent le risque de régression.
    les étincelles de contact avec les barrières, avec leurs buffers Three.js
    et leurs animations. Le moteur de jeu ne lui transmet que l'état courant
    du véhicule et les intensités/contacts. Tests des effets et du chargement
-   ajoutés. Restent à isoler : moteur de rendu/caméra, commandes,
-   HUD/mini-carte et sessions.
+   ajoutés. **Quatrième extraction :** `games/gcv/controls.js` regroupe
+   le clavier, le volant tactile analogique, les pédales multi-touch et la
+   remise à zéro des commandes ; `games/gcv/hud.js` prend en charge le
+   compteur, le chrono, les records, la position et le tableau d'arrivée ;
+   `games/gcv/mini-map.js` met en cache le circuit vu du ciel et affiche
+   les positions du joueur et des concurrents. Des tests DOM/canvas et de
+   chargement accompagnent cette extraction. Restent à isoler : moteur de
+   rendu/caméra, navigation et gestion des sessions.
 2. **Unifier la progression des tours — RÉALISÉ (27/10/2026).**
    `GcvTrackProgress` conserve la progression longitudinale signée (en mètres),
    les passages physiques de ligne et les tours validés ; ses événements
