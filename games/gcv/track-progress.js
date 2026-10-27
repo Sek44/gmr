@@ -90,12 +90,25 @@ const GcvTrackProgress = (() => {
     return { index, distanceSquared };
   }
 
+  // Project the actual displacement on the forward tangent of the circuit.
+  // This is a signed distance: reversing cancels the distance previously
+  // traveled, and moving sideways or changing the closest sample does not
+  // award free race progress.
+  function alongTrackTravel(before, after, forward) {
+    if (![before?.x, before?.z, after?.x, after?.z,
+      forward?.x, forward?.z].every(Number.isFinite)) return 0;
+    const length = Math.hypot(forward.x, forward.z);
+    if (length < 1e-8) return 0;
+    return ((after.x - before.x) * forward.x +
+      (after.z - before.z) * forward.z) / length;
+  }
+
   function relocate(state, nearestIndex) {
     // Respawn is not extra travel around the circuit.
     return { ...state, index: nearestIndex };
   }
 
-  return Object.freeze({ create, advance, nearestSample, relocate, syncFinish, nearNextFinish });
+  return Object.freeze({ create, advance, nearestSample, alongTrackTravel, relocate, syncFinish, nearNextFinish });
 })();
 
 if (typeof window !== "undefined") window.GcvTrackProgress = GcvTrackProgress;
