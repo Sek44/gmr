@@ -143,3 +143,27 @@ test("a true relocation outside the current corridor falls back to global neares
   const nearest = track.nearestSample(positions, 30, 210, 0, 2, 3, 16);
   assert.equal(nearest.index, 21);
 });
+
+test("race travel counts forward motion, ignores sideways motion and subtracts reverse", () => {
+  const forward = { x: 3, z: 4 };
+  assert.equal(track.alongTrackTravel(
+    { x: 0, z: 0 }, { x: 3, z: 4 }, forward), 5);
+  assert.equal(track.alongTrackTravel(
+    { x: 0, z: 0 }, { x: -4, z: 3 }, forward), 0);
+  assert.equal(track.alongTrackTravel(
+    { x: 3, z: 4 }, { x: 0, z: 0 }, forward), -5);
+  assert.equal(track.alongTrackTravel(
+    { x: 0, z: 0 }, { x: 3, z: 4 }, { x: 0, z: 0 }), 0);
+  assert.equal(track.alongTrackTravel(
+    { x: 0, z: 0 }, { x: NaN, z: 4 }, forward), 0);
+});
+
+test("track index teleports cannot add distance when the car did not move", () => {
+  const origin = { x: 120, z: -30 };
+  const still = track.alongTrackTravel(origin, origin, { x: 0, z: -1 });
+  assert.equal(still, 0);
+  // Even large side-to-side contact corrections do not grant overtakes.
+  const sideways = track.alongTrackTravel(origin,
+    { x: origin.x + 10, z: origin.z }, { x: 0, z: -1 });
+  assert.equal(sideways, 0);
+});
