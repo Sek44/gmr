@@ -1547,7 +1547,7 @@
           // alignment performed at a validated finish line.
           const timing = LapTimes.advance(lapTimer,
             progressSamples(progressBefore), progressSamples(motion.sectorProgress),
-            fallDt * 1000, SAMPLE_COUNT, lapRecords.best(), false);
+            fallDt * 1000, SAMPLE_COUNT, lapRecords.best());
           lapTimer = timing.state;
           for (const event of motion.events) {
             const finish = LapTimes.crossFinish(
