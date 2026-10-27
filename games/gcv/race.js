@@ -207,10 +207,12 @@ const GcvRace = (() => {
       lapTimes.push(Math.max(0, crossingTime - previousTime));
     }
     const hasFinished = lapTimes.length === LAPS;
+    const playerMotion = hasFinished
+      ? { ...motion.state, progress: finishDistance } : motion.state;
     const updated = {
       ...race, elapsed, opponents,
-      playerMotion: motion.state,
-      playerProgress: hasFinished ? finishDistance : motion.state.progress,
+      playerMotion,
+      playerProgress: playerMotion.progress,
       playerLapTimes: lapTimes,
     };
     if (hasFinished) {
