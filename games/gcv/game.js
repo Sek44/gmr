@@ -1115,8 +1115,6 @@
       fall = null;
       respawnIndex = current;
       lapTracker = TrackProgress.create(SAMPLE_COUNT, startIndex, current);
-      // Never count the same section twice after reversing or scraping a rail.
-      raceState.trackHighWater = lapTracker.progress;
       lapTimer = LapTimes.initial(SAMPLE_COUNT, lapTracker.progress);
       timedLapCount = 0;
       announce("");
@@ -1439,10 +1437,6 @@
         ? Race.restore(saved.race, trackLength) : null;
       gameMode = restoredRace ? "race" : "free";
       raceState = restoredRace;
-      if (raceState && !Number.isFinite(raceState.trackHighWater)) {
-        // Old saves have no high-water mark; start from the current location.
-        raceState.trackHighWater = lapTracker.progress;
-      }
       freeSession = restoredRace &&
         LapTimes.sameCircuitRoute(saved.freeSession?.circuitKey, circuitKey)
         ? saved.freeSession : null;
@@ -1519,6 +1513,13 @@
           fall = Physics.advanceFall(Physics.startFall(driver), dt);
           announce("Chute dans le vide ! Retour dans " + fall.remaining.toFixed(1) + " s");
         } else {
+          // Real travel is the only input to the live race ranking. Project
+          // actual vehicle movement on the track tangent: the nearest sample
+          // can jitter or switch in a sharp turn without changing rank.
+          if (gameMode === "race") {
+            raceDistance = TrackProgress.alongTrackTravel(
+              previousPosition, driver, directions[nearest.index]);
+          }
           const progressBefore = lapTracker.progress;
           lapTracker = TrackProgress.advance(lapTracker, nearest.index, SAMPLE_COUNT);
           // Sector checkpoints use along-track samples; the finish line uses
@@ -1566,15 +1567,6 @@
 
       if (gameMode === "race" && raceState) {
         const wasRacing = raceState.phase === "racing";
-        if (wasRacing && !falling) {
-          const previousHighWater = Number.isFinite(raceState.trackHighWater)
-            ? raceState.trackHighWater : lapTracker.progress;
-          // A backward / forward excursion and local index jitter must not
-          // repeatedly increase the accumulated race distance.
-          const highWater = Math.max(previousHighWater, lapTracker.progress);
-          raceDistance = (highWater - previousHighWater) * trackLength / SAMPLE_COUNT;
-          raceState.trackHighWater = highWater;
-        }
         const previousLapCount = raceState.playerLapTimes?.length || 0;
         raceState = Race.advance(raceState, dt, raceDistance, raceFinishFraction);
         const completedLaps = raceState.playerLapTimes?.length || 0;
