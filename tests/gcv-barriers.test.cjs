@@ -57,7 +57,11 @@ test("contact against either barrier removes only lateral motion", () => {
     assert.ok(Math.abs(dx * side.x + dz * side.z - rail.carLimit) < 1e-8);
     assert.ok(Math.abs(dx * tangent.x + dz * tangent.z - 3) < 1e-8);
     assert.equal(result.speed, proposed.speed);
-    assert.equal(result.yaw, proposed.yaw);
+    // If the car was aiming into the rail, contact must turn the nose
+    // along the rail, not further into the wall.
+    const outwardX = -Math.sin(result.yaw) * side.x * sign;
+    const outwardZ = -Math.cos(result.yaw) * side.z * sign;
+    assert.ok(outwardX + outwardZ <= 1e-7);
   }
 });
 
@@ -114,4 +118,62 @@ test("guardrail module validates geometry and outside width", () => {
   assert.throws(() => barriers.create([], road.lapLength, 19));
   assert.throws(() => barriers.create(road.positions, -20, 19));
   assert.throws(() => barriers.create(road.positions, road.lapLength, 1));
+});
+
+test("right-side and left-side contact neutralize steering into the rail", () => {
+  const road = circularTrack();
+  const rails = barriers.create(road.positions, road.lapLength, 16);
+  const i = 100, center = { x: 0, z: 0 }, side = { x: 1, z: 0 };
+  for (const [wall, yaw] of [[1, -0.35], [-1, 0.35]]) {
+    const before = { x: wall * 13, z: 0, speed: 36, yaw };
+    const proposed = { x: wall * 17, z: -1, speed: 36, yaw };
+    const resolved = barriers.resolve(before, proposed, i, center, side, rails);
+    assert.equal(resolved.collided, true);
+    assert.ok(Math.abs(resolved.yaw) < 1e-6,
+      "outward steering must not survive contact with either guardrail");
+    assert.equal(resolved.speed, 36);
+    assert.equal(resolved.z, -1,
+      "forward movement remains untouched along the guardrail");
+  }
+});
+
+test("steering away from a guardrail is not automatically corrected", () => {
+  const road = circularTrack();
+  const rails = barriers.create(road.positions, road.lapLength, 16);
+  const center = { x: 0, z: 0 }, side = { x: 1, z: 0 };
+  const drivingAway = { x: 20, z: -3, speed: 32, yaw: .35 };
+  const hit = barriers.resolve(drivingAway, drivingAway, 100, center, side, rails);
+  assert.equal(hit.collided, true);
+  assert.equal(hit.yaw, drivingAway.yaw);
+});
+
+test("inside hairpin rails narrow locally instead of folding through themselves", () => {
+  const radius = 9, count = 240;
+  const road = Array.from({ length: count }, (_, i) => ({
+    x: radius * Math.cos(2 * Math.PI * i / count),
+    z: radius * Math.sin(2 * Math.PI * i / count),
+  }));
+  const guard = barriers.create(road, 2 * Math.PI * radius, 16);
+  const left = guard.rails.left, right = guard.rails.right;
+  assert.ok(left.offsets.every((v) => v <= radius * .9),
+    "inside rails should stay within the bend radius");
+  assert.ok(right.offsets.every((v) => Math.abs(v - 15.55) < 1e-6),
+    "outside guardrail should still follow normal outer edge");
+  for (const path of [left, right]) {
+    assert.equal(path.points.length, count);
+    // Offset loops must not jump across the center of this tight circle.
+    for (let i = 1; i < count; i++) {
+      assert.ok(Math.hypot(path.points[i].x - path.points[i - 1].x,
+        path.points[i].z - path.points[i - 1].z) < 2);
+    }
+  }
+});
+
+test("straight stretches remain at full width despite curvature-aware rails", () => {
+  const radius = 100;
+  const track = circularTrack();
+  const guard = barriers.create(track.positions, track.lapLength, 16);
+  assert.ok(guard.rails.left.offsets.every((v) => Math.abs(v - 15.55) < 1e-6));
+  assert.ok(guard.rails.right.offsets.every((v) => Math.abs(v - 15.55) < 1e-6));
+  assert.ok(guard.protectedSamples.every((n) => n === 1));
 });
