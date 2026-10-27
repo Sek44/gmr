@@ -445,7 +445,8 @@ test("rivals overtaking a stationary leader update the live rank", () => {
 test("actual signed travel rejects the phantom progress of a sample jump", () => {
   const track = require("../games/gcv/track-progress.js");
   let state = race.advance(race.create(800, () => 0.5), 5);
-  state = race.advance(state, 0.5, 35, 0.5);
+  state = race.advance(state, 0.5,
+    race.gridSlot(race.PLAYER_SLOT).distance, 0.5);
   for (let i = 0; i < 150; i++) {
     // Project real motion along the road. An erroneous index jump would
     // suggest hundreds of metres; the car actually traveled 2 metres.
