@@ -893,7 +893,7 @@
       }
       racePositionValue.textContent = String(Race.position(raceState)) + "ᵉ";
       raceLapLabel.textContent = raceState.phase === "finished"
-        ? "2 tours terminés" : "Tour " + Race.currentLap(raceState) + "/2";
+        ? Race.LAPS + " tours terminés" : "Tour " + Race.currentLap(raceState) + "/" + Race.LAPS;
       // Display validated physical lap crossings, not rounded estimated
       // distance (which can lag the finish when the samples jitter).
       lapLabel.textContent = String(raceState.playerLapTimes?.length || 0);

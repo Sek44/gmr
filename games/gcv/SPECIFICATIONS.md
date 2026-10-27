@@ -14,7 +14,7 @@
 - Chaque voiture porte un **numéro distinct de 1 à 10**.
 - Le joueur pilote **toujours la voiture numéro 9** ; aucune voiture pilotée par le jeu ne porte ce numéro.
 - La place du joueur sur la **grille de départ est tirée au hasard** à chaque nouvelle course.
-- La course se déroule en **5 tours** ; le but est de terminer devant les autres.
+- La course se déroule en **3 tours** ; le but est de terminer devant les autres.
 
 ## 2. Circuit et environnement — règles demandées
 
@@ -77,7 +77,7 @@ L'interface est superposée au rendu 3D et doit rester lisible en vue intérieur
 | **Compteur de vitesse** | Vitesse de la voiture du joueur en **km/h** |
 | **Classement** | Place du joueur parmi les 10 voitures : **1er/10, 2e/10, 3e/10**, etc. |
 | **Mini-carte du circuit** | Tracé simplifié du circuit et **position de la voiture du joueur** sur ce tracé |
-| **Tours** | Afficher la progression, par exemple **Tour 2/5** (proposition utile pour une course de 5 tours) |
+| **Tours** | Afficher la progression, par exemple **Tour 2/3** (proposition utile pour une course de 3 tours) |
 | **Caméra** | Commande permettant de changer la vue |
 | **Plein écran** | Commande pour entrer en plein écran ou en sortir |
 
@@ -88,7 +88,7 @@ L'interface est superposée au rendu 3D et doit rester lisible en vue intérieur
 ## 7. Concurrents contrôlés par le jeu — règles demandées
 
 - **9 voitures pilotées par l'ordinateur** contre le joueur numéro 9.
-- Elles avancent sur le même circuit, effectuent les mêmes **5 tours** et se disputent le classement.
+- Elles avancent sur le même circuit, effectuent les mêmes **3 tours** et se disputent le classement.
 - Leurs **numéros sont uniques** parmi 1 à 10, à l'exception du 9 réservé au joueur.
 - Voitures sportives de formes, couleurs et styles variés, inspirées des catégories de modèles de marques connues.
 
@@ -96,7 +96,7 @@ L'interface est superposée au rendu 3D et doit rester lisible en vue intérieur
 
 ## 8. Fin de course — règles demandées et points à compléter
 
-- Après **5 tours**, le passage sur la ligne d'arrivée marque la **fin de course du joueur**.
+- Après **3 tours**, le passage sur la ligne d'arrivée marque la **fin de course du joueur**.
 - Afficher sa **position finale** sur 10.
 - Prévoir une action pour **rejouer** une course.
 
@@ -156,7 +156,7 @@ Documentation : [Three.js — WebGLRenderer](https://threejs.org/docs/pages/WebG
 
 ## 12. Critères de validation fonctionnels (pour les futures étapes)
 
-- [ ] Course complète de **5 tours**, avec **10 voitures numérotées 1 à 10**, dont **le joueur n° 9**.
+- [ ] Course complète de **3 tours**, avec **10 voitures numérotées 1 à 10**, dont **le joueur n° 9**.
 - [ ] Position de départ du joueur aléatoire sur la grille.
 - [ ] Décompte **3, 2, 1, PARTEZ !** rouge et visible, avec personnage au départ.
 - [ ] Vue cockpit par défaut et passage possible à la vue extérieure.
@@ -197,7 +197,7 @@ Documentation : [Three.js — WebGLRenderer](https://threejs.org/docs/pages/WebG
 - [x] Jeu inscrit au catalogue d'accueil GMR.
 - [x] Tests unitaires du module de physique de conduite ajoutés (`tests/gcv-physics.test.cjs`).
 
-**Pas encore réalisés :** les 9 concurrents et leur IA, la grille aléatoire, le décompte, les 5 tours, le classement, les flaques et les graviers, le résultat final et l'enregistrement des scores. Les graphismes et la conduite sont volontairement simples à ce stade.
+**Pas encore réalisés :** les 9 concurrents et leur IA, la grille aléatoire, le décompte, les 3 tours, le classement, les flaques et les graviers, le résultat final et l'enregistrement des scores. Les graphismes et la conduite sont volontairement simples à ce stade.
 
 **Vérifications à faire sur appareils réels :** ergonomie multitouch, fluidité WebGL, fonctionnement de l'API plein écran et aspect de la vue intérieure sur Chrome Android / tablette.
 

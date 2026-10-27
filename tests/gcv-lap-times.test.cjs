@@ -27,6 +27,18 @@ test("top three lap times sort ascending and persist with reference splits", () 
     [87000, 89000, 92000]);
 });
 
+test("GCV lap records start fresh while older local scores remain untouched", () => {
+  const storage = memoryStorage();
+  const previousKey = "gmr:v1:gcv:lap-records";
+  const oldValue = JSON.stringify({ circuit: timing.circuitKey(layout), records: [
+    { ms: 85000, splits: [20000, 40000, 60000] },
+  ] });
+  storage.setItem(previousKey, oldValue);
+  assert.notEqual(timing.STORAGE_KEY, previousKey);
+  assert.deepEqual(timing.createStore(layout, storage).top(), []);
+  assert.equal(storage.getItem(previousKey), oldValue);
+});
+
 test("a circuit geometry change resets existing lap records automatically", () => {
   const storage = memoryStorage();
   const store = timing.createStore(layout, storage);

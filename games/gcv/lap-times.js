@@ -1,7 +1,8 @@
 "use strict";
 // Timed GCV laps. Local, circuit-specific top-three records and split deltas.
 const GcvLapTimes = (() => {
-  const STORAGE_KEY = "gmr:v1:gcv:lap-records";
+  // New records start empty for every browser; older records are left untouched.
+  const STORAGE_KEY = "gmr:v1:gcv:lap-records:v2";
   const SPLIT_FRACTIONS = Object.freeze([0.25, 0.50, 0.75]);
 
   function circuitKey(layout) {

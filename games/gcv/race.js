@@ -5,7 +5,9 @@ const GcvRace = (() => {
   const GRID_COUNT = 10;
   const AI_COUNT = GRID_COUNT - 1;
   const PLAYER_SLOT = 4; // Fifth of ten positions: middle of the grid.
-  const LAPS = 2;
+  const LAPS = 3;
+  const PACE_VERSION = 2;
+  const PACE_ADVANCE_SECONDS = 2;
   // A car taking the inside shoulder around bends covers less physical
   // distance than the track centerline. Keep a generous anti-U-turn guard,
   // while accepting real full laps on legal inside trajectories.
@@ -16,7 +18,8 @@ const GcvRace = (() => {
   const COLUMN_OFFSET = 3;
   const ROW_SPACING = 9.5;
   const FIRST_ROW_DISTANCE = 12;
-  // Cruise lap targets: leaders 17–21 s, then a smooth 21.5–34 s field.
+  // Cruise lap targets are two seconds faster per opponent than before:
+  // leaders 15–19 s, then a smooth 19.5–32 s field.
   // Actual first laps include acceleration from rest, as for the player.
   // Each target is randomized at race creation. Non-overlapping bands
   // preserve the difficulty order, regardless of the chosen random values.
@@ -24,7 +27,7 @@ const GcvRace = (() => {
     [17, 18.5], [18.5, 20], [20, 21],
     [21.5, 23.5], [23.5, 25.5], [25.5, 27.5], [27.5, 29.5],
     [30, 32], [32, 34],
-  ].map((range) => Object.freeze(range)));
+  ].map((range) => Object.freeze(range.map((seconds) => seconds - PACE_ADVANCE_SECONDS))));
 
   const COLORS = Object.freeze([
     0x39b6d5, 0xf5bd49, 0x80d78a, 0xa189df, 0xf08e64,
@@ -69,7 +72,8 @@ const GcvRace = (() => {
     return {
       phase: "staging", gridWait: GRID_WAIT_SECONDS,
       countdown: COUNTDOWN_SECONDS, elapsed: 0,
-      trackLength, playerProgress: -gridSlot(PLAYER_SLOT).distance,
+      trackLength, laps: LAPS, paceVersion: PACE_VERSION,
+      playerProgress: -gridSlot(PLAYER_SLOT).distance,
       opponents, finishPosition: null, raceTime: null,
       playerLapTimes: [],
       // Lap completion requires a real forward crossing of the visible line.
@@ -269,7 +273,8 @@ const GcvRace = (() => {
   }
 
   function restore(saved, trackLength, random = Math.random) {
-    if (!saved || !Number.isFinite(trackLength) ||
+    if (!saved || (saved.phase === "finished" && saved.laps !== LAPS) ||
+        !Number.isFinite(trackLength) ||
         Math.abs(saved.trackLength - trackLength) > 0.01 ||
         !["staging", "countdown", "racing", "finished"].includes(saved.phase) ||
         !Number.isFinite(saved.playerProgress) ||
@@ -279,19 +284,25 @@ const GcvRace = (() => {
           !Number.isFinite(ai.lateral) || !Number.isFinite(ai.speed)))
       return null;
     return {
-      ...saved, trackLength,
-      // Preserve each randomized pace on reload. Opponents from an older
-      // difficulty tier are upgraded once, then stay stable across reloads.
+      ...saved, trackLength, laps: LAPS, paceVersion: PACE_VERSION,
+      // Keep randomized speeds stable across reloads. Old two-lap races
+      // keep their confirmed progress but gain a third lap and faster AI.
       opponents: saved.opponents.map((ai, index) => {
         const [min, max] = PACE_RANGES[index];
+        const previousPace = saved.paceVersion !== PACE_VERSION;
+        const shift = previousPace ? PACE_ADVANCE_SECONDS : 0;
         const validTarget = Number.isFinite(ai.targetLapSeconds) &&
-          ai.targetLapSeconds >= min && ai.targetLapSeconds <= max;
+          ai.targetLapSeconds >= min + shift &&
+          ai.targetLapSeconds <= max + shift;
         const targetLapSeconds = validTarget
-          ? ai.targetLapSeconds : lapTarget(index, random);
+          ? ai.targetLapSeconds - shift : lapTarget(index, random);
         const speed = trackLength / targetLapSeconds;
-        const finishTime = Number.isFinite(ai.finishTime) && ai.finishTime >= 0
-          ? ai.finishTime : ai.progress >= LAPS * trackLength
-            ? (LAPS * trackLength + gridSlot(ai.id).distance) / speed : null;
+        // An opponent already finished after two laps now has one more lap
+        // to drive; its old finish time must not lock the new classification.
+        const finishTime = saved.laps !== LAPS ? null :
+          Number.isFinite(ai.finishTime) && ai.finishTime >= 0
+            ? ai.finishTime : ai.progress >= LAPS * trackLength
+              ? (LAPS * trackLength + gridSlot(ai.id).distance) / speed : null;
         return { ...ai, targetLapSeconds, speed, finishTime };
       }),
       gridWait: saved.phase === "staging"
