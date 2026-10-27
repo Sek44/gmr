@@ -8,21 +8,21 @@ const GcvRace = (() => {
   const AI_COUNT = GRID_COUNT - 1;
   const PLAYER_SLOT = 4; // Fifth of ten positions: middle of the grid.
   const LAPS = 3;
-  const PACE_VERSION = 2;
+  const PACE_VERSION = 3;
   const COUNTDOWN_SECONDS = 3;
   const GRID_WAIT_SECONDS = 2; // Pause on the grid before the 3-2-1 countdown.
   const AI_ACCELERATION = 10; // m/s²; below the player's ~23.6 m/s² launch.
   const COLUMN_OFFSET = 3;
   const ROW_SPACING = 9.5;
   const FIRST_ROW_DISTANCE = 12;
-  // Cruise lap targets: leaders 15–19 s, then a 19.5–32 s field.
+  // Cruise lap targets: leaders 13–17 s, then a 17.5–30 s field.
   // Actual first laps include acceleration from rest, as for the player.
   // Each target is randomized at race creation. Non-overlapping bands
   // preserve the difficulty order, regardless of the chosen random values.
   const PACE_RANGES = Object.freeze([
-    [15, 16.5], [16.5, 18], [18, 19],
-    [19.5, 21.5], [21.5, 23.5], [23.5, 25.5], [25.5, 27.5],
-    [28, 30], [30, 32],
+    [13, 14.5], [14.5, 16], [16, 17],
+    [17.5, 19.5], [19.5, 21.5], [21.5, 23.5], [23.5, 25.5],
+    [26, 28], [28, 30],
   ].map((range) => Object.freeze(range)));
 
   const COLORS = Object.freeze([

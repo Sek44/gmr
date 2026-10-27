@@ -87,29 +87,26 @@ test("prestart and countdown consume only their own portion of slow frames", () 
   assert.equal(state.playerProgress, -race.gridSlot(race.PLAYER_SLOT).distance);
 });
 
-test("AI cruise pacing is two seconds faster per lap, from 15–19s to 30–32s", () => {
+test("all nine AI lap target bands are two seconds faster than the previous version", () => {
+  const previousBands = [
+    [15, 16.5], [16.5, 18], [18, 19],
+    [19.5, 21.5], [21.5, 23.5], [23.5, 25.5], [25.5, 27.5],
+    [28, 30], [30, 32],
+  ];
+  const expectedBands = previousBands.map(([min, max]) => [min - 2, max - 2]);
+  assert.deepEqual(race.PACE_RANGES, expectedBands);
   const distance = 820;
   for (const randomValue of [0, 0.5, 1]) {
     const state = race.create(distance, () => randomValue);
+    assert.equal(state.paceVersion, 3);
+    assert.equal(state.opponents.length, expectedBands.length);
     const times = state.opponents.map((ai) => distance / ai.speed);
-    assert.equal(times.length, 9);
-    assert.ok(times.slice(0, 3).every((time) => time >= 15 - 1e-9 && time <= 19 + 1e-9));
-    const expectedFastBands = [[15, 16.5], [16.5, 18], [18, 19]];
-    for (let i = 0; i < 3; i++) {
-      assert.ok(times[i] >= expectedFastBands[i][0] - 1e-9 &&
-        times[i] <= expectedFastBands[i][1] + 1e-9);
-    }
-    const expectedOthers = [[19.5, 21.5], [21.5, 23.5],
-      [23.5, 25.5], [25.5, 27.5], [28, 30], [30, 32]];
-    for (let i = 0; i < expectedOthers.length; i++) {
-      const [min, max] = expectedOthers[i];
-      assert.ok(times[i + 3] >= min - 1e-9 && times[i + 3] <= max + 1e-9);
-    }
-    for (let i = 1; i < times.length; i++) {
-      assert.ok(times[i] >= times[i - 1]);
-    }
-    for (let i = 0; i < 9; i++) {
-      assert.ok(Math.abs(state.opponents[i].targetLapSeconds - times[i]) < 1e-9);
+    for (let i = 0; i < times.length; i++) {
+      const [min, max] = expectedBands[i];
+      const expected = min + (max - min) * randomValue;
+      assert.ok(Math.abs(times[i] - expected) < 1e-9);
+      assert.ok(Math.abs(state.opponents[i].targetLapSeconds - expected) < 1e-9);
+      if (i > 0) assert.ok(times[i] >= times[i - 1] - 1e-9);
     }
   }
 });
@@ -146,7 +143,7 @@ test("current race saves restore unchanged and incompatible versions are rejecte
   const current = race.create(820, () => 0.5);
   assert.deepEqual(race.restore(JSON.parse(JSON.stringify(current)), 820), current);
   assert.equal(race.restore({ ...current, laps: 2 }, 820), null);
-  assert.equal(race.restore({ ...current, paceVersion: 1 }, 820), null);
+  assert.equal(race.restore({ ...current, paceVersion: 2 }, 820), null);
   assert.equal(race.restore({ ...current, distanceModel: undefined }, 820), null);
   assert.equal(race.restore({ ...current, playerLapTimes: [-1] }, 820), null);
   assert.equal(race.restore({ ...current, opponents: [] }, 820), null);

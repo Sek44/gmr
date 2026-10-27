@@ -328,3 +328,12 @@ pour les règles en vigueur.
   chutes restent actives ; les adversaires avancent pendant la récupération.
 - Nouvelles vérifications transversales progression/course/chrono. Révision des
   sauvegardes GCV à 4 : courses et essais en cours annulables, records préservés.
+
+## 37. Concurrents accélérés de deux secondes supplémentaires (27/10/2026)
+
+- Les neuf plages de temps cibles au tour des concurrents sont chacune abaissées
+  de **2 secondes** : de 13–14,5 s pour le plus rapide à 28–30 s pour le dernier.
+- L'accélération au départ et la course de 3 tours restent inchangées.
+- Révision des sessions GCV à 5 : les courses et essais sauvegardés sont annulés
+  au chargement ; les historiques de records et scores sont préservés.
+- Tests des neuf plages, des tirages aléatoires et du rejet des anciennes courses.

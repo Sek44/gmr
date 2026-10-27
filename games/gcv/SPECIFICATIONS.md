@@ -98,6 +98,7 @@ L'interface est superposée au rendu 3D et doit rester lisible en vue intérieur
 - **9 voitures pilotées par l'ordinateur** contre le joueur numéro 9.
 - Elles avancent sur le même circuit, effectuent les mêmes **3 tours** et se disputent le classement.
 - Leurs **numéros sont uniques** parmi 1 à 10, à l'exception du 9 réservé au joueur.
+- **Difficulté actuelle :** les neuf temps cibles de tour (hors accélération du départ) sont tirés aléatoirement dans les plages **13–14,5 s**, **14,5–16 s**, **16–17 s**, **17,5–19,5 s**, **19,5–21,5 s**, **21,5–23,5 s**, **23,5–25,5 s**, **26–28 s** et **28–30 s**. Ces plages sont chacune deux secondes plus rapides que dans la version précédente.
 - Voitures sportives de formes, couleurs et styles variés, inspirées des catégories de modèles de marques connues.
 
 **Pistes d'implémentation :** IA simple suivant une trajectoire sur le circuit, variations modérées de vitesse, ralentissement dans les virages et gestion des dépassements. Réalisme avancé, logos et modèles sous licence **non nécessaires pour la première version**.
