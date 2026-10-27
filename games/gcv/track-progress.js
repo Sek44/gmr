@@ -16,7 +16,9 @@ const GcvTrackProgress = (() => {
     if (delta > sampleCount / 2) delta -= sampleCount;
     if (delta < -sampleCount / 2) delta += sampleCount;
     // Ignore implausible track-index jumps from another section of the circuit.
-    if (Math.abs(delta) > 12) return { ...state, index: nextIndex };
+    // Keep the last reliable index: adopting a distant branch without its
+    // distance would corrupt every subsequent delta (and thus the standings).
+    if (Math.abs(delta) > 12) return state;
     const progress = state.progress + delta;
     const laps = Math.max(state.laps, Math.floor(progress / sampleCount), 0);
     return { index: nextIndex, progress, laps };
@@ -46,12 +48,54 @@ const GcvTrackProgress = (() => {
       state.progress >= lapStartProgress + 0.9 * sampleCount;
   }
 
+  // On adjacent hairpin arms the globally closest road sample can belong
+  // to a completely different part of the lap. While the vehicle is still
+  // within its current track corridor, prefer samples near its last index.
+  // The global search remains the fallback for respawns/off-track positions.
+  function nearestSample(positions, sampleCount, x, z,
+      hintIndex = null, halfSpan = 12, corridorHalfWidth = Infinity) {
+    if (!Number.isSafeInteger(sampleCount) || sampleCount < 2 ||
+        !positions || positions.length < sampleCount ||
+        !Number.isFinite(x) || !Number.isFinite(z)) {
+      return { index: 0, distanceSquared: Infinity };
+    }
+    const distanceAt = (index) => {
+      const dx = x - positions[index].x;
+      const dz = z - positions[index].z;
+      return dx * dx + dz * dz;
+    };
+    if (Number.isSafeInteger(hintIndex) &&
+        hintIndex >= 0 && hintIndex < sampleCount) {
+      let localIndex = hintIndex;
+      let localDistance = distanceAt(localIndex);
+      for (let offset = -halfSpan; offset <= halfSpan; offset++) {
+        const index = ((hintIndex + offset) % sampleCount + sampleCount) % sampleCount;
+        const squared = distanceAt(index);
+        if (squared < localDistance) {
+          localIndex = index;
+          localDistance = squared;
+        }
+      }
+      if (localDistance <= corridorHalfWidth * corridorHalfWidth)
+        return { index: localIndex, distanceSquared: localDistance };
+    }
+    let index = 0, distanceSquared = Infinity;
+    for (let i = 0; i < sampleCount; i++) {
+      const squared = distanceAt(i);
+      if (squared < distanceSquared) {
+        index = i;
+        distanceSquared = squared;
+      }
+    }
+    return { index, distanceSquared };
+  }
+
   function relocate(state, nearestIndex) {
     // Respawn is not extra travel around the circuit.
     return { ...state, index: nearestIndex };
   }
 
-  return Object.freeze({ create, advance, relocate, syncFinish, nearNextFinish });
+  return Object.freeze({ create, advance, nearestSample, relocate, syncFinish, nearNextFinish });
 })();
 
 if (typeof window !== "undefined") window.GcvTrackProgress = GcvTrackProgress;
