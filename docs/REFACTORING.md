@@ -7,12 +7,19 @@ visuels importants. Les priorités reflètent le risque de régression.
 
 ## Priorité haute — stabilité et architecture
 
-1. **Séparer `games/gcv/game.js` (environ 1 660 lignes).** Le fichier mélange
+1. **Séparer `games/gcv/game.js` (environ 1 660 lignes) — EN COURS (27/10/2026).** Le fichier mélange
    initialisation WebGL, création de géométrie, véhicules, effets visuels, entrées,
    rendu du HUD, mini-carte, navigation, sauvegarde et boucle de simulation.
    Extraire progressivement des modules aux interfaces explicites
    (`scene`, `vehicles`, `controls`, `hud`, `session`), sans réécrire toute la
-   physique d'un seul coup. Ajouter un test de chargement avant la première extraction.
+   physique d'un seul coup.
+
+   **Première extraction :** `games/gcv/vehicles.js` crée la voiture du joueur,
+   son habitacle et les neuf modèles des concurrents (205 lignes déplacées).
+   `game.js` garde la simulation, les changements de position et l'animation des
+   roues et feux. Tests ajoutés pour l'ordre de chargement des scripts, l'API
+   navigateur et la construction des modèles. Restent à isoler : scène/circuit,
+   entrées, HUD/mini-carte, sessions et effets visuels.
 2. **Unifier la progression des tours — RÉALISÉ (27/10/2026).**
    `GcvTrackProgress` conserve la progression longitudinale signée (en mètres),
    les passages physiques de ligne et les tours validés ; ses événements

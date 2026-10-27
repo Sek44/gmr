@@ -337,3 +337,12 @@ pour les règles en vigueur.
 - Révision des sessions GCV à 5 : les courses et essais sauvegardés sont annulés
   au chargement ; les historiques de records et scores sont préservés.
 - Tests des neuf plages, des tirages aléatoires et du rejet des anciennes courses.
+
+## Première extraction de `game.js` (27/10/2026)
+
+- Création de `vehicles.js` pour construire la voiture n° 9 (habitacle, roues, feux)
+  et les neuf modèles simplifiés des concurrents. Aucune modification des règles
+  de course, de la physique ni de la persistance.
+- `game.js` conserve la simulation et les animations dynamiques ; ajout d'un
+  test de chargement des scripts et de construction des objets Three.js.
+- Poursuite du découpage prévue dans `docs/REFACTORING.md`.
