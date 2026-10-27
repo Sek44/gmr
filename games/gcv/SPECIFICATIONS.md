@@ -446,3 +446,15 @@ Documentation : [Three.js — WebGLRenderer](https://threejs.org/docs/pages/WebG
 - [x] **Tests** : largeur 7 m, contacts gauche/droite, absence de rotation vers la barrière, conservation des vitesses et du glissement, géométrie d'un virage très serré, intersections sur une approximation de l'ensemble du circuit, migration des chronos.
 
 **Validation visuelle sur appareil à faire** : contact continu de la carrosserie avec les rails dans les virages serrés et présentation des boutons de l'accueil en portrait et en paysage.
+
+
+## 33. Alignement progressif des collisions contre les barrières (27/10/2026)
+
+- [x] En cas de collision, corriger uniquement le dépassement latéral : la voiture conserve sa vitesse et continue à glisser le long du rail.
+- [x] Orienter progressivement le cap vers la **tangente de la barrière 3D réelle**, même si le joueur maintient le braquage contre le rail. L'interpolation exponentielle dépend du temps de simulation et reste fluide.
+- [x] Garantir, dès le premier contact, que l'orientation reste dans l'hémisphère du **sens de la course**, y compris si la voiture arrivait à contresens ou si le rail est très déformé dans un virage serré. Aucun retournement ne doit être produit par la collision.
+- [x] Garder la liberté de braquer vers l'intérieur pour quitter la barrière : hors collision, aucune correction de direction n'est appliquée.
+- [x] Propager l'angle corrigé au véhicule dans la boucle principale (il était auparavant calculé mais non appliqué).
+- [x] Vérifications automatisées : **17 tests de barrières**, dont braquage maximal maintenu à gauche/droite pendant 180 images, progression longitudinale, alignement progressif, tangente réelle du rail et virage extrême sans demi-tour.
+
+**À confirmer visuellement sur mobile/tablette** : fluidité du réalignement contre un rail à pleine vitesse et trajectoires en virages serrés.
