@@ -89,7 +89,7 @@
       startIndex, startCenter, startSide, startYaw, islands,
     } = World3D.create({ THREE, TrackLayout, Barriers, Scenery });
     const camera = new THREE.PerspectiveCamera(72, 1, 0.08, 2400);
-    const { car, wheelPivots, brakeLights, rearBrakeGlows, opponentMeshes } =
+    const { car, wheelPivots, brakeLights, rearBrakeGlows, opponentMeshes, setCameraMode } =
       Vehicles.create({ THREE, scene, Race, trackLength, document });
 
     const visualEffects = VisualEffects.create({ THREE, scene, car });
@@ -535,8 +535,7 @@
       cameraButton.querySelector(".gcv-action-label").textContent =
         outside ? "Caméra : extérieure" : "Caméra : intérieure";
       cameraButton.setAttribute("aria-label", outside ? "Passer en vue intérieure" : "Passer en vue extérieure");
-      cabin.visible = true; // Roof and pillars must stay visible in cockpit view.
-      dashboard.visible = !outside;
+      setCameraMode(outside);
       initializedCamera = false;
     }
     cameraButton.addEventListener("click", () => {

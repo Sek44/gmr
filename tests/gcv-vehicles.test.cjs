@@ -144,4 +144,26 @@ test("vehicle factory builds the player and nine hidden opponent models", () => 
     mesh.visible === false && scene.children.includes(mesh)));
   assert.ok(canvasLabels.includes("9"));
   assert.ok(canvasLabels.includes("GCV  09"));
+
+  // Regression: cockpit scene groups were moved to vehicles.js, but
+  // refreshCameraButton() was still accessing them as game.js locals.
+  const cabin = objects.car.children.find((group) =>
+    group.children.some((mesh) => mesh.geometry));
+  const dashboard = objects.car.children.find((group) =>
+    group.position.y === -0.16);
+  assert.ok(cabin);
+  assert.ok(dashboard);
+  assert.equal(typeof objects.setCameraMode, "function");
+  objects.setCameraMode(true);
+  assert.equal(cabin.visible, true);
+  assert.equal(dashboard.visible, false);
+  objects.setCameraMode(false);
+  assert.equal(cabin.visible, true);
+  assert.equal(dashboard.visible, true);
+});
+
+test("camera button uses the exported vehicle API, not undefined scene groups", () => {
+  const game = fs.readFileSync(path.join(gameDirectory, "game.js"), "utf8");
+  assert.match(game, /setCameraMode\(outside\)/);
+  assert.doesNotMatch(game, /\b(?:cabin|dashboard)\.visible\b/);
 });

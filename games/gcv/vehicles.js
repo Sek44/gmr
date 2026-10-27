@@ -210,7 +210,12 @@
       opponentMeshes.set(gridSlot, group);
     }
 
-    return { car, wheelPivots, brakeLights, rearBrakeGlows, opponentMeshes };
+    // Camera-specific visibility belongs to the model, not to game.js.
+    function setCameraMode(outside) {
+      cabin.visible = true; // Keep the roof and pillars in both camera modes.
+      dashboard.visible = !outside;
+    }
+    return { car, wheelPivots, brakeLights, rearBrakeGlows, opponentMeshes, setCameraMode };
   }
 
   const api = Object.freeze({ create });
