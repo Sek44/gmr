@@ -295,3 +295,17 @@ test("track shape or finish changes are not compatible with old records", () => 
   assert.equal(timing.sameCircuitRoute(
     timing.circuitKey({ ...layout, FINISH: { x: 78, z: 0 } }), currentKey), false);
 });
+
+test("reducing shoulders from ten to seven preserves the prior records", () => {
+  const storage = memoryStorage();
+  const wideLayout = { ...layout, SHOULDER_WIDTH: 10 };
+  const oldStore = timing.createStore(wideLayout, storage);
+  oldStore.record(58500, [12000, 28000, 43000]);
+  oldStore.record(54100, [11000, 26000, 41000]);
+  assert.ok(timing.sameCircuitRoute(timing.circuitKey(wideLayout),
+    timing.circuitKey(layout)));
+  const newStore = timing.createStore(layout, storage);
+  assert.deepEqual(newStore.top().map((r) => r.ms), [54100, 58500]);
+  assert.deepEqual(timing.createStore(layout, storage).top()
+    .map((r) => r.ms), [54100, 58500]);
+});
