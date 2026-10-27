@@ -433,3 +433,16 @@ Documentation : [Three.js — WebGLRenderer](https://threejs.org/docs/pages/WebG
 - [x] **Tests** : couverture complète des barrières (y compris le raccord), glissement dans les deux sens, collision répétée, sécurité du véhicule, accotement de 10 m, et migration des records entre anciennes et nouvelles largeurs.
 
 **À contrôler visuellement** : raccord des rails autour de toute la boucle sur téléphone et tablette et comportement du véhicule appuyé contre la barrière dans un virage serré.
+
+
+## 32. Accotements 7 m, rails anti-croisement et direction corrigée (27/10/2026)
+
+- [x] **Largeur** : accotements ramenés de 10 à **7 mètres par côté**, soit largeur totale **32 mètres** (chaussée centrale de 18 m + 2 × 7 m d'accotements). Le centre du circuit et ses distances de tour restent inchangés.
+- [x] **Rails continus des deux côtés** : conserver 100 % de couverture sur les deux bords, y compris les lignes droites et le raccord de boucle.
+- [x] **Virages serrés** : corriger les croisements de barrières observés à l'intérieur des courbes. Pour chaque côté, adapter l'écartement selon le rayon de courbure local, adoucir les transitions, puis détecter les intersections de segments de rails non adjacents ; rapprocher progressivement du centre du tracé uniquement les portions qui se croisent. La géométrie des lisses et des poteaux et les limites de collision proviennent des **mêmes points de rail**.
+- [x] **Glissement sans braquage vers le mur** : au contact, conserver la vitesse et le déplacement tangentiel, mais supprimer la composante de cap qui pointe vers la barrière. Le joueur peut toujours volontairement orienter sa voiture vers le centre de la piste. Gérer les deux côtés et la marche arrière.
+- [x] **Accueil** : boutons « Scores » et « ⛶ Plein écran » en **haut à droite** du jeu, comme les commandes pendant la course, au-dessus de la carte d'accueil ; adapter l'espacement à l'écran paysage d'une tablette ou d'un téléphone.
+- [x] **Compatibilité des records** : ne pas effacer les meilleurs tours ni les sauvegardes lors du retour de 10 à 7 m d'accotement. Continuer d'invalider uniquement les données si le centre du circuit ou la ligne de départ changent.
+- [x] **Tests** : largeur 7 m, contacts gauche/droite, absence de rotation vers la barrière, conservation des vitesses et du glissement, géométrie d'un virage très serré, intersections sur une approximation de l'ensemble du circuit, migration des chronos.
+
+**Validation visuelle sur appareil à faire** : contact continu de la carrosserie avec les rails dans les virages serrés et présentation des boutons de l'accueil en portrait et en paysage.
