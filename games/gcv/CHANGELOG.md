@@ -314,3 +314,17 @@ pour les règles en vigueur.
 - Temps cibles des neuf IA diminués de deux secondes, avec légère hausse de difficulté.
 - Les anciennes sessions de jeu sont désormais annulées après changement incompatible ;
   les historiques de records ne sont pas supprimés.
+
+## Refactoring n° 2 — progression unique des tours (27/10/2026)
+
+- `GcvTrackProgress` devient l'unique source de vérité pour la distance du
+  joueur, les franchissements physiques dans le bon sens et les tours validés.
+- `GcvRace` en déduit son classement, la fin après 3 tours et les temps de
+  passage ; `GcvLapTimes` conserve seulement le chrono et les secteurs en
+  consommant les mêmes événements validés. Le HUD lit les tours confirmés.
+- Les anciens comptages par bouclage des indices, synchronisations manuelles
+  et franchissements déclenchés par les secteurs sont retirés.
+- Les protections contre demi-tours, raccourcis, changements d'épingle et
+  chutes restent actives ; les adversaires avancent pendant la récupération.
+- Nouvelles vérifications transversales progression/course/chrono. Révision des
+  sauvegardes GCV à 4 : courses et essais en cours annulables, records préservés.

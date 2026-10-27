@@ -57,7 +57,7 @@
   const LapTimes = window.GcvLapTimes;
   const Race = window.GcvRace;
   // Bump this revision after incompatible GCV updates. Old sessions are canceled.
-  const SAVE_REVISION = 3;
+  const SAVE_REVISION = 4;
 
   function announce(message) {
     notice.textContent = message;
@@ -765,11 +765,17 @@
       speed: 0,
     };
     let cameraMode = "inside";
-    let lapTracker = TrackProgress.create(SAMPLE_COUNT, startIndex, initialIndex);
+    function startOffset(index) {
+      let samples = (index - startIndex + SAMPLE_COUNT) % SAMPLE_COUNT;
+      if (samples > SAMPLE_COUNT / 2) samples -= SAMPLE_COUNT;
+      return samples * trackLength / SAMPLE_COUNT;
+    }
+    const progressSamples = (metres) => metres * SAMPLE_COUNT / trackLength;
+    let lapTracker = TrackProgress.createMotion(
+      trackLength, startOffset(initialIndex), initialIndex);
     const lapRecords = LapTimes.createStore(TrackLayout);
     const circuitKey = LapTimes.circuitKey(TrackLayout);
-    let lapTimer = LapTimes.initial(SAMPLE_COUNT, lapTracker.progress);
-    let timedLapCount = 0;
+    let lapTimer = LapTimes.initial(SAMPLE_COUNT, progressSamples(lapTracker.progress));
     let gameMode = "free";
     let raceState = null;
     let freeSession = null;
@@ -898,7 +904,7 @@
         ? Race.LAPS + " tours terminés" : "Tour " + Race.currentLap(raceState) + "/" + Race.LAPS;
       // Display validated physical lap crossings, not rounded estimated
       // distance (which can lag the finish when the samples jitter).
-      lapLabel.textContent = String(raceState.playerLapTimes?.length || 0);
+      lapLabel.textContent = String(lapTracker.laps);
       const phase = raceState.phase;
       raceOverlay.classList.toggle("is-results", phase === "finished");
       raceOverlay.hidden = phase === "racing" ||
@@ -1104,7 +1110,6 @@
       if (gameMode === "free") freeSession = snapshot();
       clearControls();
       gameMode = "race";
-      raceState = Race.create(trackLength);
       clearLapHold();
       resultRefreshCooldown = 0;
       const grid = Race.gridSlot(Race.PLAYER_SLOT);
@@ -1116,9 +1121,10 @@
       falling = false;
       fall = null;
       respawnIndex = current;
-      lapTracker = TrackProgress.create(SAMPLE_COUNT, startIndex, current);
-      lapTimer = LapTimes.initial(SAMPLE_COUNT, lapTracker.progress);
-      timedLapCount = 0;
+      lapTracker = TrackProgress.createMotion(
+        trackLength, -grid.distance, current);
+      raceState = Race.create(trackLength, Math.random, lapTracker);
+      lapTimer = LapTimes.initial(SAMPLE_COUNT, progressSamples(lapTracker.progress));
       announce("");
       initializedCamera = false;
       syncRaceCars();
@@ -1173,9 +1179,8 @@
       falling = false;
       fall = null;
       respawnIndex = index;
-      lapTracker = TrackProgress.create(SAMPLE_COUNT, startIndex, index);
-      lapTimer = LapTimes.initial(SAMPLE_COUNT, lapTracker.progress);
-      timedLapCount = 0;
+      lapTracker = TrackProgress.createMotion(trackLength, -10, index);
+      lapTimer = LapTimes.initial(SAMPLE_COUNT, progressSamples(lapTracker.progress));
       lapLabel.textContent = "0";
       refreshChrono();
       announce("");
@@ -1391,6 +1396,10 @@
     function snapshot() {
       // A saved fall resumes at the nearest safe edge instead of mid-air.
       const safe = falling ? positions[respawnIndex] : driver;
+      // A saved fall must restore the same track hint in both the player's
+      // progress and the race snapshot; relocation grants no travel.
+      const savedMotion = falling
+        ? TrackProgress.relocate(lapTracker, respawnIndex) : lapTracker;
       return {
         saveRevision: SAVE_REVISION,
         x: safe.x, z: safe.z,
@@ -1398,14 +1407,15 @@
         speed: falling ? 0 : driver.speed,
         reverseHold: falling ? 0 : driver.reverseHold,
         camera: cameraMode,
-        progress: lapTracker.progress,
-        laps: lapTracker.laps,
-        timedLaps: timedLapCount,
+        motion: savedMotion,
         // On refresh during a fall the car respawns safely, but the active
         // stopwatch must continue from the preserved elapsed time.
         lapTimer,
         mode: gameMode,
-        race: gameMode === "race" ? raceState : null,
+        race: gameMode === "race" && raceState
+          ? { ...raceState, playerMotion: savedMotion,
+            playerProgress: savedMotion.progress }
+          : null,
         freeSession: gameMode === "race" ? freeSession : null,
         circuitKey,
         layoutVersion: TrackLayout.VERSION,
@@ -1433,17 +1443,18 @@
         }
       }
       const nearestIndex = closestRoad(driver.x, driver.z).index;
-      lapTracker = TrackProgress.create(SAMPLE_COUNT, startIndex, nearestIndex, saved);
-      timedLapCount = Number.isSafeInteger(saved.timedLaps) && saved.timedLaps >= 0
-        ? saved.timedLaps : 0;
-      lapTimer = LapTimes.restore(saved.lapTimer, SAMPLE_COUNT, lapTracker.progress);
-      lapLabel.textContent = String(timedLapCount);
+      lapTracker = TrackProgress.createMotion(
+        trackLength, startOffset(nearestIndex), nearestIndex, saved.motion);
+      lapTimer = LapTimes.restore(saved.lapTimer, SAMPLE_COUNT,
+        progressSamples(lapTracker.progress));
+      lapLabel.textContent = String(lapTracker.laps);
       refreshChrono();
       cameraMode = saved.camera === "outside" ? "outside" : "inside";
       const restoredRace = saved.mode === "race"
         ? Race.restore(saved.race, trackLength) : null;
       gameMode = restoredRace ? "race" : "free";
       raceState = restoredRace;
+      if (restoredRace) lapTracker = restoredRace.playerMotion;
       freeSession = restoredRace &&
         LapTimes.sameCircuitRoute(saved.freeSession?.circuitKey, circuitKey)
         ? saved.freeSession : null;
@@ -1467,8 +1478,8 @@
       const brakePressed = brakePointers.size > 0 || keys.has("arrowdown") || keys.has("s");
       let mudSkidIntensity = 0;
       let barrierSparkContact = null;
-      let raceDistance = 0;
-      let raceFinishFraction = null;
+      let raceMotion = null;
+      let recordedLapThisFrame = false;
       const mayDrive = gameMode === "free" || raceState?.phase === "racing";
       if (falling) {
         // Falling is part of this timed lap. Count only the actual remaining
@@ -1525,40 +1536,29 @@
           fall = Physics.advanceFall(Physics.startFall(driver), dt);
           announce("Chute dans le vide ! Retour dans " + fall.remaining.toFixed(1) + " s");
         } else {
-          // Real travel is the only input to the live race ranking. Project
-          // actual vehicle movement on the track tangent: the nearest sample
-          // can jitter or switch in a sharp turn without changing rank.
-          if (gameMode === "race") {
-            raceDistance = TrackProgress.alongTrackTravel(
-              previousPosition, driver, directions[nearest.index]);
-          }
+          // Longitudinal motion is measured once for both the chrono and
+          // the live classification. Road samples only locate the tangent.
+          const travel = TrackProgress.alongTrackTravel(
+            previousPosition, driver, directions[nearest.index]);
+          const crossing = TrackProgress.finishCrossing(
+            previousPosition, driver, startCenter, directions[startIndex],
+            OUTER_HALF_WIDTH);
           const progressBefore = lapTracker.progress;
-          lapTracker = TrackProgress.advance(lapTracker, nearest.index, SAMPLE_COUNT);
-          // Sector checkpoints use along-track samples; the finish line uses
-          // the car's REAL movement across the painted line. A skipped road
-          // sample must never prevent the chronometer from starting.
-          const timing = LapTimes.advance(lapTimer, progressBefore, lapTracker.progress,
-            fallDt * 1000, SAMPLE_COUNT, lapRecords.best(), false);
+          const motion = TrackProgress.move(
+            lapTracker, trackLength, travel, crossing, nearest.index, SAMPLE_COUNT);
+          lapTracker = motion.state;
+          if (gameMode === "race") raceMotion = motion;
+          // Sector timing uses signed travel, not the artificial distance
+          // alignment performed at a validated finish line.
+          const timing = LapTimes.advance(lapTimer,
+            progressSamples(progressBefore), progressSamples(motion.sectorProgress),
+            fallDt * 1000, SAMPLE_COUNT, lapRecords.best());
           lapTimer = timing.state;
-          const crossing = LapTimes.finishCrossing(
-            previousPosition, driver, startCenter, directions[startIndex], OUTER_HALF_WIDTH);
-          // Race validation is independent of the time-trial stopwatch:
-          // its own distance guard rejects short back-and-forth crossings.
-          // A missing stopwatch sector must not suppress a real race lap.
-          if (crossing !== null && gameMode === "race") raceFinishFraction = crossing;
-          if (crossing !== null && (!lapTimer.running ||
-              TrackProgress.nearNextFinish(lapTracker, lapTimer.startAt, SAMPLE_COUNT))) {
-            // Crossing the line again just after reversing is not a lap;
-            // do not advance the timer or sync a whole circuit of progress.
-            const nextFinishProgress = lapTimer.running
-              ? lapTimer.startAt + SAMPLE_COUNT
-              : Math.max(lapTimer.startAt,
-                (Math.floor(progressBefore / SAMPLE_COUNT) + 1) * SAMPLE_COUNT);
+          for (const event of motion.events) {
             const finish = LapTimes.crossFinish(
-              lapTimer, crossing, fallDt * 1000, SAMPLE_COUNT, nextFinishProgress);
+              lapTimer, event.fraction, fallDt * 1000, SAMPLE_COUNT,
+              progressSamples(event.progress));
             lapTimer = finish.state;
-            lapTracker = TrackProgress.syncFinish(
-              lapTracker, lapTimer.startAt, nearest.index, SAMPLE_COUNT);
             timing.events.push(...finish.events);
             if (binding) binding.changed();
           }
@@ -1566,23 +1566,24 @@
             if (event.type === "lap") {
               const rank = bestPosition(event.ms);
               if (lapRecords.record(event.ms, event.splits)) {
-                timedLapCount++;
-                lapLabel.textContent = String(timedLapCount);
+                recordedLapThisFrame = true;
                 refreshBests();
                 holdFinishedLap(event.ms, rank);
                 if (binding) binding.changed();
               }
             }
           }
+          lapLabel.textContent = String(lapTracker.laps);
         }
       }
 
       if (gameMode === "race" && raceState) {
         const wasRacing = raceState.phase === "racing";
         const previousLapCount = raceState.playerLapTimes?.length || 0;
-        raceState = Race.advance(raceState, dt, raceDistance, raceFinishFraction);
+        raceState = Race.advance(raceState, dt, raceMotion || 0);
+        lapTracker = raceState.playerMotion;
         const completedLaps = raceState.playerLapTimes?.length || 0;
-        if (completedLaps > previousLapCount && timedLapCount < completedLaps) {
+        if (completedLaps > previousLapCount && !recordedLapThisFrame) {
           // A fall or a missed sector can invalidate the time-trial record,
           // but the actual race lap must always get a time announcement.
           const lapMs = raceState.playerLapTimes[completedLaps - 1] * 1000;

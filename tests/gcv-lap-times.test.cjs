@@ -2,6 +2,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const timing = require("../games/gcv/lap-times.js");
+const track = require("../games/gcv/track-progress.js");
 const layout = require("../games/gcv/track-layout.js");
 
 function memoryStorage() {
@@ -74,7 +75,10 @@ test("first crossing starts timer without counting partial warmup as a lap", () 
   let timer = timing.initial(840, 110);
   const warmup = timing.advance(timer, 800, 820, 1000, 840);
   assert.equal(warmup.events.length, 0);
-  const line = timing.advance(warmup.state, 835, 845, 100, 840);
+  // The sample index alone cannot start the clock.
+  const ignored = timing.advance(warmup.state, 835, 845, 100, 840);
+  assert.deepEqual(ignored.events, []);
+  const line = timing.crossFinish(ignored.state, 0.5, 100, 840, 840);
   assert.deepEqual(line.events.map((event) => event.type), ["start"]);
   assert.equal(line.state.running, true);
   assert.ok(Math.abs(line.state.elapsedMs - 50) < 1e-8);
@@ -82,7 +86,7 @@ test("first crossing starts timer without counting partial warmup as a lap", () 
 
 test("three split checkpoints then finish yield exactly one valid full lap", () => {
   let state = timing.initial(840, 110);
-  state = timing.advance(state, 839, 841, 100, 840).state;
+  state = timing.crossFinish(state, 0.5, 100, 840, 840).state;
   assert.equal(state.running, true);
   const reference = { splits: [21000, 46000, 69000] };
   let previous = 841;
@@ -93,6 +97,9 @@ test("three split checkpoints then finish yield exactly one valid full lap", () 
     events.push(...changed.events);
     previous = next;
   }
+  const finished = timing.crossFinish(state, 0.5, 4000, 840);
+  events.push(...finished.events);
+  state = finished.state;
   assert.deepEqual(events.map((event) => event.type), ["split", "split", "split", "lap"]);
   assert.deepEqual(events.filter((e) => e.type === "split").map((e) => e.index), [0, 1, 2]);
   const lap = events.find((event) => event.type === "lap");
@@ -144,7 +151,7 @@ test("physical finish crossing starts the stopwatch despite skipped sample index
   const line = { x: 78, z: -10 };
   const forward = { x: 0, z: -1 };
   // At speed the vehicle crosses the whole painted strip in one frame.
-  const fraction = timing.finishCrossing(
+  const fraction = track.finishCrossing(
     { x: 78, z: 1.2 }, { x: 78, z: -14.8 }, line, forward, 15);
   assert.ok(Math.abs(fraction - 0.7) < 1e-8);
   const waiting = timing.initial(840, 820);
@@ -160,22 +167,22 @@ test("physical finish crossing starts the stopwatch despite skipped sample index
 
 test("crossing backwards or outside the finish road width cannot start the clock", () => {
   const line = { x: 78, z: -10 }, forward = { x: 0, z: -1 };
-  assert.equal(timing.finishCrossing(
+  assert.equal(track.finishCrossing(
     { x: 78, z: -20 }, { x: 78, z: 8 }, line, forward, 15), null);
-  assert.equal(timing.finishCrossing(
+  assert.equal(track.finishCrossing(
     { x: 105, z: 5 }, { x: 105, z: -15 }, line, forward, 15), null);
-  assert.equal(timing.finishCrossing(
+  assert.equal(track.finishCrossing(
     { x: 78, z: -12 }, { x: 78, z: -17 }, line, forward, 15), null);
-  assert.equal(timing.finishCrossing(
+  assert.equal(track.finishCrossing(
     { x: 78, z: 2 }, { x: 78, z: 1 }, line, forward, 15), null);
 });
 
 test("crossing near the outer dirt shoulder counts if the vehicle stays on the road", () => {
-  const fraction = timing.finishCrossing(
+  const fraction = track.finishCrossing(
     { x: 92, z: -4 }, { x: 92, z: -16 },
     { x: 78, z: -10 }, { x: 0, z: -1 }, 15);
   assert.equal(fraction, 0.5);
-  assert.equal(timing.finishCrossing(
+  assert.equal(track.finishCrossing(
     { x: 94, z: -4 }, { x: 94, z: -16 },
     { x: 78, z: -10 }, { x: 0, z: -1 }, 15), null);
 });
