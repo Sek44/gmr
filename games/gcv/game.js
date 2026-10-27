@@ -1436,7 +1436,9 @@
       const restoredRace = saved.mode === "race"
         ? Race.restore(saved.race, trackLength) : null;
       gameMode = restoredRace ? "race" : "free";
-      raceState = restoredRace;
+      raceState = restoredRace
+        ? Race.migratePlayerProgress(restoredRace, nearestIndex,
+          startIndex, SAMPLE_COUNT) : null;
       freeSession = restoredRace &&
         LapTimes.sameCircuitRoute(saved.freeSession?.circuitKey, circuitKey)
         ? saved.freeSession : null;
