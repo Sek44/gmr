@@ -1043,6 +1043,8 @@
       fall = null;
       respawnIndex = current;
       lapTracker = TrackProgress.create(SAMPLE_COUNT, startIndex, current);
+      // Never count the same section twice after reversing or scraping a rail.
+      raceState.trackHighWater = lapTracker.progress;
       lapTimer = LapTimes.initial(SAMPLE_COUNT, lapTracker.progress);
       timedLapCount = 0;
       announce("");
@@ -1365,6 +1367,10 @@
         ? Race.restore(saved.race, trackLength) : null;
       gameMode = restoredRace ? "race" : "free";
       raceState = restoredRace;
+      if (raceState && !Number.isFinite(raceState.trackHighWater)) {
+        // Old saves have no high-water mark; start from the current location.
+        raceState.trackHighWater = lapTracker.progress;
+      }
       freeSession = restoredRace &&
         LapTimes.sameCircuitRoute(saved.freeSession?.circuitKey, circuitKey)
         ? saved.freeSession : null;
@@ -1383,6 +1389,7 @@
       const brakePressed = brakePointers.size > 0 || keys.has("arrowdown") || keys.has("s");
       let mudSkidIntensity = 0;
       let raceDistance = 0;
+      let raceFinishFraction = null;
       const mayDrive = gameMode === "free" || raceState?.phase === "racing";
       if (falling) {
         // Falling is part of this timed lap. Count only the actual remaining
@@ -1429,10 +1436,6 @@
         } else {
           const progressBefore = lapTracker.progress;
           lapTracker = TrackProgress.advance(lapTracker, nearest.index, SAMPLE_COUNT);
-          // Forward distance tracked independently from the existing time-trial
-          // stopwatch. Reversing and respawning never award race distance.
-          raceDistance = Math.max(0, lapTracker.progress - progressBefore) *
-            trackLength / SAMPLE_COUNT;
           // Sector checkpoints use along-track samples; the finish line uses
           // the car's REAL movement across the painted line. A skipped road
           // sample must never prevent the chronometer from starting.
@@ -1442,6 +1445,7 @@
           const crossing = LapTimes.finishCrossing(
             previousPosition, driver, startCenter, directions[startIndex], OUTER_HALF_WIDTH);
           if (crossing !== null) {
+            raceFinishFraction = crossing;
             const nextFinishProgress = lapTimer.running
               ? lapTimer.startAt + SAMPLE_COUNT
               : Math.max(lapTimer.startAt,
@@ -1471,8 +1475,17 @@
 
       if (gameMode === "race" && raceState) {
         const wasRacing = raceState.phase === "racing";
+        if (wasRacing && !falling) {
+          const previousHighWater = Number.isFinite(raceState.trackHighWater)
+            ? raceState.trackHighWater : lapTracker.progress;
+          // A backward / forward excursion and local index jitter must not
+          // repeatedly increase the accumulated race distance.
+          const highWater = Math.max(previousHighWater, lapTracker.progress);
+          raceDistance = (highWater - previousHighWater) * trackLength / SAMPLE_COUNT;
+          raceState.trackHighWater = highWater;
+        }
         const previousLapCount = raceState.playerLapTimes?.length || 0;
-        raceState = Race.advance(raceState, dt, raceDistance);
+        raceState = Race.advance(raceState, dt, raceDistance, raceFinishFraction);
         const completedLaps = raceState.playerLapTimes?.length || 0;
         if (completedLaps > previousLapCount && timedLapCount < completedLaps) {
           // A fall or a missed sector can invalidate the time-trial record,
