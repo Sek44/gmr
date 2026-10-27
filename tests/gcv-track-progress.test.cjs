@@ -132,7 +132,9 @@ test("road tracking follows the index wrap without losing a lap", () => {
       state.index, 5, 15);
     state = track.advance(state, nearest.index, 100);
   }
-  assert.equal(state.laps, 1);
+  // Starting just before the line gives a first crossing at 100 and a
+  // second after a full further lap at 200.
+  assert.equal(state.laps, 2);
   assert.equal(state.progress, 200);
 });
 
