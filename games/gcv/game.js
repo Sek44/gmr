@@ -1413,7 +1413,6 @@
         if (barrierContact.collided) {
           driver.x = barrierContact.x;
           driver.z = barrierContact.z;
-          driver.yaw = barrierContact.yaw;
           nearest = closestRoad(driver.x, driver.z);
         }
         if (nearest.distanceSquared > OUTER_HALF_WIDTH * OUTER_HALF_WIDTH) {
