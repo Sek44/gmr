@@ -116,16 +116,16 @@ const GcvRace = (() => {
   }
 
   function classification(race) {
-    return standings(race).map((entry, i, rows) => {
-      const predecessor = i > 0 ? rows[i - 1] : null;
-      return {
-        rank: i + 1, id: entry.id, finishTime: entry.finishTime,
-        progress: entry.progress,
-        gap: Number.isFinite(entry.finishTime) &&
-          Number.isFinite(predecessor?.finishTime)
-          ? Math.max(0, entry.finishTime - predecessor.finishTime) : null,
-      };
-    });
+    const rows = standings(race);
+    const winnerTime = rows[0]?.finishTime;
+    return rows.map((entry, i) => ({
+      rank: i + 1, id: entry.id, finishTime: entry.finishTime,
+      progress: entry.progress,
+      // Each finisher's gap is measured from the winner, not the previous car.
+      gap: i > 0 && Number.isFinite(entry.finishTime) &&
+        Number.isFinite(winnerTime)
+        ? Math.max(0, entry.finishTime - winnerTime) : null,
+    }));
   }
 
   function currentLap(race) {

@@ -57,7 +57,7 @@
   const LapTimes = window.GcvLapTimes;
   const Race = window.GcvRace;
   // Bump this revision after incompatible GCV updates. Old sessions are canceled.
-  const SAVE_REVISION = 2;
+  const SAVE_REVISION = 3;
 
   function announce(message) {
     notice.textContent = message;
