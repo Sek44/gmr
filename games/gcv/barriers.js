@@ -66,6 +66,39 @@ const GcvBarriers = (() => {
     return hits;
   }
 
+  // Moving a folded inside rail closer to the centerline can put it on the
+  // driving surface. Join the arms where they intersect and discard only the
+  // tiny folded arc. The rail remains continuous at the outer shoulder.
+  function clipFoldedLoops(points, skippedSamples) {
+    const n = points.length;
+    for (let pass = 0; pass < 24; pass++) {
+      const crossings = railIntersections(points);
+      if (!crossings.length) return;
+      const [i, j] = crossings[0];
+      const a = points[i], b = points[(i + 1) % n];
+      const c = points[j], d = points[(j + 1) % n];
+      const ax = b.x - a.x, az = b.z - a.z;
+      const bx = d.x - c.x, bz = d.z - c.z;
+      const cx = c.x - a.x, cz = c.z - a.z;
+      const determinant = ax * bz - az * bx;
+      if (Math.abs(determinant) < 1e-10) break;
+      const t = (cx * bz - cz * bx) / determinant;
+      const junction = { x: a.x + ax * t, z: a.z + az * t };
+      const forward = j - i;
+      const backward = n - forward;
+      const first = forward <= backward ? i + 1 : j + 1;
+      const count = Math.min(forward, backward);
+      for (let k = 0; k < count; k++) {
+        const index = (first + k) % n;
+        points[index] = { ...junction };
+        skippedSamples[index] = 1;
+      }
+    }
+    if (railIntersections(points).length) {
+      throw new Error("Unable to remove intersecting guardrail loops");
+    }
+  }
+
   function untangleRail(positions, normals, sign, offsets, points, minimumOffset) {
     const n = points.length;
     for (let pass = 0; pass < 10; pass++) {
@@ -123,6 +156,9 @@ const GcvBarriers = (() => {
 
     function pathFor(sideSign) {
       const rawOffsets = curvatures.map(({ sign, radius }) =>
+        // Keep legacy behavior for tracks without a defined roadway width.
+        // For GCV, keep the rails near the outside of the entire shoulder.
+        roadHalfWidth !== null ? standardOffset :
         sign === sideSign
           ? Math.min(standardOffset, Math.max(minimumOffset,
             radius * INNER_RADIUS_FRACTION))
@@ -143,12 +179,16 @@ const GcvBarriers = (() => {
         x: p.x + centerNormals[i].x * sideSign * offsets[i],
         z: p.z + centerNormals[i].z * sideSign * offsets[i],
       }));
-      // A local curvature bound is not enough for adjacent hairpin arms:
-      // these loops can still intersect even though each individual curve
-      // remains smooth. Contract only the few folded segments.
-      untangleRail(positions, centerNormals, sideSign, offsets, points,
-        minimumOffset);
-      return { points, offsets, limits: offsets.map((v) => v - CAR_RADIUS) };
+      const skippedSamples = new Uint8Array(n);
+      if (roadHalfWidth !== null) {
+        // Eliminate the self-crossing curls instead of reducing the shoulder.
+        clipFoldedLoops(points, skippedSamples);
+      } else {
+        untangleRail(positions, centerNormals, sideSign, offsets, points,
+          minimumOffset);
+      }
+      return { points, offsets, skippedSamples,
+        limits: offsets.map((v) => v - CAR_RADIUS) };
     }
     const left = pathFor(1), right = pathFor(-1);
     return {
@@ -185,7 +225,8 @@ const GcvBarriers = (() => {
     let forwardX = side.z, forwardZ = -side.x;
     const rail = barriers.rails &&
       (lateral >= 0 ? barriers.rails.left : barriers.rails.right);
-    if (rail && rail.points.length >= 3) {
+    if (rail && rail.points.length >= 3 &&
+        !(rail.skippedSamples && rail.skippedSamples[index])) {
       const points = rail.points, n = points.length;
       const before = points[(index + n - 1) % n];
       const after = points[(index + 1) % n];

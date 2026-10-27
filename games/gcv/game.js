@@ -150,6 +150,8 @@
       sides.slice(0, SAMPLE_COUNT), ROAD_HALF_WIDTH);
     const railVertices = [], railIndices = [];
     function railQuad(a, b, low, high) {
+      // Skip degenerate quads created where a hairpin loop was joined.
+      if ((a.x - b.x) ** 2 + (a.z - b.z) ** 2 < 1e-8) return;
       const v = railVertices.length / 3;
       railVertices.push(a.x, low, a.z, b.x, low, b.z,
         a.x, high, a.z, b.x, high, b.z);
@@ -188,6 +190,7 @@
     for (const i of guardrailPostSamples) {
       for (const side of [-1, 1]) {
         const rail = side > 0 ? barriers.rails.left : barriers.rails.right;
+        if (rail.skippedSamples[i]) continue;
         const point = rail.points[i];
         postTransform.position.set(point.x, 0.73, point.z);
         postTransform.rotation.y = Math.atan2(
@@ -196,6 +199,7 @@
         guardrailPosts.setMatrixAt(postNumber++, postTransform.matrix);
       }
     }
+    guardrailPosts.count = postNumber;
     guardrailPosts.instanceMatrix.needsUpdate = true;
     scene.add(guardrailPosts);
 

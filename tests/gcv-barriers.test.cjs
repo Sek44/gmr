@@ -216,12 +216,15 @@ test("the actual circuit's tight bends produce no crossing guardrails", () => {
     "outside rail must stay continuous without crossings");
   assert.equal(rail.protectedSamples.length, samples.length);
   assert.ok(rail.protectedSamples.every((value) => value === 1));
-  const minimumOffset = layout.ROAD_HALF_WIDTH + barriers.ROAD_EDGE_MARGIN;
+  const outerRailOffset = layout.ROAD_HALF_WIDTH +
+    layout.SHOULDER_WIDTH - barriers.RAIL_OFFSET_INWARD;
   // Check both rail posts and segments; a crossing-free rail may still
   // cut across the asphalt if its offset is contracted too aggressively.
   for (const path of [rail.rails.left, rail.rails.right]) {
-    assert.ok(path.offsets.every((offset) => offset >= minimumOffset - 1e-8),
-      "rails must stay on the shoulder even at the tightest bend");
+    assert.ok(path.offsets.every((offset) => offset >= outerRailOffset - 1e-8),
+      "rails must stay by the outside edge of the 7 m shoulder");
+    assert.ok(path.skippedSamples.some((v) => v === 1),
+      "small hairpin loops must be clipped, not pulled onto the road");
     for (let i = 0; i < samples.length; i += 3) {
       const a = path.points[i], b = path.points[(i + 1) % samples.length];
       const mid = { x: (a.x + b.x) / 2, z: (a.z + b.z) / 2 };
@@ -235,8 +238,8 @@ test("the actual circuit's tight bends produce no crossing guardrails", () => {
         nearestSquared = Math.min(nearestSquared,
           (mid.x - p.x - u * dx) ** 2 + (mid.z - p.z - u * dz) ** 2);
       }
-      assert.ok(nearestSquared >= (layout.ROAD_HALF_WIDTH + 0.3) ** 2,
-        "no guardrail segment may cross over any part of the road");
+      assert.ok(nearestSquared >= (outerRailOffset - 1) ** 2,
+        "visible guardrails must remain by the outer edge of the shoulders");
     }
   }
 });
