@@ -19,7 +19,10 @@
     description.textContent = game.description || "";
     const action = document.createElement("span");
     action.className = "game-action";
-    action.textContent = GameState.create(game.id).load() ? "Reprendre →" : "Jouer →";
+    const saved = GameState.create(game.id).load();
+    const canResume = saved && (game.saveRevision === undefined ||
+      saved.saveRevision === game.saveRevision);
+    action.textContent = canResume ? "Reprendre →" : "Jouer →";
     link.append(icon, title, description, action);
     grid.append(link);
   }

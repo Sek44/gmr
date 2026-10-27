@@ -7,7 +7,7 @@ Site statique sans étape de build, conçu pour GitHub Pages, téléphone, table
 - index.html : accueil, cartes construites depuis games/catalog.js.
 - scores.html : historique global et par jeu, courbe d'évolution sur les pages de jeu.
 - games/<id>/ : chaque jeu (HTML, JS, CSS ou ressources propres).
-- games/gcv/ : **Grande Course Voiture**, premier prototype 3D jouable (voiture, piste, caméras, conduite au pouce). Voir games/gcv/SPECIFICATIONS.md.
+- games/gcv/ : **Grande Course Voiture**, essais libres et courses de 3 tours contre 9 concurrents. Voir [les règles actuelles](games/gcv/SPECIFICATIONS.md) et [l'historique](games/gcv/CHANGELOG.md).
 - games/_template/ : modèle de nouveau jeu, non inscrit à l'accueil.
 - shared/site.css : composants visuels responsives communs.
 - shared/game-state.js : états des parties, restauration et sauvegarde automatique.
@@ -51,6 +51,10 @@ Node.js : node --test tests/*.test.cjs
 
 GCV inclut les tests de physique dans tests/gcv-physics.test.cjs.
 Le rendu WebGL et le plein écran restent à vérifier manuellement sur Chrome Android.
+
+À chaque modification incompatible de GCV, augmenter les deux champs de révision de session
+indiqués dans `AGENTS.md`. Les courses et essais précédents sont alors annulés ;
+**les scores et les meilleurs tours restent conservés**.
 
 Le test de navigation et d'affichage doit aussi être fait sur téléphone et
 tablette. La publication GitHub Pages peut se faire directement depuis la

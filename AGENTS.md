@@ -11,6 +11,7 @@
 - Une partie terminée ne doit pas être restaurée ni ajouter deux fois son score.
 - Ne jamais effacer l'historique complet des scores. Suppression d'un seul score uniquement avec confirmation dans l'application.
 - Les clés localStorage de GMR commencent par gmr:v1:. Ne pas toucher aux clés de xfr1/exercices.
-- Ne pas casser les anciennes sauvegardes, ni exiger de nouveaux champs dans les historiques existants. S'il manque une heure, afficher 00:00.
+- Les sauvegardes **GCV** d'une version antérieure peuvent être annulées lors d'une modification : incrémenter ensemble `SAVE_REVISION` dans `games/gcv/game.js` et `saveRevision` dans `games/catalog.js`. Au prochain chargement, le jeu revient au menu principal sans proposer de reprise incompatible.
+- Préserver les historiques de scores et records de tours ; ne pas les confondre avec les sessions annulables. Pour les autres jeux, conserver la compatibilité des sauvegardes existantes. S'il manque une heure dans un score, afficher 00:00.
 - Les échecs d'accès à localStorage doivent être gérés sans faire planter le jeu.
 - Vérifier les tests avant publication. Les jeux ne doivent pas importer du code spécifique à un autre jeu.

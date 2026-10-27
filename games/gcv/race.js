@@ -7,7 +7,6 @@ const GcvRace = (() => {
   const PLAYER_SLOT = 4; // Fifth of ten positions: middle of the grid.
   const LAPS = 3;
   const PACE_VERSION = 2;
-  const PACE_ADVANCE_SECONDS = 2;
   // A car taking the inside shoulder around bends covers less physical
   // distance than the track centerline. Keep a generous anti-U-turn guard,
   // while accepting real full laps on legal inside trajectories.
@@ -18,16 +17,15 @@ const GcvRace = (() => {
   const COLUMN_OFFSET = 3;
   const ROW_SPACING = 9.5;
   const FIRST_ROW_DISTANCE = 12;
-  // Cruise lap targets are two seconds faster per opponent than before:
-  // leaders 15–19 s, then a smooth 19.5–32 s field.
+  // Cruise lap targets: leaders 15–19 s, then a 19.5–32 s field.
   // Actual first laps include acceleration from rest, as for the player.
   // Each target is randomized at race creation. Non-overlapping bands
   // preserve the difficulty order, regardless of the chosen random values.
   const PACE_RANGES = Object.freeze([
-    [17, 18.5], [18.5, 20], [20, 21],
-    [21.5, 23.5], [23.5, 25.5], [25.5, 27.5], [27.5, 29.5],
-    [30, 32], [32, 34],
-  ].map((range) => Object.freeze(range.map((seconds) => seconds - PACE_ADVANCE_SECONDS))));
+    [15, 16.5], [16.5, 18], [18, 19],
+    [19.5, 21.5], [21.5, 23.5], [23.5, 25.5], [25.5, 27.5],
+    [28, 30], [30, 32],
+  ].map((range) => Object.freeze(range)));
 
   const COLORS = Object.freeze([
     0x39b6d5, 0xf5bd49, 0x80d78a, 0xa189df, 0xf08e64,
@@ -40,6 +38,14 @@ const GcvRace = (() => {
       distance: FIRST_ROW_DISTANCE + Math.floor(index / 2) * ROW_SPACING,
       lateral: index % 2 === 0 ? -COLUMN_OFFSET : COLUMN_OFFSET,
     };
+  }
+
+  function opponentNumber(slot) {
+    if (!Number.isInteger(slot) || slot < 0 || slot >= GRID_COUNT ||
+        slot === PLAYER_SLOT) return null;
+    const index = slot < PLAYER_SLOT ? slot : slot - 1;
+    // Vehicle 9 belongs exclusively to the player.
+    return index === 8 ? 10 : index + 1;
   }
 
   function lapTarget(rank, random = Math.random) {
@@ -244,95 +250,32 @@ const GcvRace = (() => {
     return updated;
   }
 
-  // Old saves ranked the player using a monotonic high-water sample index.
-  // A bad track projection could put the player first forever. On migration,
-  // reconstruct their race distance from their actual position on the track,
-  // preserving only laps confirmed by physical finish crossings.
-  function migratePlayerProgress(race, sampleIndex, startIndex, sampleCount) {
-    if (!race || race.distanceModel === "signed-motion-v1" ||
-        race.phase === "finished" ||
-        ![sampleIndex, startIndex, sampleCount].every(Number.isSafeInteger) ||
-        sampleCount < 2) return race;
-    const offset = ((sampleIndex - startIndex) % sampleCount + sampleCount) %
-      sampleCount;
-    const fraction = offset / sampleCount;
-    const validatedLaps = Math.min(LAPS,
-      Array.isArray(race.playerLapTimes) ? race.playerLapTimes.length : 0);
-    const crossed = race.playerStartCrossed === true;
-    const position = crossed
-      ? Math.max(validatedLaps * race.trackLength,
-        Math.min((validatedLaps + fraction) * race.trackLength,
-          (validatedLaps + 1) * race.trackLength - 0.001))
-      : (fraction - 1) * race.trackLength;
-    return {
-      ...race, playerProgress: position,
-      lastPhysicalFinishProgress: crossed
-        ? validatedLaps * race.trackLength : null,
-      distanceModel: "signed-motion-v1",
-    };
-  }
-
-  function restore(saved, trackLength, random = Math.random) {
-    if (!saved || (saved.phase === "finished" && saved.laps !== LAPS) ||
+  // Sessions from prior game revisions are intentionally not migrated.
+  function restore(saved, trackLength) {
+    if (!saved || saved.laps !== LAPS || saved.paceVersion !== PACE_VERSION ||
+        saved.distanceModel !== "signed-motion-v1" ||
         !Number.isFinite(trackLength) ||
         Math.abs(saved.trackLength - trackLength) > 0.01 ||
         !["staging", "countdown", "racing", "finished"].includes(saved.phase) ||
         !Number.isFinite(saved.playerProgress) ||
         !Number.isFinite(saved.elapsed) || saved.elapsed < 0 ||
+        typeof saved.playerStartCrossed !== "boolean" ||
+        !(saved.lastPhysicalFinishProgress === null ||
+          Number.isFinite(saved.lastPhysicalFinishProgress)) ||
+        !Array.isArray(saved.playerLapTimes) ||
+        saved.playerLapTimes.length > LAPS ||
+        saved.playerLapTimes.some((ms) => !Number.isFinite(ms) || ms < 0) ||
         !Array.isArray(saved.opponents) || saved.opponents.length !== AI_COUNT ||
         saved.opponents.some((ai) => !Number.isFinite(ai.progress) ||
-          !Number.isFinite(ai.lateral) || !Number.isFinite(ai.speed)))
-      return null;
-    return {
-      ...saved, trackLength, laps: LAPS, paceVersion: PACE_VERSION,
-      // Keep randomized speeds stable across reloads. Old two-lap races
-      // keep their confirmed progress but gain a third lap and faster AI.
-      opponents: saved.opponents.map((ai, index) => {
-        const [min, max] = PACE_RANGES[index];
-        const previousPace = saved.paceVersion !== PACE_VERSION;
-        const shift = previousPace ? PACE_ADVANCE_SECONDS : 0;
-        const validTarget = Number.isFinite(ai.targetLapSeconds) &&
-          ai.targetLapSeconds >= min + shift &&
-          ai.targetLapSeconds <= max + shift;
-        const targetLapSeconds = validTarget
-          ? ai.targetLapSeconds - shift : lapTarget(index, random);
-        const speed = trackLength / targetLapSeconds;
-        // An opponent already finished after two laps now has one more lap
-        // to drive; its old finish time must not lock the new classification.
-        const finishTime = saved.laps !== LAPS ? null :
-          Number.isFinite(ai.finishTime) && ai.finishTime >= 0
-            ? ai.finishTime : ai.progress >= LAPS * trackLength
-              ? (LAPS * trackLength + gridSlot(ai.id).distance) / speed : null;
-        return { ...ai, targetLapSeconds, speed, finishTime };
-      }),
-      gridWait: saved.phase === "staging"
-        ? Math.max(0, Math.min(GRID_WAIT_SECONDS, Number(saved.gridWait) || GRID_WAIT_SECONDS))
-        : 0,
-      countdown: Math.max(0, Number(saved.countdown) || 0),
-      // Older in-progress saves did not track real crossings. Resume them
-      // conservatively, without awarding another lap on an immediate U-turn.
-      playerStartCrossed: typeof saved.playerStartCrossed === "boolean"
-        ? saved.playerStartCrossed : saved.playerProgress >= 0,
-      lastPhysicalFinishProgress:
-        saved.playerStartCrossed === false ? null :
-        Number.isFinite(saved.lastPhysicalFinishProgress)
-          ? saved.lastPhysicalFinishProgress :
-          saved.playerProgress >= 0
-            ? (Array.isArray(saved.playerLapTimes) ?
-              saved.playerLapTimes.length : 0) * trackLength : null,
-      playerLapTimes: Array.isArray(saved.playerLapTimes) &&
-        saved.playerLapTimes.length <= LAPS &&
-        saved.playerLapTimes.every((x) => Number.isFinite(x) && x >= 0)
-        ? saved.playerLapTimes.slice()
-        : saved.phase === "finished" && Number.isFinite(saved.raceTime)
-          ? [saved.raceTime] : [],
-    };
+          !Number.isFinite(ai.lateral) || !Number.isFinite(ai.speed) ||
+          !Number.isFinite(ai.targetLapSeconds))) return null;
+    return { ...saved };
   }
 
   return Object.freeze({ GRID_COUNT, AI_COUNT, PLAYER_SLOT, LAPS,
     COUNTDOWN_SECONDS, GRID_WAIT_SECONDS, AI_ACCELERATION, PACE_RANGES,
-    gridSlot, create, advance, distanceAt, standings, position, classification,
-    currentLap, migratePlayerProgress, restore });
+    gridSlot, opponentNumber, create, advance, distanceAt, standings, position, classification,
+    currentLap, restore });
 })();
 if (typeof window !== "undefined") window.GcvRace = GcvRace;
 if (typeof module !== "undefined" && module.exports) module.exports = GcvRace;
