@@ -121,7 +121,7 @@ test("guardrail module validates geometry and outside width", () => {
   assert.throws(() => barriers.create(road.positions, road.lapLength, 1));
 });
 
-test("right-side and left-side contact neutralize steering into the rail", () => {
+test("right-side and left-side contact preserve driver yaw without auto-steering", () => {
   const road = circularTrack();
   const rails = barriers.create(road.positions, road.lapLength, 16);
   const i = 100, center = { x: 0, z: 0 }, side = { x: 1, z: 0 };
@@ -130,8 +130,8 @@ test("right-side and left-side contact neutralize steering into the rail", () =>
     const proposed = { x: wall * 17, z: -1, speed: 36, yaw };
     const resolved = barriers.resolve(before, proposed, i, center, side, rails);
     assert.equal(resolved.collided, true);
-    assert.ok(Math.abs(resolved.yaw) < 1e-6,
-      "outward steering must not survive contact with either guardrail");
+    assert.equal(resolved.yaw, yaw,
+      "contact must not turn the car automatically");
     assert.equal(resolved.speed, 36);
     assert.equal(resolved.z, -1,
       "forward movement remains untouched along the guardrail");
