@@ -72,7 +72,7 @@ test("either barrier preserves tangential travel and forward-facing heading", ()
     const dx = result.x - center.x, dz = result.z - center.z;
     assert.ok(Math.abs(dx * side.x + dz * side.z - sign * limit) < 1e-8);
     assert.ok(Math.abs(dx * forward.x + dz * forward.z - 3) < 1e-8);
-    assert.equal(result.speed, proposed.speed);
+    assert.ok(result.speed > 0 && result.speed < barriers.MAX_CONTACT_SPEED);
     const points = sign > 0 ? rail.rails.left.points : rail.rails.right.points;
     const next = points[(i + 1) % points.length];
     const previous = points[(i + points.length - 1) % points.length];
@@ -80,7 +80,7 @@ test("either barrier preserves tangential travel and forward-facing heading", ()
       Math.cos(result.yaw) * (next.z - previous.z) > 0);
   }
 });
-test("vehicle does not get stopped by repeated wall contact on straight segments", () => {
+test("vehicle keeps sliding forward while sustained wall friction slows it", () => {
   const road = circularTrack(), i = 117;
   const { center, side, rail } = railAt(road, 19, i);
   const tangent = { x: -side.z, z: side.x };
@@ -97,8 +97,9 @@ test("vehicle does not get stopped by repeated wall contact on straight segments
     };
     state = barriers.resolve(before, proposed, i, center, side, rail);
     assert.equal(state.collided, true);
-    assert.equal(state.speed, 32);
+    assert.ok(state.speed > 0 && state.speed <= barriers.MAX_CONTACT_SPEED);
   }
+  assert.ok(state.speed < barriers.MAX_CONTACT_SPEED, "repeated contact adds drag");
   assert.ok((state.x - center.x) * tangent.x +
     (state.z - center.z) * tangent.z > 29);
 });
@@ -146,7 +147,7 @@ test("wall contact gradually aligns the car on both sides", () => {
     assert.equal(hit.collided, true);
     assert.ok(Math.abs(hit.yaw) < Math.abs(yaw));
     assert.ok(Math.abs(hit.yaw) > .1, "no immediate snap to tangent");
-    assert.equal(hit.speed, 36);
+    assert.ok(hit.speed > 0 && hit.speed < barriers.MAX_CONTACT_SPEED);
     assert.equal(hit.z, -1);
   }
 });
@@ -263,7 +264,7 @@ test("a collision never points the car against the circuit's forward direction",
     const hit = barriers.resolve(center, proposed, i, center, side, rail);
     assert.equal(hit.collided, true);
     assert.ok(-Math.sin(hit.yaw) * fx - Math.cos(hit.yaw) * fz > 0);
-    assert.equal(hit.speed, 33);
+    assert.ok(hit.speed > 0 && hit.speed < barriers.MAX_CONTACT_SPEED);
   }
 });
 
@@ -285,7 +286,7 @@ test("holding maximum steering into either barrier never causes a U-turn", () =>
       car = hit;
     }
     assert.ok(contacts > 150, "must stay sliding along the wall");
-    assert.ok(car.z < -65, "forward motion must continue");
+    assert.ok(car.z < -45, "forward motion must continue despite friction");
     assert.ok(Math.abs(car.yaw) < .65, "held steering cannot rotate the car backwards");
   }
 });
@@ -328,4 +329,50 @@ test("an extreme bend cannot flip the car against the circuit centerline", () =>
     assert.ok(Math.cos(hit.yaw) > 0,
       "heading must always preserve forward progress along the circuit");
   }
+});
+
+test("both barriers instantly cap even a 250 km/h impact at 100 km/h", () => {
+  const rails = straightRails();
+  for (const sign of [-1, 1]) {
+    const car = { x: sign * 13.8, z: 0, yaw: 0, speed: physics.MAX_SPEED };
+    const proposed = { ...car, x: sign * 19, z: -2 };
+    const hit = barriers.resolve(car, proposed, 1, { x: 0, z: 0 },
+      { x: 1, z: 0 }, rails, 1 / 60);
+    assert.equal(hit.collided, true);
+    assert.ok(hit.speed > 0 && hit.speed < 100 / 3.6);
+    assert.equal(barriers.MAX_CONTACT_SPEED * 3.6, 100);
+  }
+});
+
+test("wall friction never accelerates a low-speed or reversing vehicle", () => {
+  const rails = straightRails();
+  for (const speed of [0, 1, 12, -3, -8]) {
+    const car = { x: 13.8, z: 0, yaw: 0, speed };
+    const hit = barriers.resolve(car, { ...car, x: 17, z: -1 },
+      1, { x: 0, z: 0 }, { x: 1, z: 0 }, rails, 1 / 60);
+    assert.equal(hit.collided, true);
+    assert.ok(Math.abs(hit.speed) <= Math.abs(speed));
+    if (speed !== 0) assert.ok(Math.abs(hit.speed) < Math.abs(speed));
+    if (speed < 0) assert.ok(hit.speed <= 0);
+  }
+});
+
+test("holding acceleration against the guardrail never exceeds 100 km/h", () => {
+  const rails = straightRails();
+  let car = { x: 13.9, z: 0, yaw: -.24, speed: physics.MAX_SPEED };
+  let collisions = 0;
+  for (let i = 0; i < 300; i++) {
+    const proposed = physics.advance(car,
+      { accelerate: true, steer: 1 }, 1 / 60);
+    const hit = barriers.resolve(car, proposed, 1,
+      { x: 0, z: 0 }, { x: 1, z: 0 }, rails, 1 / 60);
+    if (hit.collided) {
+      collisions++;
+      assert.ok(hit.speed <= barriers.MAX_CONTACT_SPEED + 1e-9);
+      assert.ok(Math.cos(hit.yaw) > 0, "must keep facing forward");
+    }
+    car = hit;
+  }
+  assert.ok(collisions > 200, "car must keep rubbing against the rail");
+  assert.ok(car.z < -60, "contact friction must not pin the car in place");
 });
