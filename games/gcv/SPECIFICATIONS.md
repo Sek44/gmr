@@ -83,6 +83,14 @@ L'interface est superposée au rendu 3D et doit rester lisible en vue intérieur
 
 - La mini-carte est placée **sur un côté de l'écran**, sans masquer la route.
 - Le classement doit refléter l'avancement réel sur le circuit (tours complétés et position sur le tour), pas uniquement la distance à la caméra.
+- **Source de progression unique :** la distance longitudinale signée du joueur
+  est intégrée à partir de son déplacement physique dans `GcvTrackProgress`.
+  Un tour est validé uniquement au passage réel de la ligne dans le sens de
+  la course, après une distance minimale de 75 % du circuit depuis le dernier
+  passage accepté (pour tolérer les trajectoires intérieures). Marches arrière,
+  oscillations près de la ligne et sauts d'indice ne donnent pas de tours.
+  Le chrono, le nombre de tours et le classement reprennent tous les mêmes
+  passages ; les trois secteurs servent seulement aux records chronométrés.
 - **Piste d'évolution :** montrer aussi les autres concurrents sur la mini-carte, sans rendre sa lecture confuse.
 
 ## 7. Concurrents contrôlés par le jeu — règles demandées
