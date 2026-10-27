@@ -206,3 +206,19 @@ test("the actual circuit's tight bends produce no crossing guardrails", () => {
   assert.equal(rail.protectedSamples.length, samples.length);
   assert.ok(rail.protectedSamples.every((value) => value === 1));
 });
+
+test("guardrail contact never changes yaw, including a heading into the right wall", () => {
+  const road = circularTrack();
+  const rail = barriers.create(road.positions, road.lapLength, 16);
+  for (const sign of [-1, 1]) {
+    const i = 85;
+    const center = road.positions[i];
+    const normal = { x: -center.z / 100, z: center.x / 100 };
+    const proposed = { x: center.x + sign * normal.x * 30,
+      z: center.z + sign * normal.z * 30, yaw: 1.35, speed: 33 };
+    const hit = barriers.resolve(center, proposed, i, center, normal, rail);
+    assert.equal(hit.collided, true);
+    assert.equal(hit.yaw, proposed.yaw);
+    assert.equal(hit.speed, proposed.speed);
+  }
+});
