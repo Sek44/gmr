@@ -680,6 +680,80 @@
       mudColorAttribute.needsUpdate = true;
     }
 
+    // Small bright particles from actual guardrail contact; one batched system.
+    const SPARK_COUNT = 48;
+    const sparkXYZ = new Float32Array(SPARK_COUNT * 3);
+    const sparkRGB = new Float32Array(SPARK_COUNT * 3);
+    const sparkState = Array.from({ length: SPARK_COUNT }, () => ({
+      life: 0, duration: 0, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0,
+    }));
+    for (let i = 0; i < SPARK_COUNT; i++) sparkXYZ[i * 3 + 1] = -2000;
+    const sparkGeometry = new THREE.BufferGeometry();
+    const sparkXYZAttr = new THREE.BufferAttribute(sparkXYZ, 3);
+    const sparkRGBAttr = new THREE.BufferAttribute(sparkRGB, 3);
+    sparkXYZAttr.setUsage(THREE.DynamicDrawUsage);
+    sparkRGBAttr.setUsage(THREE.DynamicDrawUsage);
+    sparkGeometry.setAttribute("position", sparkXYZAttr);
+    sparkGeometry.setAttribute("color", sparkRGBAttr);
+    const sparks = new THREE.Points(sparkGeometry, new THREE.PointsMaterial({
+      size: 0.18, vertexColors: true, transparent: true,
+      opacity: 0.94, depthWrite: false, sizeAttenuation: true,
+    }));
+    sparks.frustumCulled = false;
+    scene.add(sparks);
+    let nextSpark = 0, sparkRemainder = 0;
+
+    function tickBarrierSparks(dt, contact) {
+      for (let i = 0; i < SPARK_COUNT; i++) {
+        const p = sparkState[i], j = 3 * i;
+        if (p.life > 0) {
+          p.life -= dt;
+          p.x += p.vx * dt;
+          p.z += p.vz * dt;
+          p.y += p.vy * dt;
+          p.vy -= 8 * dt;
+          if (p.y < 0.18) p.life = 0;
+        }
+        if (p.life > 0) {
+          sparkXYZ[j] = p.x;
+          sparkXYZ[j + 1] = p.y;
+          sparkXYZ[j + 2] = p.z;
+          const fade = p.life / p.duration;
+          sparkRGB[j] = fade;
+          sparkRGB[j + 1] = fade * (0.50 + 0.35 * fade);
+          sparkRGB[j + 2] = fade * 0.16;
+        } else {
+          sparkXYZ[j + 1] = -2000;
+        }
+      }
+
+      // Spawn just a few short-lived sparks per second while actually sliding.
+      if (contact && dt > 0 && Math.abs(driver.speed) > 4) {
+        sparkRemainder += dt * 16 * Math.min(1, Math.abs(driver.speed) / 18);
+        const count = Math.min(3, Math.floor(sparkRemainder));
+        sparkRemainder -= count;
+        for (let i = 0; i < count; i++) {
+          const p = sparkState[nextSpark];
+          const along = (Math.random() - 0.5) * 2.4;
+          p.x = contact.x - contact.nx * 0.12 - Math.sin(driver.yaw) * along;
+          p.z = contact.z - contact.nz * 0.12 - Math.cos(driver.yaw) * along;
+          p.y = 0.62 + Math.random() * 0.20;
+          const back = 0.7 + Math.random() * 2;
+          const inward = 0.4 + Math.random() * 1.4;
+          p.vx = Math.sin(driver.yaw) * back - contact.nx * inward;
+          p.vz = Math.cos(driver.yaw) * back - contact.nz * inward;
+          p.vy = 0.7 + Math.random() * 1.7;
+          p.duration = 0.16 + Math.random() * 0.22;
+          p.life = p.duration;
+          nextSpark = (nextSpark + 1) % SPARK_COUNT;
+        }
+      } else {
+        sparkRemainder = 0;
+      }
+      sparkXYZAttr.needsUpdate = true;
+      sparkRGBAttr.needsUpdate = true;
+    }
+
     // Start on a straight section, facing the road in its normal forward direction.
     const initialIndex = TrackLayout.nearestIndex(positions, TrackLayout.SPAWN);
     const initial = positions[initialIndex];
@@ -1386,6 +1460,7 @@
       if ((menuOpen || scoresOpen) && dt > 0) return;
       const brakePressed = brakePointers.size > 0 || keys.has("arrowdown") || keys.has("s");
       let mudSkidIntensity = 0;
+      let barrierSparkContact = null;
       let raceDistance = 0;
       let raceFinishFraction = null;
       const mayDrive = gameMode === "free" || raceState?.phase === "racing";
@@ -1416,9 +1491,20 @@
           nearest.index, positions[nearest.index], sides[nearest.index],
           barriers, dt);
         if (barrierContact.collided) {
+          // Apply the speed loss returned by the collision physics, too.
           driver.x = barrierContact.x;
           driver.z = barrierContact.z;
           driver.yaw = barrierContact.yaw;
+          driver.speed = barrierContact.speed;
+          const center = positions[nearest.index], side = sides[nearest.index];
+          const lateral = (driver.x - center.x) * side.x +
+            (driver.z - center.z) * side.z;
+          const sign = Math.sign(lateral);
+          barrierSparkContact = {
+            x: driver.x + sign * side.x * Barriers.CAR_RADIUS,
+            z: driver.z + sign * side.z * Barriers.CAR_RADIUS,
+            nx: sign * side.x, nz: sign * side.z,
+          };
           nearest = closestRoad(driver.x, driver.z, lapTracker.index);
         }
         if (nearest.distanceSquared > OUTER_HALF_WIDTH * OUTER_HALF_WIDTH) {
@@ -1521,6 +1607,7 @@
       brakeLights.emissiveIntensity = brakePressed ? 3.8 : 0.15;
       for (const glow of rearBrakeGlows) glow.intensity = brakePressed ? 3.5 : 0;
       tickMudParticles(dt, falling ? 0 : mudSkidIntensity);
+      tickBarrierSparks(dt, falling ? null : barrierSparkContact);
       speedLabel.textContent = String(Math.round(Math.abs(driver.speed) * 3.6));
       gearLabel.textContent = driver.speed < -0.02 ? "R" : "";
       refreshChrono();
