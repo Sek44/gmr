@@ -409,7 +409,7 @@ test("physical line crossings repair distance undercounts through lap three", ()
   let state = race.advance(race.create(length, () => 0.5), 5);
   state = race.advance(state, 0.5,
     race.gridSlot(race.PLAYER_SLOT).distance - 2, 0.4);
-  assert.equal(state.playerStartCrossed, true);
+  assert.equal(state.playerMotion.started, true);
   assert.equal(state.playerProgress, 0);
   assert.equal(state.playerLapTimes.length, 0);
   for (let lap = 1; lap <= race.LAPS; lap++) {
