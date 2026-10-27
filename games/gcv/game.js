@@ -147,7 +147,7 @@
     // The same full-loop collision mask and limit drive their render geometry.
     const barriers = Barriers.create(
       positions.slice(0, SAMPLE_COUNT), trackLength, OUTER_HALF_WIDTH,
-      sides.slice(0, SAMPLE_COUNT));
+      sides.slice(0, SAMPLE_COUNT), ROAD_HALF_WIDTH);
     const railVertices = [], railIndices = [];
     function railQuad(a, b, low, high) {
       const v = railVertices.length / 3;

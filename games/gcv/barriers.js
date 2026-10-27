@@ -8,6 +8,7 @@ const GcvBarriers = (() => {
   const INNER_RADIUS_FRACTION = 0.86;
   const CORNER_WINDOW = 6; // Taper the offset smoothly before/after tight turns.
   const MIN_OFFSET = CAR_RADIUS + 0.8;
+  const ROAD_EDGE_MARGIN = CAR_RADIUS + 0.35; // Keep posts and car clear of the roadway.
 
   function normalAt(positions, index) {
     const n = positions.length;
@@ -63,7 +64,7 @@ const GcvBarriers = (() => {
     return hits;
   }
 
-  function untangleRail(positions, normals, sign, offsets, points) {
+  function untangleRail(positions, normals, sign, offsets, points, minimumOffset) {
     const n = points.length;
     for (let pass = 0; pass < 10; pass++) {
       const crossings = railIntersections(points);
@@ -85,24 +86,34 @@ const GcvBarriers = (() => {
         }
       }
       for (let i = 0; i < n; i++) {
-        offsets[i] = Math.max(MIN_OFFSET, offsets[i] * factors[i]);
+        // Uncrossing must never pull a rail back onto the driving surface.
+        offsets[i] = Math.max(minimumOffset, offsets[i] * factors[i]);
         points[i].x = positions[i].x + normals[i].x * sign * offsets[i];
         points[i].z = positions[i].z + normals[i].z * sign * offsets[i];
       }
     }
   }
 
-  function create(positions, lapLength, outerHalfWidth, normals = null) {
+  function create(positions, lapLength, outerHalfWidth, normals = null,
+                  roadHalfWidth = null) {
     if (!Array.isArray(positions) || positions.length < 3 ||
         !Number.isFinite(lapLength) || lapLength <= 0 ||
         !Number.isFinite(outerHalfWidth) ||
         outerHalfWidth <= RAIL_OFFSET_INWARD + CAR_RADIUS ||
         (normals !== null && (!Array.isArray(normals) ||
-          normals.length !== positions.length))) {
+          normals.length !== positions.length)) ||
+        (roadHalfWidth !== null && (!Number.isFinite(roadHalfWidth) ||
+          roadHalfWidth <= 0 ||
+          roadHalfWidth + ROAD_EDGE_MARGIN >=
+            outerHalfWidth - RAIL_OFFSET_INWARD))) {
       throw new Error("Invalid road layout");
     }
     const n = positions.length;
     const standardOffset = outerHalfWidth - RAIL_OFFSET_INWARD;
+    // The road half-width comes from the same layout as the road mesh.
+    // Even on tight inside bends, guardrails must remain on the shoulder.
+    const minimumOffset = roadHalfWidth === null ? MIN_OFFSET :
+      Math.max(MIN_OFFSET, roadHalfWidth + ROAD_EDGE_MARGIN);
     const centerNormals = positions.map((_, i) =>
       normals ? { x: normals[i].x, z: normals[i].z } :
         normalAt(positions, i));
@@ -111,7 +122,7 @@ const GcvBarriers = (() => {
     function pathFor(sideSign) {
       const rawOffsets = curvatures.map(({ sign, radius }) =>
         sign === sideSign
-          ? Math.min(standardOffset, Math.max(MIN_OFFSET,
+          ? Math.min(standardOffset, Math.max(minimumOffset,
             radius * INNER_RADIUS_FRACTION))
           : standardOffset);
       // A sliding minimum avoids abrupt kinks where the inside rail starts
@@ -124,7 +135,7 @@ const GcvBarriers = (() => {
             Math.abs(k) * (standardOffset - rawOffsets[j]) /
               (CORNER_WINDOW + 1));
         }
-        return Math.max(MIN_OFFSET, safe);
+        return Math.max(minimumOffset, safe);
       });
       const points = positions.map((p, i) => ({
         x: p.x + centerNormals[i].x * sideSign * offsets[i],
@@ -133,7 +144,8 @@ const GcvBarriers = (() => {
       // A local curvature bound is not enough for adjacent hairpin arms:
       // these loops can still intersect even though each individual curve
       // remains smooth. Contract only the few folded segments.
-      untangleRail(positions, centerNormals, sideSign, offsets, points);
+      untangleRail(positions, centerNormals, sideSign, offsets, points,
+        minimumOffset);
       return { points, offsets, limits: offsets.map((v) => v - CAR_RADIUS) };
     }
     const left = pathFor(1), right = pathFor(-1);
@@ -172,7 +184,7 @@ const GcvBarriers = (() => {
   }
 
   return Object.freeze({
-    CAR_RADIUS, RAIL_OFFSET_INWARD, INNER_RADIUS_FRACTION,
+    CAR_RADIUS, RAIL_OFFSET_INWARD, INNER_RADIUS_FRACTION, ROAD_EDGE_MARGIN,
     normalAt, curvatureAt, railIntersections, create, resolve,
   });
 })();

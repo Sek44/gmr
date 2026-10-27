@@ -198,13 +198,36 @@ test("the actual circuit's tight bends produce no crossing guardrails", () => {
     }
   }
   const rail = barriers.create(samples, 822, layout.ROAD_HALF_WIDTH +
-    layout.SHOULDER_WIDTH);
+    layout.SHOULDER_WIDTH, null, layout.ROAD_HALF_WIDTH);
   assert.deepEqual(barriers.railIntersections(rail.rails.left.points), [],
     "inside rail should not fold across itself through hairpin");
   assert.deepEqual(barriers.railIntersections(rail.rails.right.points), [],
     "outside rail must stay continuous without crossings");
   assert.equal(rail.protectedSamples.length, samples.length);
   assert.ok(rail.protectedSamples.every((value) => value === 1));
+  const minimumOffset = layout.ROAD_HALF_WIDTH + barriers.ROAD_EDGE_MARGIN;
+  // Check both rail posts and segments; a crossing-free rail may still
+  // cut across the asphalt if its offset is contracted too aggressively.
+  for (const path of [rail.rails.left, rail.rails.right]) {
+    assert.ok(path.offsets.every((offset) => offset >= minimumOffset - 1e-8),
+      "rails must stay on the shoulder even at the tightest bend");
+    for (let i = 0; i < samples.length; i += 3) {
+      const a = path.points[i], b = path.points[(i + 1) % samples.length];
+      const mid = { x: (a.x + b.x) / 2, z: (a.z + b.z) / 2 };
+      let nearestSquared = Infinity;
+      for (let j = 0; j < samples.length; j++) {
+        const p = samples[j], q = samples[(j + 1) % samples.length];
+        const dx = q.x - p.x, dz = q.z - p.z;
+        const d2 = dx * dx + dz * dz;
+        const u = d2 === 0 ? 0 : Math.max(0, Math.min(1,
+          ((mid.x - p.x) * dx + (mid.z - p.z) * dz) / d2));
+        nearestSquared = Math.min(nearestSquared,
+          (mid.x - p.x - u * dx) ** 2 + (mid.z - p.z - u * dz) ** 2);
+      }
+      assert.ok(nearestSquared >= (layout.ROAD_HALF_WIDTH + 0.3) ** 2,
+        "no guardrail segment may cross over any part of the road");
+    }
+  }
 });
 
 test("guardrail contact never changes yaw, including a heading into the right wall", () => {
