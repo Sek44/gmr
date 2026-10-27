@@ -96,3 +96,48 @@ test("only an almost complete lap can be synchronized at a finish crossing", () 
   assert.equal(track.nearNextFinish(t, start, 840), true);
   assert.equal(track.nearNextFinish(t, start + 840, 840), false);
 });
+
+test("rejecting a nearby-road index jump preserves the old anchor too", () => {
+  const initial = track.create(420, 10, 90);
+  const jumped = track.advance(initial, 140, 420);
+  assert.equal(jumped.index, 90);
+  assert.equal(jumped.progress, initial.progress);
+  const continued = track.advance(jumped, 91, 420);
+  assert.equal(continued.progress, initial.progress + 1);
+});
+
+test("nearest road keeps the current hairpin arm despite a closer parallel arm", () => {
+  // Two nearby roads with opposite directions. Global-nearest selection
+  // would teleport logical position from index 5 to index 14.
+  const positions = [];
+  for (let i = 0; i < 10; i++) positions.push({ x: i, z: 0 });
+  for (let i = 0; i < 10; i++) positions.push({ x: 9 - i, z: 2 });
+  const global = track.nearestSample(positions, 20, 5, 1.4);
+  assert.equal(global.index, 14);
+  const local = track.nearestSample(positions, 20, 5, 1.4, 5, 3, 3);
+  assert.equal(local.index, 5);
+  const moved = track.nearestSample(positions, 20, 6, 1.4, local.index, 3, 3);
+  assert.equal(moved.index, 6);
+});
+
+test("road tracking follows the index wrap without losing a lap", () => {
+  const points = Array.from({ length: 100 }, (_, i) => ({
+    x: Math.cos(i * 2 * Math.PI / 100) * 40,
+    z: Math.sin(i * 2 * Math.PI / 100) * 40,
+  }));
+  let state = track.create(100, 0, 97);
+  for (let i = 98; i <= 200; i++) {
+    const p = points[i % 100];
+    const nearest = track.nearestSample(points, 100, p.x, p.z,
+      state.index, 5, 15);
+    state = track.advance(state, nearest.index, 100);
+  }
+  assert.equal(state.laps, 1);
+  assert.equal(state.progress, 200);
+});
+
+test("a true relocation outside the current corridor falls back to global nearest", () => {
+  const positions = Array.from({ length: 30 }, (_, i) => ({ x: i * 10, z: 0 }));
+  const nearest = track.nearestSample(positions, 30, 210, 0, 2, 3, 16);
+  assert.equal(nearest.index, 21);
+});
