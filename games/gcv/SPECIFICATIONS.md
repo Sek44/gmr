@@ -471,3 +471,15 @@ Documentation : [Three.js — WebGLRenderer](https://threejs.org/docs/pages/WebG
 - [x] **Vérifications** : tests de franchissement réel, absence de résultat si le compteur dépasse deux tours avant la ligne, demi-tours, chronométrage interpolé et sauvegarde/restauration.
 
 **À contrôler en jeu sur navigateur** : franchissement final à grande vitesse, allers-retours devant la ligne, et fin de course après reprise d'une sauvegarde ancienne.
+
+
+## 35. Correction du classement en direct et des dépassements (27/10/2026)
+
+- [x] **Distance physique pour le classement** : chaque image accumule le déplacement réel de la voiture projeté sur la tangente du circuit, en mètres. La distance n'est plus dérivée du maximum des indices des échantillons de piste : aucun saut d'index dans un virage serré ne peut créer artificiellement une avance.
+- [x] **Marche arrière et déplacements latéraux** : un recul retranche sa distance et un mouvement purement latéral ne fait gagner aucune place. Les contacts avec les barrières n'ajoutent pas de progression factice.
+- [x] **Dépassements des adversaires** : comparer en continu la distance physique du joueur aux distances parcourues par les neuf IA ; quand une IA le dépasse, le classement doit changer pendant la course.
+- [x] **Tours validés indépendamment** : conserver l'obligation des franchissements physiques de la ligne d'arrivée avec garde anti-demi-tour avant de terminer chaque tour et la course.
+- [x] **Sauvegardes anciennes** : recalculer une seule fois la progression des courses sauvegardées par l'ancienne méthode, à partir de la position réelle sur le tracé et des tours déjà validés.
+- [x] **Tests** : déplacement longitudinal signé, déplacements latéraux, retour arrière, dépassement d'un leader arrêté, absence d'avance fictive après saut d'index, migration d'une sauvegarde corrompue et conservation des deux tours.
+
+**À confirmer en jeu sur téléphone/tablette** : une IA doublant le joueur fait évoluer immédiatement le rang affiché, y compris dans les virages ; les courses sauvegardées anciennement ne démarrent plus avec un classement artificiellement élevé.
