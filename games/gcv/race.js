@@ -182,6 +182,7 @@ const GcvRace = (() => {
 
     const traveled = Number.isFinite(playerDistance) ? Math.max(0, playerDistance) : 0;
     const rawProgress = race.playerProgress + traveled;
+    let confirmedProgress = rawProgress;
     const lapTimes = (race.playerLapTimes || []).slice();
     let startCrossed = race.playerStartCrossed === true;
     let lastCrossingProgress = race.lastPhysicalFinishProgress;
@@ -191,7 +192,10 @@ const GcvRace = (() => {
       if (!startCrossed) {
         // The grid is BEFORE the line: its first crossing starts lap one.
         startCrossed = true;
-        lastCrossingProgress = rawProgress;
+        // The grid is behind the start: the first physical crossing anchors
+        // distance zero even when sample projection is slightly imprecise.
+        confirmedProgress = Math.max(rawProgress, 0);
+        lastCrossingProgress = confirmedProgress;
       } else if (lapTimes.length < LAPS &&
           Number.isFinite(lastCrossingProgress) &&
           rawProgress - lastCrossingProgress >= 0.9 * race.trackLength) {
@@ -200,7 +204,11 @@ const GcvRace = (() => {
         const crossingTime = race.elapsed + dt * finishFraction;
         const previousTime = lapTimes.reduce((a, b) => a + b, 0);
         lapTimes.push(Math.max(0, crossingTime - previousTime));
-        lastCrossingProgress = rawProgress;
+        // A validated physical lap reaches exactly the lap milestone.
+        // Otherwise the player may visibly cross the line while the HUD
+        // and position remain behind because a few samples were skipped.
+        confirmedProgress = Math.max(rawProgress, lapTimes.length * race.trackLength);
+        lastCrossingProgress = confirmedProgress;
       }
     }
     const hasFinished = lapTimes.length === LAPS;
@@ -211,7 +219,9 @@ const GcvRace = (() => {
       // Without a real finish crossing, stop the approximate HUD distance
       // short of the next lap. Only confirmed crossings unlock the milestone.
       playerProgress: hasFinished ? finishDistance :
-        Math.min(rawProgress, (lapTimes.length + 1) * race.trackLength - 0.001),
+        Math.max(lapTimes.length * race.trackLength,
+          Math.min(confirmedProgress,
+            (lapTimes.length + 1) * race.trackLength - 0.001)),
     };
     if (hasFinished) {
       const crossingTime = lapTimes.reduce((a, b) => a + b, 0);
