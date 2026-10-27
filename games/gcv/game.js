@@ -1396,6 +1396,10 @@
     function snapshot() {
       // A saved fall resumes at the nearest safe edge instead of mid-air.
       const safe = falling ? positions[respawnIndex] : driver;
+      // A saved fall must restore the same track hint in both the player's
+      // progress and the race snapshot; relocation grants no travel.
+      const savedMotion = falling
+        ? TrackProgress.relocate(lapTracker, respawnIndex) : lapTracker;
       return {
         saveRevision: SAVE_REVISION,
         x: safe.x, z: safe.z,
@@ -1403,14 +1407,15 @@
         speed: falling ? 0 : driver.speed,
         reverseHold: falling ? 0 : driver.reverseHold,
         camera: cameraMode,
-        motion: falling
-          ? TrackProgress.relocate(lapTracker, respawnIndex)
-          : lapTracker,
+        motion: savedMotion,
         // On refresh during a fall the car respawns safely, but the active
         // stopwatch must continue from the preserved elapsed time.
         lapTimer,
         mode: gameMode,
-        race: gameMode === "race" ? raceState : null,
+        race: gameMode === "race" && raceState
+          ? { ...raceState, playerMotion: savedMotion,
+            playerProgress: savedMotion.progress }
+          : null,
         freeSession: gameMode === "race" ? freeSession : null,
         circuitKey,
         layoutVersion: TrackLayout.VERSION,
