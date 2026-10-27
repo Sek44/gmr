@@ -35,12 +35,23 @@ const GcvTrackProgress = (() => {
     };
   }
 
+  // A forward crossing near the start line is only a full lap after the
+  // car has actually progressed around nearly the entire route. Without
+  // this guard, a forward crossing after a tiny U-turn can snap progress
+  // ahead by one complete circuit.
+  function nearNextFinish(state, lapStartProgress, sampleCount) {
+    return Number.isFinite(state?.progress) &&
+      Number.isFinite(lapStartProgress) &&
+      Number.isSafeInteger(sampleCount) && sampleCount > 0 &&
+      state.progress >= lapStartProgress + 0.9 * sampleCount;
+  }
+
   function relocate(state, nearestIndex) {
     // Respawn is not extra travel around the circuit.
     return { ...state, index: nearestIndex };
   }
 
-  return Object.freeze({ create, advance, relocate, syncFinish });
+  return Object.freeze({ create, advance, relocate, syncFinish, nearNextFinish });
 })();
 
 if (typeof window !== "undefined") window.GcvTrackProgress = GcvTrackProgress;
