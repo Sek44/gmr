@@ -120,7 +120,6 @@ const GcvTrackProgress = (() => {
     const validCrossing = Number.isFinite(crossingFraction) &&
       crossingFraction >= 0 && crossingFraction <= 1;
     if (validCrossing) {
-      const atLine = state.progress + distance * crossingFraction;
       if (!started) {
         started = true;
         // Discard the untimed approach to the FIRST crossing (which may
@@ -170,7 +169,6 @@ const GcvTrackProgress = (() => {
     const sideways = -dz * x + dx * z;
     return Math.abs(sideways) <= halfWidth ? fraction : null;
   }
-
 
   return Object.freeze({ nearestSample, alongTrackTravel, relocate,
     createMotion, restoreMotion, move, finishCrossing, MIN_LAP_FRACTION });
