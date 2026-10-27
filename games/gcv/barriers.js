@@ -11,6 +11,9 @@ const GcvBarriers = (() => {
   const CONTACT_ALIGN_RATE = 3.5; // Heading converges smoothly in contact.
   const MAX_CONTACT_ANGLE = Math.PI / 3; // Never face backwards along the track.
   const ROAD_EDGE_MARGIN = CAR_RADIUS + 0.35; // Keep posts and car clear of the roadway.
+  const MAX_CONTACT_SPEED = 100 / 3.6; // 100 km/h while scraping a guardrail.
+  const CONTACT_FRICTION = 4; // Additional m/s² lost to wall rubbing.
+  const CONTACT_DAMPING = 0.9; // Speed-dependent wall friction.
 
   function normalAt(positions, index) {
     const n = positions.length;
@@ -213,10 +216,17 @@ const GcvBarriers = (() => {
       return { ...proposed, collided: false };
     }
     const excess = lateral - Math.sign(lateral) * limit;
+    const step = Math.max(0, Math.min(0.05, Number.isFinite(dt) ? dt : 1 / 60));
+    // Cap a fast impact immediately, then slow the car continuously while
+    // rubbing. Preserve the speed sign so backing away stays possible.
+    const rawSpeed = Number(proposed.speed) || 0;
+    const cappedSpeed = Math.min(Math.abs(rawSpeed), MAX_CONTACT_SPEED);
+    const lostSpeed = (CONTACT_FRICTION + CONTACT_DAMPING * cappedSpeed) * step;
     const result = {
       ...proposed,
       x: proposed.x - side.x * excess,
       z: proposed.z - side.z * excess,
+      speed: Math.sign(rawSpeed) * Math.max(0, cappedSpeed - lostSpeed),
       collided: true,
     };
 
@@ -249,7 +259,6 @@ const GcvBarriers = (() => {
     // continuous player steering towards the rail without a sudden snap.
     const safeDifference = Math.max(-MAX_CONTACT_ANGLE,
       Math.min(MAX_CONTACT_ANGLE, difference));
-    const step = Math.max(0, Math.min(0.05, Number.isFinite(dt) ? dt : 1 / 60));
     const alignedYaw = railYaw + safeDifference * Math.exp(-CONTACT_ALIGN_RATE * step);
     // Extra guarantee for very sharp bends: a contracted rail can have a
     // tangent quite different from the road. Collision must NEVER rotate
@@ -265,6 +274,7 @@ const GcvBarriers = (() => {
 
   return Object.freeze({
     CAR_RADIUS, RAIL_OFFSET_INWARD, INNER_RADIUS_FRACTION, ROAD_EDGE_MARGIN,
+    MAX_CONTACT_SPEED,
     normalAt, curvatureAt, railIntersections, create, resolve,
   });
 })();
