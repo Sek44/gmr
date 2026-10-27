@@ -376,3 +376,17 @@ test("holding acceleration against the guardrail never exceeds 100 km/h", () => 
   assert.ok(collisions > 200, "car must keep rubbing against the rail");
   assert.ok(car.z < -60, "contact friction must not pin the car in place");
 });
+
+test("a car exactly parallel and flush against a rail remains speed-limited", () => {
+  const rails = straightRails();
+  const center = { x: 0, z: 0 }, side = { x: 1, z: 0 };
+  for (const sign of [-1, 1]) {
+    const car = { x: sign * 14, z: 0, yaw: 0, speed: physics.MAX_SPEED };
+    const proposed = { ...car, z: -2 };
+    const hit = barriers.resolve(car, proposed, 1, center, side, rails, 1 / 60);
+    assert.equal(hit.collided, true);
+    assert.ok(hit.speed < barriers.MAX_CONTACT_SPEED);
+    assert.equal(hit.x, car.x, "no lateral jump when already flush");
+    assert.equal(hit.z, -2, "tangential movement is uninterrupted");
+  }
+});
