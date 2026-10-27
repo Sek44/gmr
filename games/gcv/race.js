@@ -2,15 +2,13 @@
 // Simple ten-car race: nine AI opponents with a fixed randomized pace per race.
 // Distances are metres measured along the same closed centerline as the player.
 const GcvRace = (() => {
+  const TrackProgress = typeof GcvTrackProgress !== "undefined"
+    ? GcvTrackProgress : require("./track-progress.js");
   const GRID_COUNT = 10;
   const AI_COUNT = GRID_COUNT - 1;
   const PLAYER_SLOT = 4; // Fifth of ten positions: middle of the grid.
   const LAPS = 3;
   const PACE_VERSION = 2;
-  // A car taking the inside shoulder around bends covers less physical
-  // distance than the track centerline. Keep a generous anti-U-turn guard,
-  // while accepting real full laps on legal inside trajectories.
-  const MIN_PHYSICAL_LAP_FRACTION = 0.75;
   const COUNTDOWN_SECONDS = 3;
   const GRID_WAIT_SECONDS = 2; // Pause on the grid before the 3-2-1 countdown.
   const AI_ACCELERATION = 10; // m/s²; below the player's ~23.6 m/s² launch.
@@ -55,10 +53,12 @@ const GcvRace = (() => {
     return fast + (slow - fast) * fraction;
   }
 
-  function create(trackLength, random = Math.random) {
+  function create(trackLength, random = Math.random, initialMotion = null) {
     if (!Number.isFinite(trackLength) || trackLength <= 0) {
       throw new Error("Invalid track length");
     }
+    const playerMotion = initialMotion ||
+      TrackProgress.createMotion(trackLength, -gridSlot(PLAYER_SLOT).distance);
     const opponents = [];
     for (let slot = 0; slot < GRID_COUNT; slot++) {
       if (slot === PLAYER_SLOT) continue;
@@ -79,12 +79,11 @@ const GcvRace = (() => {
       phase: "staging", gridWait: GRID_WAIT_SECONDS,
       countdown: COUNTDOWN_SECONDS, elapsed: 0,
       trackLength, laps: LAPS, paceVersion: PACE_VERSION,
-      playerProgress: -gridSlot(PLAYER_SLOT).distance,
+      playerProgress: playerMotion.progress, playerMotion,
       opponents, finishPosition: null, raceTime: null,
       playerLapTimes: [],
-      // Lap completion requires a real forward crossing of the visible line.
-      playerStartCrossed: false, lastPhysicalFinishProgress: null,
-      distanceModel: "signed-motion-v1",
+      // The track progress engine alone validates start/finish crossings.
+      distanceModel: "unified-motion-v1",
     };
   }
 
@@ -129,8 +128,7 @@ const GcvRace = (() => {
   }
 
   function currentLap(race) {
-    // Estimated distance is used for standings, never to validate a lap.
-    return Math.min(LAPS, (race.playerLapTimes?.length || 0) + 1);
+    return Math.min(LAPS, race.playerMotion.laps + 1);
   }
 
   // Integrate motion from rest with a limited starting acceleration, then
@@ -151,9 +149,9 @@ const GcvRace = (() => {
       (distance - capDistance) / topSpeed;
   }
 
-  // finishFraction is the fraction of THIS frame at which the player's car
-  // physically crossed the visible finish line in the forward direction.
-  // Distance alone must never trigger a lap or end the race.
+  // Accept either an authoritative TrackProgress.move result (from the game)
+  // or signed travel and crossing fraction (for standalone simulations).
+  // Both paths use the SAME progression and lap-validation implementation.
   function advance(race, elapsedSeconds, playerDistance = 0, finishFraction = null) {
     const dt = Number.isFinite(elapsedSeconds) ? Math.max(0, elapsedSeconds) : 0;
     if (!dt) return race;
@@ -195,51 +193,25 @@ const GcvRace = (() => {
       return { ...race, opponents, elapsed };
     }
 
-    // Signed forward motion: reversing subtracts distance, so the player
-    // cannot gain places by oscillating back and forth on one road section.
-    const traveled = Number.isFinite(playerDistance) ? playerDistance : 0;
-    const rawProgress = race.playerProgress + traveled;
-    let confirmedProgress = rawProgress;
-    const lapTimes = (race.playerLapTimes || []).slice();
-    let startCrossed = race.playerStartCrossed === true;
-    let lastCrossingProgress = race.lastPhysicalFinishProgress;
-    const crossedLine = Number.isFinite(finishFraction) &&
-      finishFraction >= 0 && finishFraction <= 1;
-    if (crossedLine) {
-      if (!startCrossed) {
-        // The grid is BEFORE the line: its first crossing starts lap one.
-        startCrossed = true;
-        // The grid is behind the start: the first physical crossing anchors
-        // distance zero even when sample projection is slightly imprecise.
-        confirmedProgress = Math.max(rawProgress, 0);
-        lastCrossingProgress = confirmedProgress;
-      } else if (lapTimes.length < LAPS &&
-          Number.isFinite(lastCrossingProgress) &&
-          rawProgress - lastCrossingProgress >=
-            MIN_PHYSICAL_LAP_FRACTION * race.trackLength) {
-        // Repeated forward crossings after reversing at the line do not count.
-        // A nearly complete circuit must separate two accepted crossings.
-        const crossingTime = race.elapsed + dt * finishFraction;
-        const previousTime = lapTimes.reduce((a, b) => a + b, 0);
-        lapTimes.push(Math.max(0, crossingTime - previousTime));
-        // A validated physical lap reaches exactly the lap milestone.
-        // Otherwise the player may visibly cross the line while the HUD
-        // and position remain behind because a few samples were skipped.
-        confirmedProgress = Math.max(rawProgress, lapTimes.length * race.trackLength);
-        lastCrossingProgress = confirmedProgress;
-      }
+    const motion = playerDistance && typeof playerDistance === "object" &&
+      playerDistance.state && Array.isArray(playerDistance.events)
+      ? playerDistance
+      : TrackProgress.move(race.playerMotion, race.trackLength,
+        playerDistance, finishFraction);
+    const lapTimes = race.playerLapTimes.slice();
+    for (const event of motion.events) {
+      if (event.type !== "lap" || event.lap !== lapTimes.length + 1 ||
+          lapTimes.length >= LAPS) continue;
+      const crossingTime = race.elapsed + dt * event.fraction;
+      const previousTime = lapTimes.reduce((a, b) => a + b, 0);
+      lapTimes.push(Math.max(0, crossingTime - previousTime));
     }
     const hasFinished = lapTimes.length === LAPS;
     const updated = {
-      ...race, elapsed, opponents, playerLapTimes: lapTimes,
-      playerStartCrossed: startCrossed,
-      lastPhysicalFinishProgress: lastCrossingProgress,
-      // Without a real finish crossing, stop the approximate HUD distance
-      // short of the next lap. Only confirmed crossings unlock the milestone.
-      playerProgress: hasFinished ? finishDistance :
-        Math.max(startCrossed ? lapTimes.length * race.trackLength : -Infinity,
-          Math.min(confirmedProgress,
-            (lapTimes.length + 1) * race.trackLength - 0.001)),
+      ...race, elapsed, opponents,
+      playerMotion: motion.state,
+      playerProgress: hasFinished ? finishDistance : motion.state.progress,
+      playerLapTimes: lapTimes,
     };
     if (hasFinished) {
       const crossingTime = lapTimes.reduce((a, b) => a + b, 0);
@@ -253,15 +225,15 @@ const GcvRace = (() => {
   // Sessions from prior game revisions are intentionally not migrated.
   function restore(saved, trackLength) {
     if (!saved || saved.laps !== LAPS || saved.paceVersion !== PACE_VERSION ||
-        saved.distanceModel !== "signed-motion-v1" ||
+        saved.distanceModel !== "unified-motion-v1" ||
         !Number.isFinite(trackLength) ||
         Math.abs(saved.trackLength - trackLength) > 0.01 ||
         !["staging", "countdown", "racing", "finished"].includes(saved.phase) ||
         !Number.isFinite(saved.playerProgress) ||
         !Number.isFinite(saved.elapsed) || saved.elapsed < 0 ||
-        typeof saved.playerStartCrossed !== "boolean" ||
-        !(saved.lastPhysicalFinishProgress === null ||
-          Number.isFinite(saved.lastPhysicalFinishProgress)) ||
+        !TrackProgress.restoreMotion(saved.playerMotion, trackLength) ||
+        Math.abs(saved.playerMotion.progress - saved.playerProgress) > 0.001 ||
+        saved.playerMotion.laps !== saved.playerLapTimes?.length ||
         !Array.isArray(saved.playerLapTimes) ||
         saved.playerLapTimes.length > LAPS ||
         saved.playerLapTimes.some((ms) => !Number.isFinite(ms) || ms < 0) ||
