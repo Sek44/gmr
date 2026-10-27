@@ -16,10 +16,13 @@ visuels importants. Les priorités reflètent le risque de régression.
 
    **Première extraction :** `games/gcv/vehicles.js` crée la voiture du joueur,
    son habitacle et les neuf modèles des concurrents (205 lignes déplacées).
-   `game.js` garde la simulation, les changements de position et l'animation des
-   roues et feux. Tests ajoutés pour l'ordre de chargement des scripts, l'API
-   navigateur et la construction des modèles. Restent à isoler : scène/circuit,
-   entrées, HUD/mini-carte, sessions et effets visuels.
+   **Deuxième extraction :** `games/gcv/world-3d.js` construit la scène, le
+   circuit, les rails, la ligne d'arrivée et le décor statique (mer, rochers,
+   flaques, cailloux). Il expose les échantillons de piste et les repères
+   indispensables à la conduite, à la course et à la mini-carte. `game.js`
+   garde le moteur WebGL, les véhicules et la simulation. Tests de construction
+   et de chargement ajoutés. Restent à isoler : moteur de rendu/caméra,
+   commandes, HUD/mini-carte, sessions et effets visuels.
 2. **Unifier la progression des tours — RÉALISÉ (27/10/2026).**
    `GcvTrackProgress` conserve la progression longitudinale signée (en mètres),
    les passages physiques de ligne et les tours validés ; ses événements
