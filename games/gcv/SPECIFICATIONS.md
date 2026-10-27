@@ -98,6 +98,7 @@ L'interface est superposée au rendu 3D et doit rester lisible en vue intérieur
 
 - Après **3 tours**, le passage sur la ligne d'arrivée marque la **fin de course du joueur**.
 - Afficher sa **position finale** sur 10.
+- Dans le classement général, l'écart de chaque voiture arrivée correspond à son temps d'arrivée moins celui du **premier arrivé**. La première et les voitures encore en course affichent « — ».
 - Prévoir une action pour **rejouer** une course.
 
 **À préciser plus tard :** animation / podium d'arrivée, éventuelle récompense, comportement exact des concurrents après l'arrivée du joueur et calcul d'un éventuel score numérique.

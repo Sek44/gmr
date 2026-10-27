@@ -314,11 +314,16 @@ test("finish order uses actual times, not the identical clamped final distance",
     assert.ok(rows[i].finishTime >= rows[i - 1].finishTime);
     assert.ok(rows[i].gap >= 0);
     assert.ok(Math.abs(rows[i].gap -
-      (rows[i].finishTime - rows[i - 1].finishTime)) < 1e-8);
+      (rows[i].finishTime - rows[0].finishTime)) < 1e-8);
   }
   assert.equal(rows[0].gap, null);
   const player = rows.find((row) => row.id === "player");
   assert.equal(player.rank, race.position(state));
+});
+
+test("classification has no gaps before any car crosses the finish line", () => {
+  const state = race.advance(race.create(800, () => 0.5), 5);
+  assert.ok(race.classification(state).every((row) => row.gap === null));
 });
 
 test("classification shows unfinished cars after all finishers with no invented times", () => {
@@ -329,6 +334,11 @@ test("classification shows unfinished cars after all finishers with no invented 
   const pending = rows.filter((row) => row.finishTime === null);
   assert.ok(done.length > 0);
   assert.ok(pending.length > 0);
+  assert.equal(done[0].gap, null);
+  for (let i = 1; i < done.length; i++) {
+    assert.ok(Math.abs(done[i].gap -
+      (done[i].finishTime - done[0].finishTime)) < 1e-8);
+  }
   assert.equal(rows[done.length].finishTime, null);
   assert.ok(pending.every((row) => row.gap === null));
 });
