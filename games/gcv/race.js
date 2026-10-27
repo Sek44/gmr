@@ -6,6 +6,10 @@ const GcvRace = (() => {
   const AI_COUNT = GRID_COUNT - 1;
   const PLAYER_SLOT = 4; // Fifth of ten positions: middle of the grid.
   const LAPS = 2;
+  // A car taking the inside shoulder around bends covers less physical
+  // distance than the track centerline. Keep a generous anti-U-turn guard,
+  // while accepting real full laps on legal inside trajectories.
+  const MIN_PHYSICAL_LAP_FRACTION = 0.75;
   const COUNTDOWN_SECONDS = 3;
   const GRID_WAIT_SECONDS = 2; // Pause on the grid before the 3-2-1 countdown.
   const AI_ACCELERATION = 10; // m/s²; below the player's ~23.6 m/s² launch.
@@ -201,7 +205,8 @@ const GcvRace = (() => {
         lastCrossingProgress = confirmedProgress;
       } else if (lapTimes.length < LAPS &&
           Number.isFinite(lastCrossingProgress) &&
-          rawProgress - lastCrossingProgress >= 0.9 * race.trackLength) {
+          rawProgress - lastCrossingProgress >=
+            MIN_PHYSICAL_LAP_FRACTION * race.trackLength) {
         // Repeated forward crossings after reversing at the line do not count.
         // A nearly complete circuit must separate two accepted crossings.
         const crossingTime = race.elapsed + dt * finishFraction;
