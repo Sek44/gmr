@@ -387,3 +387,39 @@ test("AI acceleration and arrival timestamps do not depend on frame size", () =>
     }
   }
 });
+
+test("physical line crossings repair small distance undercounts and ranking", () => {
+  const length = 800;
+  let state = race.advance(race.create(length, () => 0.5), 5);
+  // The first crossing starts the race even if the nearest sample is just
+  // short of the grid distance.
+  state = race.advance(state, 0.5,
+    race.gridSlot(race.PLAYER_SLOT).distance - 2, 0.4);
+  assert.equal(state.playerStartCrossed, true);
+  assert.equal(state.playerProgress, 0);
+  assert.equal(state.playerLapTimes.length, 0);
+  // Physical line crossed after 93% reported progress: enough for a
+  // complete circuit, though projection undershot the exact finish.
+  state = race.advance(state, 10, length * 0.93, 0.6);
+  assert.equal(state.playerLapTimes.length, 1);
+  assert.equal(race.currentLap(state), 2);
+  assert.equal(state.playerProgress, length);
+  assert.equal(race.position(state), 1);
+  assert.equal(state.phase, "racing");
+  // The same repair lets a real second crossing stop the race.
+  state = race.advance(state, 10, length * 0.93, 0.5);
+  assert.equal(state.playerLapTimes.length, 2);
+  assert.equal(state.playerProgress, length * 2);
+  assert.equal(state.phase, "finished");
+  assert.equal(race.position(state), 1);
+});
+
+test("progress normalization cannot turn repeated short crossings into laps", () => {
+  let state = race.advance(race.create(800), 5);
+  state = race.advance(state, 1, 28, 0.5);
+  for (let i = 0; i < 10; i++)
+    state = race.advance(state, 0.2, 0, 0.5);
+  assert.equal(state.playerLapTimes.length, 0);
+  assert.equal(state.phase, "racing");
+  assert.ok(state.playerProgress < 800);
+});
