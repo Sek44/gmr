@@ -166,25 +166,8 @@ const GcvBarriers = (() => {
       collided: true,
     };
 
-    // The old collision moved the car but left its nose pointing into the
-    // wall. On the next frame the car immediately tried to turn back into it.
-    // Remove this outward heading so the car runs along the guardrail
-    // instead of appearing to steer towards it by itself.
-    if (Number.isFinite(result.yaw) && Math.abs(result.speed || 0) > 0.02) {
-      const travelSign = Math.sign(result.speed);
-      const vx = -Math.sin(result.yaw) * travelSign;
-      const vz = -Math.cos(result.yaw) * travelSign;
-      const outward = Math.sign(lateral) * (vx * side.x + vz * side.z);
-      if (outward > 1e-5) {
-        const tx = side.z, tz = -side.x;
-        const along = vx * tx + vz * tz;
-        const alongSign = along >= 0 ? 1 : -1;
-        // Heading is a body-forward vector, opposite the travel direction
-        // when reversing. Keep the original forward/reverse orientation.
-        result.yaw = Math.atan2(-tx * alongSign * travelSign,
-          -tz * alongSign * travelSign);
-      }
-    }
+    // Wall contact must not steer the vehicle: preserve its yaw exactly.
+    // Only lateral position is constrained; forward motion remains intact.
     return result;
   }
 
