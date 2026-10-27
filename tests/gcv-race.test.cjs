@@ -3,6 +3,15 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const race = require("../games/gcv/race.js");
 
+// Cross the grid line, finish lap one, then finish lap two physically.
+function finishPlayerRace(state, seconds, extraDistance = 0) {
+  const gridDistance = race.gridSlot(race.PLAYER_SLOT).distance;
+  state = race.advance(state, seconds * 0.02, gridDistance + 2, 0.5);
+  state = race.advance(state, seconds * 0.49, state.trackLength, 0.5);
+  return race.advance(state, seconds * 0.49,
+    state.trackLength + extraDistance, 0.5);
+}
+
 test("race uses 10 cars, nine AI and player at the middle grid position", () => {
   const state = race.create(820);
   assert.equal(race.GRID_COUNT, 10);
@@ -151,13 +160,13 @@ test("older saved races adopt tighter AI pacing bands once", () => {
 
 test("race completes only after two full laps, not the first start crossing", () => {
   let state = race.advance(race.create(800, () => 0.5), 5);
-  state = race.advance(state, 0.2, 40);
+  state = race.advance(state, 0.2, 40, 0.5); // Grid line: start only.
   assert.equal(state.phase, "racing");
   assert.equal(race.currentLap(state), 1);
-  state = race.advance(state, 20, 800);
+  state = race.advance(state, 20, 800, 0.5);
   assert.equal(state.phase, "racing");
   assert.equal(race.currentLap(state), 2);
-  state = race.advance(state, 20, 815);
+  state = race.advance(state, 20, 815, 0.5);
   assert.equal(state.phase, "finished");
   assert.ok(state.finishPosition >= 1 && state.finishPosition <= 10);
   assert.ok(state.raceTime > 0);
@@ -169,6 +178,61 @@ test("race completes only after two full laps, not the first start crossing", ()
   assert.equal(after.playerProgress, state.playerProgress);
   assert.ok(after.opponents.some((ai, index) =>
     ai.progress > state.opponents[index].progress));
+});
+
+
+test("distance or index jitter cannot finish the race without crossing the line", () => {
+  let state = race.advance(race.create(800, () => 0.5), 5);
+  state = race.advance(state, 0.5, 40, 0.5); // Starting grid.
+  state = race.advance(state, 25, 850); // More than one entire lap.
+  assert.equal(state.phase, "racing");
+  assert.equal(state.playerLapTimes.length, 0);
+  assert.equal(race.currentLap(state), 1);
+  state = race.advance(state, 25, 850); // Over two laps, still no finish.
+  assert.equal(state.phase, "racing");
+  assert.equal(state.playerLapTimes.length, 0);
+  assert.ok(state.playerProgress < 800);
+});
+
+test("a real finish crossing validates laps and locks the result only on lap two", () => {
+  let state = race.advance(race.create(800, () => 0.5), 5);
+  state = race.advance(state, 0.5, 40, 0.25);
+  state = race.advance(state, 24, 795, 0.75);
+  assert.equal(state.playerLapTimes.length, 1);
+  assert.equal(state.phase, "racing");
+  state = race.advance(state, 20, 800);
+  assert.equal(state.phase, "racing", "the distance milestone is not the actual finish");
+  assert.equal(state.playerLapTimes.length, 1);
+  state = race.advance(state, 1, 1, 0.4);
+  assert.equal(state.phase, "finished");
+  assert.equal(state.playerLapTimes.length, 2);
+  assert.ok(Math.abs(state.raceTime - (0.5 + 24 + 20 + 0.4)) < 1e-9);
+});
+
+test("U-turns next to the line never count as full laps", () => {
+  let state = race.advance(race.create(800, () => 0.5), 5);
+  state = race.advance(state, 0.5, 40, 0.5);
+  for (let i = 0; i < 30; i++) {
+    state = race.advance(state, 0.4, 0, 0.5);
+  }
+  assert.equal(state.playerLapTimes.length, 0);
+  assert.equal(state.phase, "racing");
+  state = race.advance(state, 20, 800, 0.5);
+  assert.equal(state.playerLapTimes.length, 1);
+  state = race.advance(state, 0.5, 0, 0.5);
+  assert.equal(state.playerLapTimes.length, 1);
+});
+
+test("physical crossing gate is retained when a race is saved and restored", () => {
+  let state = race.advance(race.create(800, () => 0.5), 5);
+  state = race.advance(state, 0.5, 40, 0.5);
+  state = race.advance(state, 24, 800, 0.5);
+  state = race.restore(JSON.parse(JSON.stringify(state)), 800);
+  assert.equal(state.playerLapTimes.length, 1);
+  state = race.advance(state, 19, 800);
+  assert.equal(state.phase, "racing");
+  state = race.advance(state, 1, 1, 0.5);
+  assert.equal(state.phase, "finished");
 });
 
 test("backward movement and falls do not advance player race position", () => {
@@ -190,7 +254,7 @@ test("race countdown and competitors survive persistence roundtrip", () => {
 
 test("finishing locks the rank and results stay stable", () => {
   let state = race.advance(race.create(810, () => 0.5), 5);
-  state = race.advance(state, 45, 1620 + 100);
+  state = finishPlayerRace(state, 45, 100);
   assert.equal(state.phase, "finished");
   const result = race.position(state);
   assert.ok(result > 0 && result <= 10);
@@ -200,13 +264,15 @@ test("finishing locks the rank and results stay stable", () => {
 
 test("each player lap records its real duration including sub-frame crossing", () => {
   let state = race.advance(race.create(800, () => 0.5), 5);
-  state = race.advance(state, 22, 770);
+  state = race.advance(state, 0.5,
+    race.gridSlot(race.PLAYER_SLOT).distance + 4, 0.7);
+  state = race.advance(state, 21.5, 735);
   assert.equal(state.playerLapTimes.length, 0);
-  state = race.advance(state, 1, 65);
+  state = race.advance(state, 1, 65, 0.5);
   assert.equal(state.playerLapTimes.length, 1);
-  const expectedFirst = 22 + (800 - (770 - race.gridSlot(race.PLAYER_SLOT).distance)) / 65;
+  const expectedFirst = 22.5; // 0.5 + 21.5 + half of the next 1 s frame.
   assert.ok(Math.abs(state.playerLapTimes[0] - expectedFirst) < 1e-9);
-  state = race.advance(state, 24, 800);
+  state = race.advance(state, 24, 800, 0.25);
   assert.equal(state.phase, "finished");
   assert.equal(state.playerLapTimes.length, 2);
   assert.ok(state.playerLapTimes.every((x) => x > 0));
@@ -216,7 +282,7 @@ test("each player lap records its real duration including sub-frame crossing", (
 
 test("all nine opponents continue finishing behind the displayed results", () => {
   let state = race.advance(race.create(800, () => 0.5), 5);
-  state = race.advance(state, 40, 1680);
+  state = finishPlayerRace(state, 40, 80);
   assert.equal(state.phase, "finished");
   const savedPosition = state.finishPosition, savedTime = state.raceTime;
   const aiAfterFinish = state.opponents.filter((ai) =>
@@ -233,7 +299,7 @@ test("all nine opponents continue finishing behind the displayed results", () =>
 
 test("finish order uses actual times, not the identical clamped final distance", () => {
   let state = race.advance(race.create(800, () => 0.5), 5);
-  state = race.advance(state, 45, 1640);
+  state = finishPlayerRace(state, 45, 40);
   for (let i = 0; i < 25; i++) state = race.advance(state, 4);
   const rows = race.classification(state);
   assert.equal(rows.length, 10);
@@ -251,7 +317,7 @@ test("finish order uses actual times, not the identical clamped final distance",
 
 test("classification shows unfinished cars after all finishers with no invented times", () => {
   let state = race.advance(race.create(800, () => 0.5), 5);
-  state = race.advance(state, 41, 1610);
+  state = finishPlayerRace(state, 41, 10);
   const rows = race.classification(state);
   const done = rows.filter((row) => Number.isFinite(row.finishTime));
   const pending = rows.filter((row) => row.finishTime === null);
@@ -263,7 +329,7 @@ test("classification shows unfinished cars after all finishers with no invented 
 
 test("race save restores AI finish times, player laps and locked player result", () => {
   let state = race.advance(race.create(800, () => 0.5), 5);
-  state = race.advance(state, 42, 1640);
+  state = finishPlayerRace(state, 42, 40);
   const saved = JSON.parse(JSON.stringify(state));
   const restored = race.restore(saved, 800, () => 0);
   assert.deepEqual(restored, state);
