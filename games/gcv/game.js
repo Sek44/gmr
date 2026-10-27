@@ -146,7 +146,8 @@
     // Continuous guardrails on BOTH sides along the entire closed circuit.
     // The same full-loop collision mask and limit drive their render geometry.
     const barriers = Barriers.create(
-      positions.slice(0, SAMPLE_COUNT), trackLength, OUTER_HALF_WIDTH);
+      positions.slice(0, SAMPLE_COUNT), trackLength, OUTER_HALF_WIDTH,
+      sides.slice(0, SAMPLE_COUNT));
     const railVertices = [], railIndices = [];
     function railQuad(a, b, low, high) {
       const v = railVertices.length / 3;
@@ -157,10 +158,8 @@
     for (let i = 0; i < SAMPLE_COUNT; i++) {
       const next = (i + 1) % SAMPLE_COUNT;
       for (const side of [-1, 1]) {
-        const a = positions[i].clone()
-          .addScaledVector(sides[i], side * barriers.railOffset);
-        const b = positions[next].clone()
-          .addScaledVector(sides[next], side * barriers.railOffset);
+        const rail = side > 0 ? barriers.rails.left : barriers.rails.right;
+        const a = rail.points[i], b = rail.points[next];
         railQuad(a, b, 0.66, 0.91);
         railQuad(a, b, 1.24, 1.45);
       }
@@ -188,9 +187,9 @@
     let postNumber = 0;
     for (const i of guardrailPostSamples) {
       for (const side of [-1, 1]) {
-        postTransform.position.copy(positions[i])
-          .addScaledVector(sides[i], side * barriers.railOffset);
-        postTransform.position.y = 0.73;
+        const rail = side > 0 ? barriers.rails.left : barriers.rails.right;
+        const point = rail.points[i];
+        postTransform.position.set(point.x, 0.73, point.z);
         postTransform.rotation.y = Math.atan2(
           -directions[i].x, -directions[i].z);
         postTransform.updateMatrix();
@@ -1414,6 +1413,7 @@
         if (barrierContact.collided) {
           driver.x = barrierContact.x;
           driver.z = barrierContact.z;
+          driver.yaw = barrierContact.yaw;
           nearest = closestRoad(driver.x, driver.z);
         }
         if (nearest.distanceSquared > OUTER_HALF_WIDTH * OUTER_HALF_WIDTH) {
