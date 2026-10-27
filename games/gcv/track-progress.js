@@ -173,7 +173,7 @@ const GcvTrackProgress = (() => {
         progress = Math.max(0, progress);
         lastFinishProgress = Math.max(0, atLine);
         events.push({ type: "start", fraction: crossingFraction, progress: 0 });
-      } else if (atLine - lastFinishProgress >=
+      } else if (rawProgress - lastFinishProgress >=
           trackLength * MIN_LAP_FRACTION) {
         laps++;
         progress = Math.max(progress, laps * trackLength);
