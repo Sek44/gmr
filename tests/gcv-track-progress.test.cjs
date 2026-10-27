@@ -79,3 +79,20 @@ test("a new start just before the line does not invent a completed lap", () => {
   assert.equal(start.progress, 829);
   assert.equal(track.syncFinish(start, 840, finish + 1, count).progress, 840);
 });
+
+test("only an almost complete lap can be synchronized at a finish crossing", () => {
+  let t = track.create(840, 160, 157);
+  const start = 840;
+  t = track.syncFinish(t, start, 161, 840); // First physical crossing.
+  assert.equal(track.nearNextFinish(t, start, 840), false);
+  for (const index of [160, 159, 158, 159, 160, 161, 162]) {
+    t = track.advance(t, index, 840);
+    assert.equal(track.nearNextFinish(t, start, 840), false,
+      "small U-turns next to the finish cannot count as another lap");
+  }
+  t = { ...t, progress: start + 840 * 0.85 };
+  assert.equal(track.nearNextFinish(t, start, 840), false);
+  t = { ...t, progress: start + 840 * 0.98 };
+  assert.equal(track.nearNextFinish(t, start, 840), true);
+  assert.equal(track.nearNextFinish(t, start + 840, 840), false);
+});
