@@ -219,7 +219,7 @@ const GcvRace = (() => {
       // Without a real finish crossing, stop the approximate HUD distance
       // short of the next lap. Only confirmed crossings unlock the milestone.
       playerProgress: hasFinished ? finishDistance :
-        Math.max(lapTimes.length * race.trackLength,
+        Math.max(startCrossed ? lapTimes.length * race.trackLength : -Infinity,
           Math.min(confirmedProgress,
             (lapTimes.length + 1) * race.trackLength - 0.001)),
     };
