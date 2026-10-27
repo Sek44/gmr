@@ -21,8 +21,13 @@ visuels importants. Les priorités reflètent le risque de régression.
    flaques, cailloux). Il expose les échantillons de piste et les repères
    indispensables à la conduite, à la course et à la mini-carte. `game.js`
    garde le moteur WebGL, les véhicules et la simulation. Tests de construction
-   et de chargement ajoutés. Restent à isoler : moteur de rendu/caméra,
-   commandes, HUD/mini-carte, sessions et effets visuels.
+   et de chargement ajoutés. **Troisième extraction :**
+   `games/gcv/visual-effects.js` gère les particules dynamiques de boue et
+   les étincelles de contact avec les barrières, avec leurs buffers Three.js
+   et leurs animations. Le moteur de jeu ne lui transmet que l'état courant
+   du véhicule et les intensités/contacts. Tests des effets et du chargement
+   ajoutés. Restent à isoler : moteur de rendu/caméra, commandes,
+   HUD/mini-carte et sessions.
 2. **Unifier la progression des tours — RÉALISÉ (27/10/2026).**
    `GcvTrackProgress` conserve la progression longitudinale signée (en mètres),
    les passages physiques de ligne et les tours validés ; ses événements
