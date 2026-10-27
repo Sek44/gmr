@@ -56,6 +56,14 @@
   flex-wrap: wrap; max-width: min(90%, 330px);
 }
 .gcv-home-tool { cursor: pointer; pointer-events: auto; }
+.gcv-home-tools {
+  top: 14px;
+  right: 16px;
+  max-width: min(90%, 370px);
+  flex-wrap: nowrap;
+}
+.gcv-home-tools .gcv-action { min-height: 40px; }
+
 .gcv-scores-frame { position: absolute; inset: 0; width: 100%; height: 100%;
   z-index: 12; border: 0; background: #f3f6fb; }
 .gcv-stage.gcv-in-menu .gcv-hud-left,
