@@ -311,3 +311,18 @@ test("the car follows the actual angled guardrail, not just road centerline", ()
   }
   assert.ok(Math.abs(car.yaw - tangentYaw) < .01);
 });
+
+test("an extreme bend cannot flip the car against the circuit centerline", () => {
+  const rail = straightRails();
+  // The rail tangent nearly turns sideways even though the road goes north.
+  rail.rails.left.points[0] = { x: 15, z: 1 };
+  rail.rails.left.points[2] = { x: 50, z: -1 };
+  for (const yaw of [-Math.PI, -2.1, 0, 2.1, Math.PI]) {
+    const car = { x: 14, z: 0, speed: 34, yaw };
+    const hit = barriers.resolve(car, { ...car, x: 17, z: -2 },
+      1, { x: 0, z: 0 }, { x: 1, z: 0 }, rail, 1 / 60);
+    assert.equal(hit.collided, true);
+    assert.ok(Math.cos(hit.yaw) > 0,
+      "heading must always preserve forward progress along the circuit");
+  }
+});
