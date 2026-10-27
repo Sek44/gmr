@@ -1187,7 +1187,8 @@
 
     function refreshCameraButton() {
       const outside = cameraMode === "outside";
-      cameraButton.textContent = outside ? "Caméra : extérieure" : "Caméra : intérieure";
+      cameraButton.querySelector(".gcv-action-label").textContent =
+        outside ? "Caméra : extérieure" : "Caméra : intérieure";
       cameraButton.setAttribute("aria-label", outside ? "Passer en vue intérieure" : "Passer en vue extérieure");
       cabin.visible = true; // Roof and pillars must stay visible in cockpit view.
       dashboard.visible = !outside;
@@ -1202,9 +1203,12 @@
     function refreshFullscreen() {
       const full = document.fullscreenElement === stage;
       for (const button of [fullscreenButton, menuFullscreenButton]) {
-        button.textContent = full ? "⤢ Écran normal" : "⛶ Plein écran";
+        button.querySelector(".gcv-action-label").textContent =
+          full ? "Écran normal" : "Plein écran";
+        button.classList.toggle("is-fullscreen", full);
         button.setAttribute("aria-label",
           full ? "Quitter le plein écran" : "Passer en plein écran");
+        button.title = full ? "Quitter le plein écran" : "Passer en plein écran";
       }
     }
     async function toggleFullscreen() {
@@ -1214,12 +1218,12 @@
         } else if (stage.requestFullscreen) {
           await stage.requestFullscreen();
         } else {
-          menuFullscreenButton.textContent = "Plein écran non disponible";
+          menuFullscreenButton.querySelector(".gcv-action-label").textContent = "Plein écran non disponible";
           announce("Plein écran non disponible dans ce navigateur.");
         }
       } catch (error) {
         console.warn("Fullscreen failed:", error);
-        menuFullscreenButton.textContent = "Plein écran refusé";
+        menuFullscreenButton.querySelector(".gcv-action-label").textContent = "Plein écran refusé";
         announce("Le plein écran a été refusé par le navigateur.");
       }
     }
