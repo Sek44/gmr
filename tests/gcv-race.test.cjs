@@ -23,6 +23,10 @@ test("race uses 10 cars, nine AI and player at the middle grid position", () => 
   assert.equal(race.position(state), 5);
   assert.equal(new Set(state.opponents.map((ai) => ai.id)).size, 9);
   assert.ok(!state.opponents.some((ai) => ai.id === race.PLAYER_SLOT));
+  const numbers = state.opponents.map((ai) => race.opponentNumber(ai.id));
+  assert.deepEqual([...numbers, 9].sort((a, b) => a - b),
+    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  assert.equal(race.opponentNumber(race.PLAYER_SLOT), null);
 });
 
 test("grid has two columns and safe separation between each row", () => {
@@ -138,63 +142,14 @@ test("player can overtake the nine AI at full speed", () => {
     "AI should stay behind a 380 m player sprint after six seconds");
 });
 
-test("older saved races adopt tighter AI pacing bands once", () => {
-  const state = race.create(820);
-  const saved = JSON.parse(JSON.stringify(state));
-  for (const ai of saved.opponents) {
-    ai.speed = 9;
-    delete ai.targetLapSeconds;
-  }
-  const restored = race.restore(saved, 820, () => 0.5);
-  assert.ok(restored);
-  assert.ok(restored.opponents[0].targetLapSeconds >= 15 &&
-    restored.opponents[0].targetLapSeconds <= 16.5);
-  assert.ok(restored.opponents[1].targetLapSeconds >= 16.5 &&
-    restored.opponents[1].targetLapSeconds <= 18);
-  assert.ok(restored.opponents[2].targetLapSeconds >= 18 &&
-    restored.opponents[2].targetLapSeconds <= 19);
-  assert.ok(restored.opponents[8].targetLapSeconds >= 30 &&
-    restored.opponents[8].targetLapSeconds <= 32);
-  // The randomized difficulty persists instead of changing at every reload.
-  const reloaded = race.restore(JSON.parse(JSON.stringify(restored)), 820, () => 0);
-  assert.deepEqual(reloaded, restored);
-});
-
-test("old live races preserve laps, shift all AI targets by two seconds and add lap three", () => {
-  let saved = race.advance(race.create(820, () => 0.5), 5);
-  saved = race.advance(saved, 0.5, 40, 0.5);
-  saved = race.advance(saved, 18, 820, 0.5);
-  const oldTargets = saved.opponents.map((ai) => ai.targetLapSeconds + 2);
-  saved.opponents.forEach((ai, index) => {
-    ai.targetLapSeconds = oldTargets[index];
-    ai.speed = 820 / oldTargets[index];
-  });
-  saved.opponents[0].progress = 1640;
-  saved.opponents[0].finishTime = 65;
-  delete saved.paceVersion;
-  delete saved.laps;
-  const upgraded = race.restore(JSON.parse(JSON.stringify(saved)), 820, () => 0);
-  assert.ok(upgraded);
-  assert.equal(upgraded.laps, 3);
-  assert.equal(upgraded.playerLapTimes.length, 1);
-  assert.equal(upgraded.opponents[0].finishTime, null);
-  upgraded.opponents.forEach((ai, index) => {
-    assert.ok(Math.abs(ai.targetLapSeconds - (oldTargets[index] - 2)) < 1e-9);
-    assert.ok(Math.abs(ai.speed - 820 / (oldTargets[index] - 2)) < 1e-9);
-  });
-  assert.deepEqual(race.restore(JSON.parse(JSON.stringify(upgraded)), 820, () => 1), upgraded);
-  let active = race.advance(upgraded, 18, 820, 0.5);
-  assert.equal(active.playerLapTimes.length, 2);
-  assert.equal(active.phase, "racing");
-  active = race.advance(active, 18, 820, 0.5);
-  assert.equal(active.phase, "finished");
-});
-
-test("old two-lap finished results do not masquerade as three-lap finishes", () => {
-  const state = race.advance(race.create(820, () => 0.5), 5);
-  const legacy = { ...state, phase: "finished", raceTime: 48 };
-  delete legacy.laps;
-  assert.equal(race.restore(legacy, 820), null);
+test("current race saves restore unchanged and incompatible versions are rejected", () => {
+  const current = race.create(820, () => 0.5);
+  assert.deepEqual(race.restore(JSON.parse(JSON.stringify(current)), 820), current);
+  assert.equal(race.restore({ ...current, laps: 2 }, 820), null);
+  assert.equal(race.restore({ ...current, paceVersion: 1 }, 820), null);
+  assert.equal(race.restore({ ...current, distanceModel: undefined }, 820), null);
+  assert.equal(race.restore({ ...current, playerLapTimes: [-1] }, 820), null);
+  assert.equal(race.restore({ ...current, opponents: [] }, 820), null);
 });
 
 test("race completes after three real laps, never on the first starting crossing", () => {
@@ -497,40 +452,6 @@ test("actual signed travel rejects the phantom progress of a sample jump", () =>
   assert.ok(Math.abs(state.playerProgress - 300) < 2);
   assert.ok(race.position(state) > 1);
   assert.equal(state.playerLapTimes.length, 0);
-});
-
-test("old inflated ranking is corrected by the player's real map position", () => {
-  const length = 800, count = 840, start = 160;
-  let state = race.advance(race.create(length, () => 0.5), 5);
-  state = race.advance(state, 15, 0);
-  const corrupted = { ...state, playerProgress: 1200, playerStartCrossed: true,
-    lastPhysicalFinishProgress: 1200 };
-  delete corrupted.distanceModel;
-  assert.equal(race.position(corrupted), 1);
-  const physicalIndex = (start + 310) % count;
-  const recovered = race.migratePlayerProgress(corrupted, physicalIndex, start, count);
-  assert.equal(recovered.distanceModel, "signed-motion-v1");
-  assert.ok(Math.abs(recovered.playerProgress - 310 / count * length) < 1e-8);
-  assert.equal(recovered.playerLapTimes.length, 0);
-  assert.equal(recovered.lastPhysicalFinishProgress, 0);
-  assert.ok(race.position(recovered) > 1);
-  assert.deepEqual(race.migratePlayerProgress(recovered, 1, start, count), recovered);
-});
-
-test("old saved second lap keeps confirmed lap and rank within that lap", () => {
-  const count = 840, start = 160, length = 800;
-  let saved = race.advance(race.create(length, () => 0.5), 5);
-  saved = race.advance(saved, 1, 35, 0.5);
-  saved = race.advance(saved, 20, 800, 0.5);
-  delete saved.distanceModel;
-  saved.playerProgress = 1599;
-  const corrected = race.migratePlayerProgress(saved, (start + 350) % count,
-    start, count);
-  assert.equal(corrected.playerLapTimes.length, 1);
-  assert.ok(corrected.playerProgress >= length);
-  assert.ok(corrected.playerProgress < length * 2);
-  assert.equal(corrected.lastPhysicalFinishProgress, length);
-  assert.equal(corrected.phase, "racing");
 });
 
 test("tight inside-line laps finish after three true crossings", () => {

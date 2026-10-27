@@ -56,6 +56,8 @@
   const Barriers = window.GcvBarriers;
   const LapTimes = window.GcvLapTimes;
   const Race = window.GcvRace;
+  // Bump this revision after incompatible GCV updates. Old sessions are canceled.
+  const SAVE_REVISION = 2;
 
   function announce(message) {
     notice.textContent = message;
@@ -861,7 +863,7 @@
           vehicle.append(swatch);
         }
         vehicle.append(document.createTextNode(isPlayer
-          ? "Vous · n° 9" : "Voiture n° " + (10 + row.id)));
+          ? "Vous · n° 9" : "Voiture n° " + Race.opponentNumber(row.id)));
         const time = document.createElement("td");
         time.textContent = Number.isFinite(row.finishTime)
           ? LapTimes.format(row.finishTime * 1000) : "En course…";
@@ -1390,6 +1392,7 @@
       // A saved fall resumes at the nearest safe edge instead of mid-air.
       const safe = falling ? positions[respawnIndex] : driver;
       return {
+        saveRevision: SAVE_REVISION,
         x: safe.x, z: safe.z,
         yaw: falling ? Math.atan2(-directions[respawnIndex].x, -directions[respawnIndex].z) : driver.yaw,
         speed: falling ? 0 : driver.speed,
@@ -1409,7 +1412,7 @@
       };
     }
     function restore(saved) {
-      if (!saved || typeof saved !== "object") return;
+      if (!saved || saved.saveRevision !== SAVE_REVISION) return;
       // The redesigned, longer circuit invalidates prior saved coordinates
       // and lap progress; retain the view but start a clean free-drive session.
       if (!LapTimes.sameCircuitRoute(saved.circuitKey, circuitKey) ||
@@ -1440,9 +1443,7 @@
       const restoredRace = saved.mode === "race"
         ? Race.restore(saved.race, trackLength) : null;
       gameMode = restoredRace ? "race" : "free";
-      raceState = restoredRace
-        ? Race.migratePlayerProgress(restoredRace, nearestIndex,
-          startIndex, SAMPLE_COUNT) : null;
+      raceState = restoredRace;
       freeSession = restoredRace &&
         LapTimes.sameCircuitRoute(saved.freeSession?.circuitKey, circuitKey)
         ? saved.freeSession : null;
@@ -1450,7 +1451,12 @@
       syncRaceHud();
       hasActiveSession = true;
     }
-    binding = window.GameState.create("gcv").bind({ snapshot, restore });
+    const sessionStore = window.GameState.create("gcv");
+    const previousSession = sessionStore.load();
+    if (previousSession && previousSession.saveRevision !== SAVE_REVISION) {
+      sessionStore.clear(); // Keep lap records and score history untouched.
+    }
+    binding = sessionStore.bind({ snapshot, restore });
     syncRaceCars();
     syncRaceHud();
     syncMenu(); // Always open on the home screen, even for saved games.
