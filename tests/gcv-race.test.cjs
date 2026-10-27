@@ -235,11 +235,14 @@ test("physical crossing gate is retained when a race is saved and restored", () 
   assert.equal(state.phase, "finished");
 });
 
-test("backward movement and falls do not advance player race position", () => {
+test("backward driving reduces player progress and falls cannot award distance", () => {
   let state = race.advance(race.create(820, () => 0.5), 5);
   const previous = state.playerProgress;
   state = race.advance(state, 2, -19);
-  assert.equal(state.playerProgress, previous);
+  assert.equal(state.playerProgress, previous - 19);
+  const afterReverse = state.playerProgress;
+  state = race.advance(state, 2, 0); // Falling or waiting.
+  assert.equal(state.playerProgress, afterReverse);
   assert.ok(state.opponents.every((ai) => ai.progress > -60));
 });
 
@@ -422,4 +425,70 @@ test("progress normalization cannot turn repeated short crossings into laps", ()
   assert.equal(state.playerLapTimes.length, 0);
   assert.equal(state.phase, "racing");
   assert.ok(state.playerProgress < 800);
+});
+
+test("rivals overtaking a stationary leader update the live rank", () => {
+  const length = 800;
+  let state = race.advance(race.create(length, () => 0.5), 5);
+  state = race.advance(state, 0.5, 35, 0.5);
+  state = race.advance(state, 5, 390);
+  assert.equal(race.position(state), 1);
+  const leadingProgress = state.playerProgress;
+  // Real car stopped: no forward progress, but the nine rivals continue.
+  state = race.advance(state, 11, 0);
+  assert.equal(state.playerProgress, leadingProgress);
+  assert.ok(race.position(state) > 1);
+  assert.ok(state.opponents.some((ai) => ai.progress > state.playerProgress));
+  assert.equal(state.playerLapTimes.length, 0);
+});
+
+test("actual signed travel rejects the phantom progress of a sample jump", () => {
+  const track = require("../games/gcv/track-progress.js");
+  let state = race.advance(race.create(800, () => 0.5), 5);
+  state = race.advance(state, 0.5, 35, 0.5);
+  for (let i = 0; i < 150; i++) {
+    // Project real motion along the road. An erroneous index jump would
+    // suggest hundreds of metres; the car actually traveled 2 metres.
+    const before = { x: i * 2, z: 0 };
+    const after = { x: i * 2 + 2, z: 0 };
+    const movement = track.alongTrackTravel(before, after, { x: 1, z: 0 });
+    state = race.advance(state, 0.1, movement);
+  }
+  assert.ok(Math.abs(state.playerProgress - 300) < 2);
+  assert.ok(race.position(state) > 1);
+  assert.equal(state.playerLapTimes.length, 0);
+});
+
+test("old inflated ranking is corrected by the player's real map position", () => {
+  const length = 800, count = 840, start = 160;
+  let state = race.advance(race.create(length, () => 0.5), 5);
+  state = race.advance(state, 15, 0);
+  const corrupted = { ...state, playerProgress: 1200, playerStartCrossed: true,
+    lastPhysicalFinishProgress: 1200 };
+  delete corrupted.distanceModel;
+  assert.equal(race.position(corrupted), 1);
+  const physicalIndex = (start + 310) % count;
+  const recovered = race.migratePlayerProgress(corrupted, physicalIndex, start, count);
+  assert.equal(recovered.distanceModel, "signed-motion-v1");
+  assert.ok(Math.abs(recovered.playerProgress - 310 / count * length) < 1e-8);
+  assert.equal(recovered.playerLapTimes.length, 0);
+  assert.equal(recovered.lastPhysicalFinishProgress, 0);
+  assert.ok(race.position(recovered) > 1);
+  assert.deepEqual(race.migratePlayerProgress(recovered, 1, start, count), recovered);
+});
+
+test("old saved second lap keeps confirmed lap and rank within that lap", () => {
+  const count = 840, start = 160, length = 800;
+  let saved = race.advance(race.create(length, () => 0.5), 5);
+  saved = race.advance(saved, 1, 35, 0.5);
+  saved = race.advance(saved, 20, 800, 0.5);
+  delete saved.distanceModel;
+  saved.playerProgress = 1599;
+  const corrected = race.migratePlayerProgress(saved, (start + 350) % count,
+    start, count);
+  assert.equal(corrected.playerLapTimes.length, 1);
+  assert.ok(corrected.playerProgress >= length);
+  assert.ok(corrected.playerProgress < length * 2);
+  assert.equal(corrected.lastPhysicalFinishProgress, length);
+  assert.equal(corrected.phase, "racing");
 });
