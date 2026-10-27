@@ -1445,7 +1445,10 @@
           lapTimer = timing.state;
           const crossing = LapTimes.finishCrossing(
             previousPosition, driver, startCenter, directions[startIndex], OUTER_HALF_WIDTH);
-          if (crossing !== null) {
+          if (crossing !== null && (!lapTimer.running ||
+              TrackProgress.nearNextFinish(lapTracker, lapTimer.startAt, SAMPLE_COUNT))) {
+            // Crossing the line again just after reversing is not a lap;
+            // do not advance the timer or sync a whole circuit of progress.
             raceFinishFraction = crossing;
             const nextFinishProgress = lapTimer.running
               ? lapTimer.startAt + SAMPLE_COUNT
