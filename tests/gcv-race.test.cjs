@@ -493,3 +493,27 @@ test("old saved second lap keeps confirmed lap and rank within that lap", () => 
   assert.equal(corrected.lastPhysicalFinishProgress, length);
   assert.equal(corrected.phase, "racing");
 });
+
+test("tight inside-line laps still finish after two true crossings", () => {
+  const length = 810;
+  let state = race.advance(race.create(length, () => 0.5), 5);
+  state = race.advance(state, 0.5,
+    race.gridSlot(race.PLAYER_SLOT).distance, 0.5);
+  // The inside of the bends takes less distance than the centerline.
+  state = race.advance(state, 11, 0.82 * length, 0.5);
+  assert.equal(state.playerLapTimes.length, 1);
+  assert.equal(state.phase, "racing");
+  state = race.advance(state, 11, 0.82 * length, 0.5);
+  assert.equal(state.playerLapTimes.length, 2);
+  assert.equal(state.phase, "finished");
+});
+
+test("crossing again after only a short excursion is not a lap", () => {
+  const length = 810;
+  let state = race.advance(race.create(length, () => 0.5), 5);
+  state = race.advance(state, 0.5,
+    race.gridSlot(race.PLAYER_SLOT).distance, 0.5);
+  state = race.advance(state, 3, 0.3 * length, 0.5);
+  assert.equal(state.playerLapTimes.length, 0);
+  assert.equal(state.phase, "racing");
+});
