@@ -209,7 +209,16 @@ const GcvBarriers = (() => {
     const safeDifference = Math.max(-MAX_CONTACT_ANGLE,
       Math.min(MAX_CONTACT_ANGLE, difference));
     const step = Math.max(0, Math.min(0.05, Number.isFinite(dt) ? dt : 1 / 60));
-    result.yaw = railYaw + safeDifference * Math.exp(-CONTACT_ALIGN_RATE * step);
+    const alignedYaw = railYaw + safeDifference * Math.exp(-CONTACT_ALIGN_RATE * step);
+    // Extra guarantee for very sharp bends: a contracted rail can have a
+    // tangent quite different from the road. Collision must NEVER rotate
+    // the car into the opposite half-plane of the circuit itself.
+    const courseYaw = Math.atan2(-side.z, side.x);
+    const courseDifference = Math.atan2(
+      Math.sin(alignedYaw - courseYaw), Math.cos(alignedYaw - courseYaw));
+    const maxCourseAngle = Math.PI * 0.44; // strictly less than 90 degrees
+    result.yaw = courseYaw + Math.max(-maxCourseAngle,
+      Math.min(maxCourseAngle, courseDifference));
     return result;
   }
 
