@@ -3,6 +3,18 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const barriers = require("../games/gcv/barriers.js");
 const layout = require("../games/gcv/track-layout.js");
+const physics = require("../games/gcv/physics.js");
+
+function straightRails() {
+  const points = (x) => [{ x, z: 10 }, { x, z: 0 }, { x, z: -10 }];
+  return {
+    protectedSamples: new Uint8Array(3).fill(1),
+    rails: {
+      left: { limits: [14, 14, 14], points: points(15) },
+      right: { limits: [14, 14, 14], points: points(-15) },
+    },
+  };
+}
 
 function circularTrack() {
   const radius = 100, count = 628;
@@ -40,32 +52,34 @@ test("barriers are placed before cliff and leave safe room for the whole car", (
   assert.ok(rail.carLimit + barriers.CAR_RADIUS < 19);
 });
 
-test("contact against either barrier removes only lateral motion", () => {
+test("either barrier preserves tangential travel and forward-facing heading", () => {
   const road = circularTrack(), i = 85;
+  const rail = barriers.create(road.positions, road.lapLength, 19);
+  const center = road.positions[i], side = barriers.normalAt(road.positions, i);
+  const forward = { x: side.z, z: -side.x };
   for (const sign of [-1, 1]) {
-    const { rail, center, side } = railAt(road, 19, i, sign);
-    const tangent = { x: -side.z, z: side.x };
-    const before = { x: center.x + side.x * (rail.carLimit - 1),
-      z: center.z + side.z * (rail.carLimit - 1), speed: 38, yaw: .4 };
+    const limit = sign > 0 ? rail.rails.left.limits[i] :
+      rail.rails.right.limits[i];
+    const before = { x: center.x + side.x * sign * (limit - 1),
+      z: center.z + side.z * sign * (limit - 1), speed: 38, yaw: .4 };
     const proposed = {
-      x: center.x + side.x * (rail.carLimit + 4) + tangent.x * 3,
-      z: center.z + side.z * (rail.carLimit + 4) + tangent.z * 3,
+      x: center.x + side.x * sign * (limit + 4) + forward.x * 3,
+      z: center.z + side.z * sign * (limit + 4) + forward.z * 3,
       speed: 38, yaw: .4,
     };
     const result = barriers.resolve(before, proposed, i, center, side, rail);
     assert.equal(result.collided, true);
     const dx = result.x - center.x, dz = result.z - center.z;
-    assert.ok(Math.abs(dx * side.x + dz * side.z - rail.carLimit) < 1e-8);
-    assert.ok(Math.abs(dx * tangent.x + dz * tangent.z - 3) < 1e-8);
+    assert.ok(Math.abs(dx * side.x + dz * side.z - sign * limit) < 1e-8);
+    assert.ok(Math.abs(dx * forward.x + dz * forward.z - 3) < 1e-8);
     assert.equal(result.speed, proposed.speed);
-    // If the car was aiming into the rail, contact must turn the nose
-    // along the rail, not further into the wall.
-    const outwardX = -Math.sin(result.yaw) * side.x * sign;
-    const outwardZ = -Math.cos(result.yaw) * side.z * sign;
-    assert.ok(outwardX + outwardZ <= 1e-7);
+    const points = sign > 0 ? rail.rails.left.points : rail.rails.right.points;
+    const next = points[(i + 1) % points.length];
+    const previous = points[(i + points.length - 1) % points.length];
+    assert.ok(-Math.sin(result.yaw) * (next.x - previous.x) -
+      Math.cos(result.yaw) * (next.z - previous.z) > 0);
   }
 });
-
 test("vehicle does not get stopped by repeated wall contact on straight segments", () => {
   const road = circularTrack(), i = 117;
   const { center, side, rail } = railAt(road, 19, i);
@@ -121,33 +135,30 @@ test("guardrail module validates geometry and outside width", () => {
   assert.throws(() => barriers.create(road.positions, road.lapLength, 1));
 });
 
-test("right-side and left-side contact preserve driver yaw without auto-steering", () => {
-  const road = circularTrack();
-  const rails = barriers.create(road.positions, road.lapLength, 16);
-  const i = 100, center = { x: 0, z: 0 }, side = { x: 1, z: 0 };
-  for (const [wall, yaw] of [[1, -0.35], [-1, 0.35]]) {
-    const before = { x: wall * 13, z: 0, speed: 36, yaw };
-    const proposed = { x: wall * 17, z: -1, speed: 36, yaw };
-    const resolved = barriers.resolve(before, proposed, i, center, side, rails);
-    assert.equal(resolved.collided, true);
-    assert.equal(resolved.yaw, yaw,
-      "contact must not turn the car automatically");
-    assert.equal(resolved.speed, 36);
-    assert.equal(resolved.z, -1,
-      "forward movement remains untouched along the guardrail");
+test("wall contact gradually aligns the car on both sides", () => {
+  const rails = straightRails(), center = { x: 0, z: 0 };
+  const side = { x: 1, z: 0 };
+  for (const sign of [-1, 1]) {
+    const yaw = -sign * 0.7;
+    const before = { x: sign * 13.5, z: 0, speed: 36, yaw };
+    const proposed = { x: sign * 17, z: -1, speed: 36, yaw };
+    const hit = barriers.resolve(before, proposed, 1, center, side, rails, 1 / 60);
+    assert.equal(hit.collided, true);
+    assert.ok(Math.abs(hit.yaw) < Math.abs(yaw));
+    assert.ok(Math.abs(hit.yaw) > .1, "no immediate snap to tangent");
+    assert.equal(hit.speed, 36);
+    assert.equal(hit.z, -1);
   }
 });
-
-test("steering away from a guardrail is not automatically corrected", () => {
-  const road = circularTrack();
-  const rails = barriers.create(road.positions, road.lapLength, 16);
-  const center = { x: 0, z: 0 }, side = { x: 1, z: 0 };
-  const drivingAway = { x: 20, z: -3, speed: 32, yaw: .35 };
-  const hit = barriers.resolve(drivingAway, drivingAway, 100, center, side, rails);
-  assert.equal(hit.collided, true);
-  assert.equal(hit.yaw, drivingAway.yaw);
+test("steering away from the rail works normally after leaving contact", () => {
+  const rails = straightRails(), center = { x: 0, z: 0 };
+  const side = { x: 1, z: 0 };
+  const before = { x: 13.9, z: -3, speed: 32, yaw: .35 };
+  const proposed = { ...before, x: 13.2, z: -4 };
+  const result = barriers.resolve(before, proposed, 1, center, side, rails);
+  assert.equal(result.collided, false);
+  assert.equal(result.yaw, proposed.yaw);
 });
-
 test("inside hairpin rails narrow locally instead of folding through themselves", () => {
   const radius = 9, count = 240;
   const road = Array.from({ length: count }, (_, i) => ({
@@ -230,18 +241,73 @@ test("the actual circuit's tight bends produce no crossing guardrails", () => {
   }
 });
 
-test("guardrail contact never changes yaw, including a heading into the right wall", () => {
-  const road = circularTrack();
-  const rail = barriers.create(road.positions, road.lapLength, 16);
+test("a collision never points the car against the circuit's forward direction", () => {
+  const road = circularTrack(), rail =
+    barriers.create(road.positions, road.lapLength, 16);
   for (const sign of [-1, 1]) {
-    const i = 85;
-    const center = road.positions[i];
-    const normal = { x: -center.z / 100, z: center.x / 100 };
-    const proposed = { x: center.x + sign * normal.x * 30,
-      z: center.z + sign * normal.z * 30, yaw: 1.35, speed: 33 };
-    const hit = barriers.resolve(center, proposed, i, center, normal, rail);
+    const i = 85, center = road.positions[i];
+    const side = barriers.normalAt(road.positions, i);
+    const points = sign > 0 ? rail.rails.left.points : rail.rails.right.points;
+    const prev = points[(i + points.length - 1) % points.length];
+    const next = points[(i + 1) % points.length];
+    const fx = next.x - prev.x, fz = next.z - prev.z;
+    const backwardYaw = Math.atan2(-fx, -fz) + Math.PI;
+    const proposed = {
+      x: center.x + sign * side.x * 30,
+      z: center.z + sign * side.z * 30,
+      yaw: backwardYaw, speed: 33,
+    };
+    const hit = barriers.resolve(center, proposed, i, center, side, rail);
     assert.equal(hit.collided, true);
-    assert.equal(hit.yaw, proposed.yaw);
-    assert.equal(hit.speed, proposed.speed);
+    assert.ok(-Math.sin(hit.yaw) * fx - Math.cos(hit.yaw) * fz > 0);
+    assert.equal(hit.speed, 33);
   }
+});
+
+test("holding maximum steering into either barrier never causes a U-turn", () => {
+  const rails = straightRails();
+  for (const sign of [-1, 1]) {
+    let car = { x: sign * 13.9, z: 0, speed: 32, yaw: -sign * .25 };
+    let contacts = 0;
+    for (let frame = 0; frame < 180; frame++) {
+      const proposed = physics.advance(car,
+        { accelerate: true, steer: sign }, 1 / 60);
+      const hit = barriers.resolve(car, proposed, 1,
+        { x: 0, z: 0 }, { x: 1, z: 0 }, rails, 1 / 60);
+      if (hit.collided) {
+        contacts++;
+        assert.ok(Math.cos(hit.yaw) > 0, "never faces backwards");
+        assert.ok(Math.abs(hit.x) <= 14 + 1e-8);
+      }
+      car = hit;
+    }
+    assert.ok(contacts > 150, "must stay sliding along the wall");
+    assert.ok(car.z < -65, "forward motion must continue");
+    assert.ok(Math.abs(car.yaw) < .65, "held steering cannot rotate the car backwards");
+  }
+});
+
+test("guardrail alignment is progressive at frame rate", () => {
+  const rails = straightRails();
+  let car = { x: 14, z: 0, speed: 30, yaw: -.75 };
+  for (let i = 0; i < 75; i++) {
+    const previous = car;
+    car = barriers.resolve(previous, { ...previous, x: 17, z: previous.z - 1 },
+      1, { x: 0, z: 0 }, { x: 1, z: 0 }, rails, 1 / 60);
+    assert.ok(car.yaw > previous.yaw);
+    if (i === 0) assert.ok(car.yaw < -.6, "first frame must not snap");
+  }
+  assert.ok(Math.abs(car.yaw) < .02, "sustained contact aligns along the rail");
+});
+
+test("the car follows the actual angled guardrail, not just road centerline", () => {
+  const rails = straightRails();
+  rails.rails.left.points[2].x = 22;
+  const tangentYaw = Math.atan2(-7, 20);
+  let car = { x: 14, z: 0, speed: 30, yaw: 0 };
+  for (let i = 0; i < 80; i++) {
+    car = barriers.resolve(car, { ...car, x: 17, z: car.z - 1 }, 1,
+      { x: 0, z: 0 }, { x: 1, z: 0 }, rails, 1 / 60);
+  }
+  assert.ok(Math.abs(car.yaw - tangentYaw) < .01);
 });
