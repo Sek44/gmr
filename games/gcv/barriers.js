@@ -8,6 +8,8 @@ const GcvBarriers = (() => {
   const INNER_RADIUS_FRACTION = 0.86;
   const CORNER_WINDOW = 6; // Taper the offset smoothly before/after tight turns.
   const MIN_OFFSET = CAR_RADIUS + 0.8;
+  const CONTACT_ALIGN_RATE = 3.5; // Heading converges smoothly in contact.
+  const MAX_CONTACT_ANGLE = Math.PI / 3; // Never face backwards along the track.
   const ROAD_EDGE_MARGIN = CAR_RADIUS + 0.35; // Keep posts and car clear of the roadway.
 
   function normalAt(positions, index) {
@@ -157,7 +159,7 @@ const GcvBarriers = (() => {
     };
   }
 
-  function resolve(previous, proposed, index, center, side, barriers) {
+  function resolve(previous, proposed, index, center, side, barriers, dt = 1 / 60) {
     if (!barriers.protectedSamples[index]) {
       return { ...proposed, collided: false };
     }
@@ -178,8 +180,36 @@ const GcvBarriers = (() => {
       collided: true,
     };
 
-    // Wall contact must not steer the vehicle: preserve its yaw exactly.
-    // Only lateral position is constrained; forward motion remains intact.
+    // The vehicle follows the actual physical guardrail, not an approximate
+    // centerline: the two tangents may differ at tight bends.
+    let forwardX = side.z, forwardZ = -side.x;
+    const rail = barriers.rails &&
+      (lateral >= 0 ? barriers.rails.left : barriers.rails.right);
+    if (rail && rail.points.length >= 3) {
+      const points = rail.points, n = points.length;
+      const before = points[(index + n - 1) % n];
+      const after = points[(index + 1) % n];
+      const tx = after.x - before.x, tz = after.z - before.z;
+      const length = Math.hypot(tx, tz);
+      if (length > 1e-8) {
+        // Use the same forward direction as the circuit, not the reverse
+        // orientation of the rail segment.
+        const direction = tx * forwardX + tz * forwardZ >= 0 ? 1 : -1;
+        forwardX = direction * tx / length;
+        forwardZ = direction * tz / length;
+      }
+    }
+
+    const railYaw = Math.atan2(-forwardX, -forwardZ);
+    const difference = Math.atan2(
+      Math.sin(proposed.yaw - railYaw), Math.cos(proposed.yaw - railYaw));
+    // Keep the heading in the forward hemisphere on first impact. While the
+    // vehicle stays against the wall it aligns progressively, overcoming
+    // continuous player steering towards the rail without a sudden snap.
+    const safeDifference = Math.max(-MAX_CONTACT_ANGLE,
+      Math.min(MAX_CONTACT_ANGLE, difference));
+    const step = Math.max(0, Math.min(0.05, Number.isFinite(dt) ? dt : 1 / 60));
+    result.yaw = railYaw + safeDifference * Math.exp(-CONTACT_ALIGN_RATE * step);
     return result;
   }
 
