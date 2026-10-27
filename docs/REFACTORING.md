@@ -1,9 +1,9 @@
 # GMR — Pistes de nettoyage et de refactoring
 
-Revue du 27 octobre 2026 (dépôt `Sek44/gmr`). Ce document rassemble les sujets **non traités**
-immédiatement parce qu'ils nécessitent une modification transversale, des décisions de
-gameplay ou des tests visuels importants. Les nettoyages simples sont décrits dans le commit
-de la revue. Les priorités reflètent le risque de régression, pas une urgence de livraison.
+Revue du 27 octobre 2026 (dépôt `Sek44/gmr`). Ce document suit les refactorings transversaux proposés lors de la revue.
+Les points réalisés sont conservés avec leur statut ; les autres nécessitent
+encore une modification transversale, des décisions de gameplay ou des tests
+visuels importants. Les priorités reflètent le risque de régression.
 
 ## Priorité haute — stabilité et architecture
 
@@ -13,12 +13,16 @@ de la revue. Les priorités reflètent le risque de régression, pas une urgence
    Extraire progressivement des modules aux interfaces explicites
    (`scene`, `vehicles`, `controls`, `hud`, `session`), sans réécrire toute la
    physique d'un seul coup. Ajouter un test de chargement avant la première extraction.
-2. **Unifier la progression des tours.** `GcvTrackProgress`, `GcvLapTimes` et
-   `GcvRace` suivent actuellement différentes notions de progression, temps
-   et franchissement physique. Définir une seule source de vérité pour la
-   position longitudinale, les passages de ligne et les tours validés ;
-   en dériver le classement, le chrono et le HUD. Conserver les protections
-   contre les demi-tours, les raccourcis et les sauts d'indice.
+2. **Unifier la progression des tours — RÉALISÉ (27/10/2026).**
+   `GcvTrackProgress` conserve la progression longitudinale signée (en mètres),
+   les passages physiques de ligne et les tours validés ; ses événements
+   `start`/`lap` alimentent `GcvRace`, `GcvLapTimes` et le HUD.
+   Les indices d'échantillonnage ne décident plus d'un tour ; le chrono ne
+   valide pas de franchissement à partir des secteurs. Protections conservées :
+   sens de la ligne, largeur de piste, distance réelle minimale entre passages,
+   marche arrière, chute/respawn et saut d'indice près des épingles.
+   Tests unitaires et transversaux ajoutés. Les anciennes sessions GCV sont
+   annulées (révision 4) sans effacer les records.
 3. **Ajouter des tests navigateur intégrés.** Les tests Node couvrent la logique
    isolée, mais pas l'interaction entre modules, le plein écran, l'iframe des
    scores, le multi-touch, la pause, ni le rendu des HUD portrait/paysage.
