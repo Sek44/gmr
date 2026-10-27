@@ -37,6 +37,61 @@ const GcvBarriers = (() => {
     return { sign: Math.sign(cross), radius };
   }
 
+  function segmentsIntersect(a, b, c, d) {
+    const ax = b.x - a.x, az = b.z - a.z;
+    const bx = d.x - c.x, bz = d.z - c.z;
+    const determinant = ax * bz - az * bx;
+    if (Math.abs(determinant) < 1e-10) return false;
+    const dx = c.x - a.x, dz = c.z - a.z;
+    const t = (dx * bz - dz * bx) / determinant;
+    const u = (dx * az - dz * ax) / determinant;
+    return t > 1e-5 && t < 1 - 1e-5 &&
+      u > 1e-5 && u < 1 - 1e-5;
+  }
+
+  function railIntersections(points) {
+    const hits = [], n = points.length;
+    // Check non-neighbouring guardrail segments, including the closing seam.
+    for (let i = 0; i < n; i++) {
+      const nextI = (i + 1) % n;
+      for (let j = i + 2; j < n; j++) {
+        if (i === 0 && j === n - 1) continue;
+        if (segmentsIntersect(points[i], points[nextI],
+          points[j], points[(j + 1) % n])) hits.push([i, j]);
+      }
+    }
+    return hits;
+  }
+
+  function untangleRail(positions, normals, sign, offsets, points) {
+    const n = points.length;
+    for (let pass = 0; pass < 10; pass++) {
+      const crossings = railIntersections(points);
+      if (!crossings.length) break;
+      const factors = new Float64Array(n).fill(1);
+      for (const [i, j] of crossings) {
+        // Move the short folded arc closer to the track centerline, with a
+        // tapered transition outside both crossing segments.
+        const directLength = j - i;
+        const start = directLength <= n / 2 ? i : j;
+        const count = directLength <= n / 2
+          ? directLength + 1 : n - directLength + 1;
+        const taper = 8;
+        for (let k = -taper; k <= count + taper; k++) {
+          const blend = Math.max(0, Math.min(1,
+            (k + taper) / taper, (count + taper - k) / taper));
+          const index = (start + k + n) % n;
+          factors[index] = Math.min(factors[index], 1 - .34 * blend);
+        }
+      }
+      for (let i = 0; i < n; i++) {
+        offsets[i] = Math.max(MIN_OFFSET, offsets[i] * factors[i]);
+        points[i].x = positions[i].x + normals[i].x * sign * offsets[i];
+        points[i].z = positions[i].z + normals[i].z * sign * offsets[i];
+      }
+    }
+  }
+
   function create(positions, lapLength, outerHalfWidth, normals = null) {
     if (!Array.isArray(positions) || positions.length < 3 ||
         !Number.isFinite(lapLength) || lapLength <= 0 ||
@@ -75,6 +130,10 @@ const GcvBarriers = (() => {
         x: p.x + centerNormals[i].x * sideSign * offsets[i],
         z: p.z + centerNormals[i].z * sideSign * offsets[i],
       }));
+      // A local curvature bound is not enough for adjacent hairpin arms:
+      // these loops can still intersect even though each individual curve
+      // remains smooth. Contract only the few folded segments.
+      untangleRail(positions, centerNormals, sideSign, offsets, points);
       return { points, offsets, limits: offsets.map((v) => v - CAR_RADIUS) };
     }
     const left = pathFor(1), right = pathFor(-1);
@@ -131,7 +190,7 @@ const GcvBarriers = (() => {
 
   return Object.freeze({
     CAR_RADIUS, RAIL_OFFSET_INWARD, INNER_RADIUS_FRACTION,
-    normalAt, curvatureAt, create, resolve,
+    normalAt, curvatureAt, railIntersections, create, resolve,
   });
 })();
 if (typeof window !== "undefined") window.GcvBarriers = GcvBarriers;
