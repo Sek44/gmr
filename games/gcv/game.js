@@ -816,8 +816,9 @@
       racePositionValue.textContent = String(Race.position(raceState)) + "ᵉ";
       raceLapLabel.textContent = raceState.phase === "finished"
         ? "2 tours terminés" : "Tour " + Race.currentLap(raceState) + "/2";
-      lapLabel.textContent = String(Math.min(Race.LAPS,
-        Math.max(0, Math.floor(Math.max(0, raceState.playerProgress) / trackLength))));
+      // Display validated physical lap crossings, not rounded estimated
+      // distance (which can lag the finish when the samples jitter).
+      lapLabel.textContent = String(raceState.playerLapTimes?.length || 0);
       const phase = raceState.phase;
       raceOverlay.classList.toggle("is-results", phase === "finished");
       raceOverlay.hidden = phase === "racing" ||
@@ -900,18 +901,11 @@
     let initializedCamera = false;
     let binding = null;
 
-    function closestRoad(x, z) {
-      let index = 0, distanceSquared = Infinity;
-      for (let i = 0; i < SAMPLE_COUNT; i++) {
-        const dx = x - positions[i].x;
-        const dz = z - positions[i].z;
-        const squared = dx * dx + dz * dz;
-        if (squared < distanceSquared) {
-          index = i;
-          distanceSquared = squared;
-        }
-      }
-      return { index, distanceSquared };
+    function closestRoad(x, z, hintIndex = null) {
+      // Prefer nearby samples while still in the same road corridor. A tight
+      // hairpin may be closer to a DIFFERENT section of this closed circuit.
+      return TrackProgress.nearestSample(positions, SAMPLE_COUNT, x, z,
+        hintIndex, 12, OUTER_HALF_WIDTH);
     }
 
     function snapBack(index) {
@@ -1411,7 +1405,7 @@
         const previousPosition = { x: driver.x, z: driver.z };
         driver = Physics.advance(driver, { steer, accelerate, brake }, dt);
         mudSkidIntensity = Physics.skidIntensity(driver.speed, steer);
-        let nearest = closestRoad(driver.x, driver.z);
+        let nearest = closestRoad(driver.x, driver.z, lapTracker.index);
         // Slide along the barrier and progressively match its forward
         // direction, even when the player keeps steering into the wall.
         const barrierContact = Barriers.resolve(previousPosition, driver,
@@ -1421,7 +1415,7 @@
           driver.x = barrierContact.x;
           driver.z = barrierContact.z;
           driver.yaw = barrierContact.yaw;
-          nearest = closestRoad(driver.x, driver.z);
+          nearest = closestRoad(driver.x, driver.z, lapTracker.index);
         }
         if (nearest.distanceSquared > OUTER_HALF_WIDTH * OUTER_HALF_WIDTH) {
           // Keep the speed and forward momentum in the air. Begin both the
@@ -1445,11 +1439,14 @@
           lapTimer = timing.state;
           const crossing = LapTimes.finishCrossing(
             previousPosition, driver, startCenter, directions[startIndex], OUTER_HALF_WIDTH);
+          // Race validation is independent of the time-trial stopwatch:
+          // its own distance guard rejects short back-and-forth crossings.
+          // A missing stopwatch sector must not suppress a real race lap.
+          if (crossing !== null && gameMode === "race") raceFinishFraction = crossing;
           if (crossing !== null && (!lapTimer.running ||
               TrackProgress.nearNextFinish(lapTracker, lapTimer.startAt, SAMPLE_COUNT))) {
             // Crossing the line again just after reversing is not a lap;
             // do not advance the timer or sync a whole circuit of progress.
-            raceFinishFraction = crossing;
             const nextFinishProgress = lapTimer.running
               ? lapTimer.startAt + SAMPLE_COUNT
               : Math.max(lapTimer.startAt,
