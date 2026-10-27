@@ -458,3 +458,16 @@ Documentation : [Three.js — WebGLRenderer](https://threejs.org/docs/pages/WebG
 - [x] Vérifications automatisées : **17 tests de barrières**, dont braquage maximal maintenu à gauche/droite pendant 180 images, progression longitudinale, alignement progressif, tangente réelle du rail et virage extrême sans demi-tour.
 
 **À confirmer visuellement sur mobile/tablette** : fluidité du réalignement contre un rail à pleine vitesse et trajectoires en virages serrés.
+
+
+## 34. Fin de course validée uniquement sur la ligne d'arrivée (27/10/2026)
+
+- [x] **Correction d'une arrivée prématurée** : en mode Course, la distance approximative servant au classement ne peut plus terminer les deux tours à elle seule. La fin impose un vrai franchissement de la ligne visible, dans le sens de la course.
+- [x] **Grille avant la ligne** : le premier passage démarre le tour n° 1, le deuxième termine le premier tour et le troisième achève la course.
+- [x] **Distance anti-oscillation** : ne compter que la progression maximale atteinte le long du tracé. Reculer puis repasser sur le même secteur ou glisser contre une barrière ne rapporte aucune distance supplémentaire.
+- [x] **Anti-demi-tour** : valider un nouveau tour uniquement après environ 90 % d'un tour parcouru depuis la ligne précédente ; les allers-retours devant la ligne ne doivent plus avancer artificiellement le chrono ou la progression.
+- [x] **Temps d'arrivée** : continuer à interpoler le moment exact du franchissement dans la frame ; ne figer le classement et l'écran de résultats qu'après la deuxième arrivée valide.
+- [x] **Sauvegardes** : conserver les courses et records existants ; initialiser prudemment les nouveaux marqueurs pour les anciennes sauvegardes.
+- [x] **Vérifications** : tests de franchissement réel, absence de résultat si le compteur dépasse deux tours avant la ligne, demi-tours, chronométrage interpolé et sauvegarde/restauration.
+
+**À contrôler en jeu sur navigateur** : franchissement final à grande vitesse, allers-retours devant la ligne, et fin de course après reprise d'une sauvegarde ancienne.
