@@ -1412,14 +1412,15 @@
         driver = Physics.advance(driver, { steer, accelerate, brake }, dt);
         mudSkidIntensity = Physics.skidIntensity(driver.speed, steer);
         let nearest = closestRoad(driver.x, driver.z);
-        // Deflect only across the rail, not along it. Sliding preserves
-        // forward momentum and does not trigger a fall or a lap reset.
+        // Slide along the barrier and progressively match its forward
+        // direction, even when the player keeps steering into the wall.
         const barrierContact = Barriers.resolve(previousPosition, driver,
           nearest.index, positions[nearest.index], sides[nearest.index],
-          barriers);
+          barriers, dt);
         if (barrierContact.collided) {
           driver.x = barrierContact.x;
           driver.z = barrierContact.z;
+          driver.yaw = barrierContact.yaw;
           nearest = closestRoad(driver.x, driver.z);
         }
         if (nearest.distanceSquared > OUTER_HALF_WIDTH * OUTER_HALF_WIDTH) {
