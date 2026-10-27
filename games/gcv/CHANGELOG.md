@@ -5,6 +5,19 @@ versions (nombre de tours, vitesses, sauvegardes, état des fonctionnalités) ne
 **pas** nécessairement le jeu actuel. Consulter [SPECIFICATIONS.md](SPECIFICATIONS.md)
 pour les règles en vigueur.
 
+## 16. Refactoring du moteur de rendu 3D (27/10/2026)
+
+- Extraction dans `rendering.js` du moteur WebGL, du redimensionnement,
+  de la caméra et du positionnement visuel du joueur et des concurrents.
+- Les roues, les feux de freinage et la caméra lors des chutes sont désormais
+  mis à jour dans le module de rendu, avant l'animation des particules.
+- La boucle de simulation, les courses, les commandes et le chronométrage
+  restent dans `game.js` ; aucune modification volontaire de gameplay.
+- Révision de session augmentée à 8 : anciennes parties en cours annulées
+  au retour au menu, sans supprimer les meilleurs temps.
+- Tests pour le rendu WebGL, la caméra intérieure/extérieure, les
+  concurrents et le chargement des modules.
+
 ## 15. Refactoring des commandes, du HUD et de la mini-carte (27/10/2026)
 
 - Extraction des commandes (clavier, volant tactile, pédales multi-touch,

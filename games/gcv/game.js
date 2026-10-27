@@ -30,11 +30,12 @@
   const Race = window.GcvRace;
   const Vehicles = window.GcvVehicles;
   const VisualEffects = window.GcvVisualEffects;
+  const Rendering = window.GcvRendering;
   const Controls = window.GcvControls;
   const Hud = window.GcvHud;
   const MiniMap = window.GcvMiniMap;
   // Bump this revision after incompatible GCV updates. Old sessions are canceled.
-  const SAVE_REVISION = 7;
+  const SAVE_REVISION = 8;
 
   function announce(message) {
     notice.textContent = message;
@@ -42,7 +43,7 @@
   }
 
   try {
-    if (!Physics || !TrackProgress || !Scenery || !World3D || !TrackLayout || !LapTimes || !Race || !Barriers || !Vehicles || !VisualEffects || !Controls || !Hud || !MiniMap)
+    if (!Physics || !TrackProgress || !Scenery || !World3D || !TrackLayout || !LapTimes || !Race || !Barriers || !Vehicles || !VisualEffects || !Rendering || !Controls || !Hud || !MiniMap)
       throw new Error("Les modules de conduite sont introuvables.");
     const THREE = await import("https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js");
     start(THREE);
@@ -52,20 +53,19 @@
   }
 
   function start(THREE) {
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.7));
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    sceneHost.append(renderer.domElement);
-
     const {
       scene, ROAD_HALF_WIDTH, OUTER_HALF_WIDTH, SAMPLE_COUNT, curve,
       trackLength, positions, directions, sides, barriers,
       startIndex, startCenter, startSide, startYaw, islands,
     } = World3D.create({ THREE, TrackLayout, Barriers, Scenery });
-    const camera = new THREE.PerspectiveCamera(72, 1, 0.08, 2400);
     const { car, wheelPivots, brakeLights, rearBrakeGlows, opponentMeshes, setCameraMode } =
       Vehicles.create({ THREE, scene, Race, trackLength, document });
 
+    const rendering = Rendering.create({
+      THREE, window, stage, sceneHost, scene, car, wheelPivots,
+      brakeLights, rearBrakeGlows, opponentMeshes, curve,
+      startIndex, SAMPLE_COUNT, trackLength,
+    });
     const visualEffects = VisualEffects.create({ THREE, scene, car });
     const hud = Hud.create({ document, LapTimes, Race });
 
@@ -123,21 +123,7 @@
 
     function refreshChrono() { hud.refreshChrono(lapTimer, lapHold); }
     function syncRaceCars() {
-      const active = gameMode === "race" && raceState !== null;
-      for (const [id, mesh] of opponentMeshes) {
-        const ai = active ? raceState.opponents.find((entry) => entry.id === id) : null;
-        mesh.visible = Boolean(ai);
-        if (!ai) continue;
-        // The track is parametrized by arc length. Use it for all AI vehicles,
-        // including on the final long straight.
-        const t = (((startIndex / SAMPLE_COUNT + ai.progress / trackLength) % 1) + 1) % 1;
-        const center = curve.getPointAt(t);
-        const forward = curve.getTangentAt(t).normalize();
-        const sideX = -forward.z, sideZ = forward.x;
-        mesh.position.set(center.x + sideX * ai.lateral, 0.14,
-          center.z + sideZ * ai.lateral);
-        mesh.rotation.y = Math.atan2(-forward.x, -forward.z);
-      }
+      rendering.syncOpponents(gameMode === "race" ? raceState?.opponents : null);
     }
 
     function syncRaceHud() {
@@ -202,7 +188,6 @@
     refreshBests();
     refreshChrono();
     let lastFrame = performance.now(), autosaveElapsed = 0, mapElapsed = 0;
-    let initializedCamera = false;
     let binding = null;
 
     function closestRoad(x, z, hintIndex = null) {
@@ -261,12 +246,12 @@
       raceState = Race.create(trackLength, Math.random, lapTracker);
       lapTimer = LapTimes.initial(SAMPLE_COUNT, progressSamples(lapTracker.progress));
       announce("");
-      initializedCamera = false;
+      rendering.setView(cameraMode === "outside");
       syncRaceCars();
       syncRaceHud();
       refreshChrono();
       updateCar(0);
-      updateCamera(0);
+      rendering.updateCamera(0);
       drawMap();
       resumeGame();
     }
@@ -289,9 +274,9 @@
       syncRaceHud();
       refreshCameraButton();
       refreshChrono();
-      initializedCamera = false;
+      rendering.setView(cameraMode === "outside");
       updateCar(0);
-      updateCamera(0);
+      rendering.updateCamera(0);
       drawMap();
       resumeGame();
     }
@@ -319,9 +304,9 @@
       hud.setLapCount(0);
       refreshChrono();
       announce("");
-      initializedCamera = false;
+      rendering.setView(cameraMode === "outside");
       updateCar(0);
-      updateCamera(0);
+      rendering.updateCamera(0);
       drawMap();
       if (binding) binding.changed();
     }
@@ -333,7 +318,7 @@
         outside ? "Caméra : extérieure" : "Caméra : intérieure";
       cameraButton.setAttribute("aria-label", outside ? "Passer en vue intérieure" : "Passer en vue extérieure");
       setCameraMode(outside);
-      initializedCamera = false;
+      rendering.setView(outside);
     }
     cameraButton.addEventListener("click", () => {
       cameraMode = cameraMode === "inside" ? "outside" : "inside";
@@ -385,18 +370,6 @@
         opponentMeshes
       );
     }
-
-    function resize() {
-      const width = Math.max(1, stage.clientWidth);
-      const height = Math.max(1, stage.clientHeight);
-      renderer.setSize(width, height, false);
-      camera.aspect = width / height;
-      camera.fov = width < height ? 77 : 72;
-      camera.updateProjectionMatrix();
-    }
-    window.addEventListener("resize", resize);
-    if (typeof ResizeObserver !== "undefined") new ResizeObserver(resize).observe(stage);
-    resize();
 
     function snapshot() {
       // A saved fall resumes at the nearest safe edge instead of mid-air.
@@ -602,41 +575,13 @@
         syncRaceHud();
       }
 
-      if (falling) {
-        car.position.set(fall.x, fall.y, fall.z);
-        // Nose dips as the car falls; this is an animation, not road steering.
-        car.rotation.set(Math.min(0.68, fall.elapsed * 0.42), driver.yaw, 0, "YXZ");
-      } else {
-        car.position.set(driver.x, 0.14, driver.z);
-        car.rotation.set(0, driver.yaw, 0, "YXZ");
-      }
-      for (const wheel of wheelPivots) wheel.rotation.x -= driver.speed * dt / 0.46;
-      car.updateMatrixWorld(true);
-      brakeLights.emissiveIntensity = brakePressed ? 3.8 : 0.15;
-      for (const glow of rearBrakeGlows) glow.intensity = brakePressed ? 3.5 : 0;
+      rendering.updatePlayer({
+        driver, fall: falling ? fall : null, dt, brakePressed,
+      });
       visualEffects.update(dt, driver, falling ? 0 : mudSkidIntensity,
         falling ? null : barrierSparkContact);
       hud.setSpeed(driver.speed);
       refreshChrono();
-    }
-
-    function updateCamera(dt) {
-      const inside = cameraMode === "inside";
-      const desiredPosition = car.localToWorld(inside
-        ? new THREE.Vector3(-0.42, 1.51, 0.34) // Higher view, fixed above the lowered wheel.
-        : new THREE.Vector3(0, 4.5, 9.7));
-      const desiredTarget = car.localToWorld(inside
-        ? new THREE.Vector3(-0.42, 1.49, -14)
-        : new THREE.Vector3(0, 1.13, -8));
-      if (inside) {
-        // Fixed cockpit mount: no elastic camera movement, even while turning.
-        camera.position.copy(desiredPosition);
-      } else {
-        const blend = initializedCamera ? 1 - Math.exp(-8 * dt) : 1;
-        camera.position.lerp(desiredPosition, blend);
-      }
-      camera.lookAt(desiredTarget);
-      initializedCamera = true;
     }
 
     function frame(now) {
@@ -651,7 +596,7 @@
         tickLapHold(realDt);
         refreshChrono();
       }
-      updateCamera(dt);
+      rendering.updateCamera(dt);
       autosaveElapsed += dt;
       if (hasActiveSession && autosaveElapsed >= 1.5) {
         autosaveElapsed = 0;
@@ -662,13 +607,13 @@
         mapElapsed = 0;
         drawMap();
       }
-      renderer.render(scene, camera);
+      rendering.render();
     }
 
     drawMap();
     updateCar(0);
-    updateCamera(0);
-    renderer.render(scene, camera);
+    rendering.updateCamera(0);
+    rendering.render();
     requestAnimationFrame(frame);
   }
 })();
