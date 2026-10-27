@@ -170,8 +170,12 @@ const GcvTrackProgress = (() => {
       const atLine = state.progress + distance * crossingFraction;
       if (!started) {
         started = true;
-        progress = Math.max(0, progress);
-        lastFinishProgress = Math.max(0, atLine);
+        // Discard the untimed approach to the FIRST crossing (which may
+        // include almost an entire circuit in free mode). Retain only
+        // forward travel after the line, without fabricating distance.
+        progress = Math.max(0, Math.min(rawProgress,
+          distance * (1 - crossingFraction)));
+        lastFinishProgress = progress;
         events.push({ type: "start", fraction: crossingFraction, progress: 0 });
       } else if (rawProgress - lastFinishProgress >=
           trackLength * MIN_LAP_FRACTION) {
