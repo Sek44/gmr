@@ -44,8 +44,8 @@ test("track layout version is distinct from earlier saved sessions", () => {
   assert.equal(layout.VERSION, 2);
 });
 
-test("each roadside shoulder is widened four metres from six to ten", () => {
+test("roadside shoulders are seven metres per side", () => {
   assert.equal(layout.ROAD_HALF_WIDTH, 9);
-  assert.equal(layout.SHOULDER_WIDTH, 10);
-  assert.equal(layout.ROAD_HALF_WIDTH + layout.SHOULDER_WIDTH, 19);
+  assert.equal(layout.SHOULDER_WIDTH, 7);
+  assert.equal(layout.ROAD_HALF_WIDTH + layout.SHOULDER_WIDTH, 16);
 });
