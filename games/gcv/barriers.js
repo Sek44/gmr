@@ -14,6 +14,7 @@ const GcvBarriers = (() => {
   const MAX_CONTACT_SPEED = 100 / 3.6; // 100 km/h while scraping a guardrail.
   const CONTACT_FRICTION = 4; // Additional m/s² lost to wall rubbing.
   const CONTACT_DAMPING = 0.9; // Speed-dependent wall friction.
+  const CONTACT_MARGIN = 0.025; // Still rubbing when exactly flush with a rail.
 
   function normalAt(positions, index) {
     const n = positions.length;
@@ -212,10 +213,13 @@ const GcvBarriers = (() => {
       ? (lateral >= 0 ? barriers.rails.left.limits[index] :
         barriers.rails.right.limits[index])
       : barriers.carLimit;
-    if (Math.abs(lateral) <= limit) {
+    // Count tangential sliding at the wall as contact, even when there is no
+    // new penetration. Otherwise a perfectly aligned car could accelerate
+    // past the 100 km/h contact limit.
+    if (Math.abs(lateral) < limit - CONTACT_MARGIN) {
       return { ...proposed, collided: false };
     }
-    const excess = lateral - Math.sign(lateral) * limit;
+    const excess = Math.sign(lateral) * Math.max(0, Math.abs(lateral) - limit);
     const step = Math.max(0, Math.min(0.05, Number.isFinite(dt) ? dt : 1 / 60));
     // Cap a fast impact immediately, then slow the car continuously while
     // rubbing. Preserve the speed sign so backing away stays possible.
