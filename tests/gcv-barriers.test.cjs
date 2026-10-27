@@ -2,6 +2,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const barriers = require("../games/gcv/barriers.js");
+const layout = require("../games/gcv/track-layout.js");
 
 function circularTrack() {
   const radius = 100, count = 628;
@@ -176,4 +177,32 @@ test("straight stretches remain at full width despite curvature-aware rails", ()
   assert.ok(guard.rails.left.offsets.every((v) => Math.abs(v - 15.55) < 1e-6));
   assert.ok(guard.rails.right.offsets.every((v) => Math.abs(v - 15.55) < 1e-6));
   assert.ok(guard.protectedSamples.every((n) => n === 1));
+});
+
+test("the actual circuit's tight bends produce no crossing guardrails", () => {
+  // Three.js uses this Catmull-Rom interpolation (tension .55) for GCV.
+  // Sample it here independently of WebGL to catch folded offset geometry.
+  const p = layout.WAYPOINTS, count = p.length, samples = [];
+  for (let i = 0; i < count; i++) {
+    const a = p[(i + count - 1) % count];
+    const b = p[i], d = p[(i + 1) % count];
+    const e = p[(i + 2) % count];
+    for (let s = 0; s < 48; s++) {
+      const t = s / 48, t2 = t * t, t3 = t2 * t;
+      const interpolate = (axis) =>
+        (2 * t3 - 3 * t2 + 1) * b[axis] +
+        (t3 - 2 * t2 + t) * .55 * (d[axis] - a[axis]) +
+        (-2 * t3 + 3 * t2) * d[axis] +
+        (t3 - t2) * .55 * (e[axis] - b[axis]);
+      samples.push({ x: interpolate(0), z: interpolate(1) });
+    }
+  }
+  const rail = barriers.create(samples, 822, layout.ROAD_HALF_WIDTH +
+    layout.SHOULDER_WIDTH);
+  assert.deepEqual(barriers.railIntersections(rail.rails.left.points), [],
+    "inside rail should not fold across itself through hairpin");
+  assert.deepEqual(barriers.railIntersections(rail.rails.right.points), [],
+    "outside rail must stay continuous without crossings");
+  assert.equal(rail.protectedSamples.length, samples.length);
+  assert.ok(rail.protectedSamples.every((value) => value === 1));
 });
