@@ -70,6 +70,7 @@ const GcvRace = (() => {
       playerLapTimes: [],
       // Lap completion requires a real forward crossing of the visible line.
       playerStartCrossed: false, lastPhysicalFinishProgress: null,
+      distanceModel: "signed-motion-v1",
     };
   }
 
@@ -180,7 +181,9 @@ const GcvRace = (() => {
       return { ...race, opponents, elapsed };
     }
 
-    const traveled = Number.isFinite(playerDistance) ? Math.max(0, playerDistance) : 0;
+    // Signed forward motion: reversing subtracts distance, so the player
+    // cannot gain places by oscillating back and forth on one road section.
+    const traveled = Number.isFinite(playerDistance) ? playerDistance : 0;
     const rawProgress = race.playerProgress + traveled;
     let confirmedProgress = rawProgress;
     const lapTimes = (race.playerLapTimes || []).slice();
@@ -230,6 +233,34 @@ const GcvRace = (() => {
       return { ...finished, finishPosition: position(finished) };
     }
     return updated;
+  }
+
+  // Old saves ranked the player using a monotonic high-water sample index.
+  // A bad track projection could put the player first forever. On migration,
+  // reconstruct their race distance from their actual position on the track,
+  // preserving only laps confirmed by physical finish crossings.
+  function migratePlayerProgress(race, sampleIndex, startIndex, sampleCount) {
+    if (!race || race.distanceModel === "signed-motion-v1" ||
+        race.phase === "finished" ||
+        ![sampleIndex, startIndex, sampleCount].every(Number.isSafeInteger) ||
+        sampleCount < 2) return race;
+    const offset = ((sampleIndex - startIndex) % sampleCount + sampleCount) %
+      sampleCount;
+    const fraction = offset / sampleCount;
+    const validatedLaps = Math.min(LAPS,
+      Array.isArray(race.playerLapTimes) ? race.playerLapTimes.length : 0);
+    const crossed = race.playerStartCrossed === true;
+    const position = crossed
+      ? Math.max(validatedLaps * race.trackLength,
+        Math.min((validatedLaps + fraction) * race.trackLength,
+          (validatedLaps + 1) * race.trackLength - 0.001))
+      : (fraction - 1) * race.trackLength;
+    return {
+      ...race, playerProgress: position,
+      lastPhysicalFinishProgress: crossed
+        ? validatedLaps * race.trackLength : null,
+      distanceModel: "signed-motion-v1",
+    };
   }
 
   function restore(saved, trackLength, random = Math.random) {
@@ -285,7 +316,7 @@ const GcvRace = (() => {
   return Object.freeze({ GRID_COUNT, AI_COUNT, PLAYER_SLOT, LAPS,
     COUNTDOWN_SECONDS, GRID_WAIT_SECONDS, AI_ACCELERATION, PACE_RANGES,
     gridSlot, create, advance, distanceAt, standings, position, classification,
-    currentLap, restore });
+    currentLap, migratePlayerProgress, restore });
 })();
 if (typeof window !== "undefined") window.GcvRace = GcvRace;
 if (typeof module !== "undefined" && module.exports) module.exports = GcvRace;
