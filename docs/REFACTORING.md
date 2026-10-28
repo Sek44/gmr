@@ -69,10 +69,15 @@ visuels importants. Les priorités reflètent le risque de régression.
    explicitement `GcvLapTimes` et `GcvTrackLayout`. Fournir un rendu spécifique
    par type de score ou une interface d'extension afin que les prochains jeux
    n'imposent pas de branche conditionnelle dans le code partagé.
-6. **Améliorer la modélisation des états de jeu.** `game.js` utilise de nombreux
-   indicateurs (`gameMode`, `menuOpen`, `scoresOpen`, `hasActiveSession`,
-   `falling`, etc.) avec des transitions réparties. Introduire une machine
-   d'états simple et tester les bascules mode/menu/fin/reprise/chute.
+6. **Améliorer la modélisation des états de jeu — RÉALISÉ (28/10/2026).**
+   `games/gcv/flow.js` centralise les transitions des écrans
+   (menu/jeu/scores), des activités (essais, grille, compte à rebours,
+   course, arrivée) et de la chute. `navigation.js`, `session.js` et
+   `game.js` consultent ce même automate, sans indicateurs concurrents.
+   Les phases de course proviennent toujours de `GcvRace` et sont
+   synchronisées explicitement ; les chronos, la physique et la
+   persistance des records ne changent pas. Tests des transitions
+   valides/invalides, de reprise, de retour des scores et des chutes.
 7. **Réduire les opérations répétées côté rendu.** Profiler sur téléphone avant
    optimisation : actualisations DOM, reconstruction du tableau des résultats,
    recherche linéaire des IA et génération des matériaux/objets. Mesurer

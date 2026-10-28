@@ -4,24 +4,19 @@
 const GcvNavigation = (() => {
   function create({ window, document, location, stage, homePanel, resumeButton,
     menuButton, scoresButton, menuScoresButton, scoresFrame, fullscreenButton,
-    menuFullscreenButton, clearControls, getMode, hasSession, activateSession,
-    onResume, changed, announce }) {
-    let menuOpen = true;
-    let scoresOpen = false;
-
+    menuFullscreenButton, clearControls, flow, onResume, changed, announce }) {
     function sync() {
-      homePanel.hidden = !menuOpen;
-      stage.classList.toggle("gcv-in-menu", menuOpen);
-      resumeButton.hidden = !hasSession();
-      resumeButton.textContent = getMode() === "race"
+      homePanel.hidden = !flow.menuOpen;
+      stage.classList.toggle("gcv-in-menu", flow.menuOpen);
+      resumeButton.hidden = !flow.hasSession;
+      resumeButton.textContent = flow.mode === "race"
         ? "Reprendre la course" : "Reprendre les essais libres";
-      scoresFrame.hidden = !scoresOpen;
-      stage.classList.toggle("gcv-scores-open", scoresOpen);
+      scoresFrame.hidden = !flow.scoresOpen;
+      stage.classList.toggle("gcv-scores-open", flow.scoresOpen);
     }
 
     function resume() {
-      menuOpen = false;
-      activateSession();
+      flow.resume();
       sync();
       onResume();
       changed();
@@ -29,21 +24,21 @@ const GcvNavigation = (() => {
 
     function openMenu() {
       clearControls();
-      menuOpen = true;
+      flow.openMenu();
       sync();
-      if (hasSession()) changed();
+      if (flow.hasSession) changed();
     }
 
     function openScores() {
       clearControls();
-      scoresOpen = true;
+      if (!flow.openScores()) return;
       sync();
       scoresFrame.src = "../../scores.html?game=gcv&from=gcv";
-      if (hasSession()) changed();
+      if (flow.hasSession) changed();
     }
 
     function closeScores() {
-      scoresOpen = false;
+      if (!flow.closeScores()) return;
       scoresFrame.hidden = true;
       scoresFrame.removeAttribute("src");
       sync();
@@ -86,7 +81,7 @@ const GcvNavigation = (() => {
     scoresButton.addEventListener("click", openScores);
     menuScoresButton.addEventListener("click", openScores);
     window.addEventListener("message", (event) => {
-      if (scoresOpen && event.origin === location.origin &&
+      if (flow.scoresOpen && event.origin === location.origin &&
           event.source === scoresFrame.contentWindow &&
           event.data?.type === "gmr-scores-back") closeScores();
     });
@@ -97,9 +92,9 @@ const GcvNavigation = (() => {
 
     return {
       sync, resume, openMenu, openScores, closeScores,
-      get paused() { return menuOpen || scoresOpen; },
-      get menuOpen() { return menuOpen; },
-      get scoresOpen() { return scoresOpen; },
+      get paused() { return flow.paused; },
+      get menuOpen() { return flow.menuOpen; },
+      get scoresOpen() { return flow.scoresOpen; },
     };
   }
   return { create };

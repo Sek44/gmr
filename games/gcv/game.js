@@ -36,6 +36,7 @@
   const MiniMap = window.GcvMiniMap;
   const Navigation = window.GcvNavigation;
   const Session = window.GcvSession;
+  const Flow = window.GcvFlow;
   // Bump this revision after incompatible GCV updates. Old sessions are canceled.
   const SAVE_REVISION = 9;
 
@@ -45,7 +46,7 @@
   }
 
   try {
-    if (!Physics || !TrackProgress || !Scenery || !World3D || !TrackLayout || !LapTimes || !Race || !Barriers || !Vehicles || !VisualEffects || !Rendering || !Controls || !Hud || !MiniMap || !Navigation || !Session)
+    if (!Physics || !TrackProgress || !Scenery || !World3D || !TrackLayout || !LapTimes || !Race || !Barriers || !Vehicles || !VisualEffects || !Rendering || !Controls || !Hud || !MiniMap || !Navigation || !Session || !Flow)
       throw new Error("Les modules de conduite sont introuvables.");
     const THREE = await import("https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js");
     start(THREE);
@@ -91,13 +92,12 @@
     const lapRecords = LapTimes.createStore(TrackLayout);
     const circuitKey = LapTimes.circuitKey(TrackLayout);
     let lapTimer = LapTimes.initial(SAMPLE_COUNT, progressSamples(lapTracker.progress));
-    let gameMode = "free";
+    const flow = Flow.create();
     let raceState = null;
     let freeSession = null;
     let lapHold = null; // {ms, rank, remainingSeconds}; top chrono only, for 2s.
     let resultRefreshCooldown = 0;
-    let hasActiveSession = false;
-    let falling = false, fall = null, respawnIndex = initialIndex;
+    let fall = null, respawnIndex = initialIndex;
 
     function refreshBests() { hud.refreshBests(lapRecords.top()); }
     function bestPosition(ms) {
@@ -123,12 +123,12 @@
 
     function refreshChrono() { hud.refreshChrono(lapTimer, lapHold); }
     function syncRaceCars() {
-      rendering.syncOpponents(gameMode === "race" ? raceState?.opponents : null);
+      rendering.syncOpponents(flow.mode === "race" ? raceState?.opponents : null);
     }
 
     function syncRaceHud() {
       const refreshed = hud.syncRace({
-        gameMode, raceState, lapCount: lapTracker.laps, lapHold,
+        gameMode: flow.mode, raceState, lapCount: lapTracker.laps, lapHold,
         refreshResults: resultRefreshCooldown <= 0,
       });
       if (refreshed) resultRefreshCooldown = 0.25;
@@ -152,7 +152,7 @@
       driver.yaw = Math.atan2(-directions[index].x, -directions[index].z);
       driver.speed = 0;
       driver.reverseHold = 0;
-      falling = false;
+      flow.land();
       fall = null;
       // A fall only wastes time. Keep elapsed time, the three sectors
       // already reached and the current reference delta intact. Relocation
@@ -193,8 +193,8 @@
     });
     function drawMap() {
       miniMap.draw(
-        falling && fall ? { x: fall.x, z: fall.z, yaw: driver.yaw } : driver,
-        gameMode === "race" && raceState ? raceState.opponents : null,
+        flow.falling && fall ? { x: fall.x, z: fall.z, yaw: driver.yaw } : driver,
+        flow.mode === "race" && raceState ? raceState.opponents : null,
         opponentMeshes
       );
     }
@@ -216,28 +216,22 @@
       get cameraMode() { return cameraMode; }, set cameraMode(v) { cameraMode = v; },
       get lapTracker() { return lapTracker; }, set lapTracker(v) { lapTracker = v; },
       get lapTimer() { return lapTimer; }, set lapTimer(v) { lapTimer = v; },
-      get gameMode() { return gameMode; }, set gameMode(v) { gameMode = v; },
       get raceState() { return raceState; }, set raceState(v) { raceState = v; },
       get freeSession() { return freeSession; }, set freeSession(v) { freeSession = v; },
-      get falling() { return falling; }, set falling(v) { falling = v; },
       get fall() { return fall; }, set fall(v) { fall = v; },
       get respawnIndex() { return respawnIndex; }, set respawnIndex(v) { respawnIndex = v; },
-      get hasActiveSession() { return hasActiveSession; },
-      set hasActiveSession(v) { hasActiveSession = v; },
     };
     let session = null;
     const navigation = Navigation.create({
       window, document, location: window.location, stage, homePanel,
       resumeButton, menuButton, scoresButton, menuScoresButton, scoresFrame,
       fullscreenButton, menuFullscreenButton, clearControls,
-      getMode: () => gameMode,
-      hasSession: () => hasActiveSession,
-      activateSession: () => { hasActiveSession = true; },
+      flow,
       onResume: () => { lastFrame = performance.now(); },
       changed: () => session?.changed(), announce,
     });
     session = Session.create({
-      window, state: sessionState, revision: SAVE_REVISION,
+      window, state: sessionState, flow, revision: SAVE_REVISION,
       circuitKey, layoutVersion: TrackLayout.VERSION, positions, directions,
       startIndex, startCenter, startSide, startYaw, trackLength,
       SAMPLE_COUNT, OUTER_HALF_WIDTH, Physics, TrackProgress, LapTimes, Race,
@@ -265,8 +259,8 @@
       let barrierSparkContact = null;
       let raceMotion = null;
       let recordedLapThisFrame = false;
-      const mayDrive = gameMode === "free" || raceState?.phase === "racing";
-      if (falling) {
+      const mayDrive = flow.canDrive;
+      if (flow.falling) {
         // Falling is part of this timed lap. Count only the actual remaining
         // fall duration (not a potential huge background-tab frame).
         const fallingStep = Math.min(fall.remaining, fallDt);
@@ -310,7 +304,7 @@
         if (nearest.distanceSquared > OUTER_HALF_WIDTH * OUTER_HALF_WIDTH) {
           // Keep the speed and forward momentum in the air. Begin both the
           // gravity animation and the two-second countdown at this instant.
-          falling = true;
+          flow.beginFall();
           // Keep the same timed lap: the recovery delay is the penalty.
           lapTimer = LapTimes.elapse(lapTimer, dt * 1000);
           respawnIndex = nearest.index;
@@ -330,7 +324,7 @@
           const motion = TrackProgress.move(
             lapTracker, trackLength, travel, crossing, nearest.index, SAMPLE_COUNT);
           lapTracker = motion.state;
-          if (gameMode === "race") raceMotion = motion;
+          if (flow.mode === "race") raceMotion = motion;
           // Sector timing uses signed travel, not the artificial distance
           // alignment performed at a validated finish line.
           const timing = LapTimes.advance(lapTimer,
@@ -360,10 +354,11 @@
         }
       }
 
-      if (gameMode === "race" && raceState) {
+      if (flow.mode === "race" && raceState) {
         const wasRacing = raceState.phase === "racing";
         const previousLapCount = raceState.playerLapTimes?.length || 0;
         raceState = Race.advance(raceState, dt, raceMotion || 0);
+        flow.advanceRace(raceState.phase);
         lapTracker = raceState.playerMotion;
         const completedLaps = raceState.playerLapTimes?.length || 0;
         if (completedLaps > previousLapCount && !recordedLapThisFrame) {
@@ -383,10 +378,10 @@
       }
 
       rendering.updatePlayer({
-        driver, fall: falling ? fall : null, dt, brakePressed,
+        driver, fall: flow.falling ? fall : null, dt, brakePressed,
       });
-      visualEffects.update(dt, driver, falling ? 0 : mudSkidIntensity,
-        falling ? null : barrierSparkContact);
+      visualEffects.update(dt, driver, flow.falling ? 0 : mudSkidIntensity,
+        flow.falling ? null : barrierSparkContact);
       hud.setSpeed(driver.speed);
       refreshChrono();
     }

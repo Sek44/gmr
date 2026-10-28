@@ -5,6 +5,17 @@ versions (nombre de tours, vitesses, sauvegardes, état des fonctionnalités) ne
 **pas** nécessairement le jeu actuel. Consulter [SPECIFICATIONS.md](SPECIFICATIONS.md)
 pour les règles en vigueur.
 
+## 18. Machine d'états des écrans et de la course (28/10/2026)
+
+- Ajout de `flow.js` : écran actif (menu/jeu/scores), activité
+  (essais, départ, course, arrivée) et chute avec transitions vérifiées.
+- Navigation et sessions partagent l'automate ; suppression des anciens
+  indicateurs indépendants de `game.js`.
+- Le score reste consultable depuis le menu ou en cours de jeu et revient
+  à l'écran d'origine, sans modifier la progression de la course.
+- La physique, la durée de chute et le chronomètre restent inchangés ;
+  ajout de tests ciblés sur reprise, chute, fin et bascules de mode.
+
 ## 17. Extraction de la navigation et des sessions (28/10/2026)
 
 - `navigation.js` prend en charge le menu, la reprise, l'iframe des scores,

@@ -2,7 +2,7 @@
 
 // Race/trial transitions, snapshots and autosave; the physics loop remains in game.js.
 const GcvSession = (() => {
-  function create({ window, state, revision, circuitKey, layoutVersion,
+  function create({ window, state, flow, revision, circuitKey, layoutVersion,
     positions, directions, startIndex, startCenter, startSide, startYaw,
     trackLength, SAMPLE_COUNT, OUTER_HALF_WIDTH, Physics, TrackProgress,
     LapTimes, Race, progressSamples, startOffset, closestRoad, snapBack,
@@ -17,28 +17,28 @@ const GcvSession = (() => {
     }
 
     function snapshot() {
-      const safe = state.falling ? positions[state.respawnIndex] : state.driver;
-      const savedMotion = state.falling
+      const safe = flow.falling ? positions[state.respawnIndex] : state.driver;
+      const savedMotion = flow.falling
         ? TrackProgress.relocate(state.lapTracker, state.respawnIndex)
         : state.lapTracker;
       return {
         saveRevision: revision,
         x: safe.x, z: safe.z,
-        yaw: state.falling
+        yaw: flow.falling
           ? Math.atan2(-directions[state.respawnIndex].x, -directions[state.respawnIndex].z)
           : state.driver.yaw,
-        speed: state.falling ? 0 : state.driver.speed,
-        reverseHold: state.falling ? 0 : state.driver.reverseHold,
+        speed: flow.falling ? 0 : state.driver.speed,
+        reverseHold: flow.falling ? 0 : state.driver.reverseHold,
         camera: state.cameraMode,
         motion: savedMotion,
         // A fall retains its lap time, but resumes at a safe location.
         lapTimer: state.lapTimer,
-        mode: state.gameMode,
-        race: state.gameMode === "race" && state.raceState
+        mode: flow.mode,
+        race: flow.mode === "race" && state.raceState
           ? { ...state.raceState, playerMotion: savedMotion,
             playerProgress: savedMotion.progress }
           : null,
-        freeSession: state.gameMode === "race" ? state.freeSession : null,
+        freeSession: flow.mode === "race" ? state.freeSession : null,
         circuitKey,
         layoutVersion,
       };
@@ -72,20 +72,19 @@ const GcvSession = (() => {
       state.cameraMode = saved.camera === "outside" ? "outside" : "inside";
       const restoredRace = saved.mode === "race"
         ? Race.restore(saved.race, trackLength) : null;
-      state.gameMode = restoredRace ? "race" : "free";
+      flow.restore(restoredRace ? "race" : "free", restoredRace?.phase);
       state.raceState = restoredRace;
       if (restoredRace) state.lapTracker = restoredRace.playerMotion;
       state.freeSession = restoredRace &&
         LapTimes.sameCircuitRoute(saved.freeSession?.circuitKey, circuitKey)
         ? saved.freeSession : null;
-      state.hasActiveSession = true;
       return true;
     }
 
     function startRace() {
-      if (state.gameMode === "free") state.freeSession = snapshot();
+      if (flow.mode === "free") state.freeSession = snapshot();
       clearControls();
-      state.gameMode = "race";
+      flow.beginRace();
       clearLapHold();
       resetResultsCooldown();
       const grid = Race.gridSlot(Race.PLAYER_SLOT);
@@ -94,7 +93,7 @@ const GcvSession = (() => {
         .addScaledVector(startSide, grid.lateral);
       const current = closestRoad(start.x, start.z).index;
       state.driver = { x: start.x, z: start.z, yaw: startYaw, speed: 0, reverseHold: 0 };
-      state.falling = false;
+      flow.land();
       state.fall = null;
       state.respawnIndex = current;
       state.lapTracker = TrackProgress.createMotion(trackLength, -grid.distance, current);
@@ -106,12 +105,12 @@ const GcvSession = (() => {
     }
 
     function chooseFree() {
-      if (state.gameMode === "free") { resume(); return; }
+      if (flow.mode === "free") { resume(); return; }
       clearLapHold();
       resetResultsCooldown();
       const priorFree = state.freeSession;
       clearControls();
-      state.gameMode = "free";
+      flow.beginFree();
       state.raceState = null;
       state.freeSession = null;
       if (priorFree && LapTimes.sameCircuitRoute(priorFree.circuitKey, circuitKey)) {
@@ -124,7 +123,7 @@ const GcvSession = (() => {
     }
 
     function restartNearFinish() {
-      if (state.gameMode === "race") { startRace(); return; }
+      if (flow.mode === "race") { startRace(); return; }
       clearLapHold();
       // Restart the current attempt, without erasing permanent lap records.
       const beforeLine = startCenter.clone()
@@ -135,7 +134,7 @@ const GcvSession = (() => {
         x: beforeLine.x, z: beforeLine.z, yaw: startYaw,
         speed: 0, reverseHold: 0,
       };
-      state.falling = false;
+      flow.land();
       state.fall = null;
       state.respawnIndex = index;
       state.lapTracker = TrackProgress.createMotion(trackLength, -10, index);
@@ -157,7 +156,7 @@ const GcvSession = (() => {
 
     function tickAutosave(dt) {
       autosaveElapsed += dt;
-      if (state.hasActiveSession && autosaveElapsed >= 1.5) {
+      if (flow.hasSession && autosaveElapsed >= 1.5) {
         autosaveElapsed = 0;
         changed();
       }
