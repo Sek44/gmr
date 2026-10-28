@@ -80,7 +80,7 @@
       yaw: Math.atan2(-directions[initialIndex].x, -directions[initialIndex].z),
       speed: 0,
     };
-    let cameraMode = "inside";
+    let cameraMode = "outside";
     function startOffset(index) {
       let samples = (index - startIndex + SAMPLE_COUNT) % SAMPLE_COUNT;
       if (samples > SAMPLE_COUNT / 2) samples -= SAMPLE_COUNT;

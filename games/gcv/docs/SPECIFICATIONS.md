@@ -6,7 +6,7 @@ Ce document décrit les **règles actuelles** du jeu GCV, et non les étapes de 
 
 GCV est un jeu de course automobile en 3D, jouable dans un navigateur sur téléphone, tablette et ordinateur. Le joueur conduit la **voiture n° 9** sur un circuit fermé et sinueux. Deux activités sont disponibles depuis le menu : **Essais libres** et **Course (3 tours)**.
 
-La caméra est intérieure (cockpit) au départ ; le joueur peut passer à une vue extérieure et revenir en vue intérieure en cours de jeu.
+Au premier lancement, la caméra est extérieure. Le joueur peut basculer entre les vues extérieure et intérieure (cockpit) en cours de jeu. Le choix de caméra est conservé lors de la reprise d’une session sauvegardée.
 
 ## 2. Circuit, conduite et barrières
 

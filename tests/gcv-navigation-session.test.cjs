@@ -92,7 +92,7 @@ function vector(x, z) {
 function fixture(previous = null) {
   const state = {
     driver: { x: 5, z: 0, yaw: 0, speed: 4, reverseHold: 0 },
-    cameraMode: "inside",
+    cameraMode: "outside",
     lapTracker: { progress: 5, laps: 1, index: 0 },
     lapTimer: { elapsedMs: 1200 }, raceState: null,
     freeSession: null, fall: null, respawnIndex: 0,
@@ -142,6 +142,28 @@ function fixture(previous = null) {
     counters: () => ({ clears, writes, renders, resumes }),
     stored: () => stored };
 }
+
+test("camera starts outside on first launch and restores the saved choice", () => {
+  const dir = path.join(__dirname, "../games/gcv");
+  const entry = fs.readFileSync(path.join(dir, "game.js"), "utf8");
+  const html = fs.readFileSync(path.join(dir, "index.html"), "utf8");
+  assert.match(entry, /let cameraMode = "outside";/);
+  assert.match(html, /id="camera-button" aria-label="Passer en vue intérieure"/);
+  assert.match(html, /Caméra : extérieure/);
+
+  const fresh = fixture();
+  fresh.s.bind();
+  assert.equal(fresh.state.cameraMode, "outside");
+  fresh.s.startRace();
+  fresh.s.changed();
+  assert.equal(fresh.stored().camera, "outside");
+
+  fresh.state.cameraMode = "inside";
+  fresh.s.changed();
+  const resumed = fixture(fresh.stored());
+  resumed.s.bind();
+  assert.equal(resumed.state.cameraMode, "inside");
+});
 
 test("session switches free -> race -> previous free trial, and restarts", () => {
   const { s, state, flow, counters, stored } = fixture();
