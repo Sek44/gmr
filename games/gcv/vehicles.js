@@ -23,6 +23,36 @@
       return mesh;
     }
 
+    // One high-contrast racing-number texture per vehicle, reused on all faces.
+    function createNumberMaterial(number) {
+      const canvas = canvasDocument.createElement("canvas");
+      canvas.width = 256;
+      canvas.height = 128;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#182536";
+      ctx.fillRect(0, 0, 256, 128);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(8, 8, 240, 112);
+      ctx.fillStyle = "#182536";
+      ctx.font = "bold 100px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(String(number), 128, 71);
+
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      return new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
+    }
+
+    function addNumberDecal(group, material, width, height, x, y, z,
+                            rotationX = 0, rotationY = 0) {
+      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, height), material);
+      mesh.position.set(x, y, z);
+      mesh.rotation.x = rotationX;
+      mesh.rotation.y = rotationY;
+      group.add(mesh);
+    }
+
     box(car, 1.98, 0.20, 4.36, dark, 0, 0.48, 0);
     box(car, 2.06, 0.43, 4.12, colored, 0, 0.78, 0);
     box(car, 1.72, 0.09, 1.43, colored, 0, 1.03, -1.29);
@@ -157,25 +187,20 @@
     dashboard.position.y = -0.16;
     car.add(dashboard);
 
-    // The number is on the car, independent of its position on the starting grid.
-    const numberCanvas = canvasDocument.createElement("canvas");
-    numberCanvas.width = 128;
-    numberCanvas.height = 128;
-    const numberContext = numberCanvas.getContext("2d");
-    numberContext.fillStyle = "#ffffff";
-    numberContext.fillRect(0, 0, 128, 128);
-    numberContext.fillStyle = "#b40e2b";
-    numberContext.font = "bold 104px sans-serif";
-    numberContext.textAlign = "center";
-    numberContext.textBaseline = "middle";
-    numberContext.fillText("9", 64, 72);
-    const numberTexture = new THREE.CanvasTexture(numberCanvas);
-    numberTexture.colorSpace = THREE.SRGBColorSpace;
-    const roofNumber = new THREE.Mesh(new THREE.PlaneGeometry(0.70, 0.70),
-      new THREE.MeshBasicMaterial({ map: numberTexture, side: THREE.DoubleSide }));
-    roofNumber.position.set(0, 2.035, 0.15);
-    roofNumber.rotation.x = -Math.PI / 2;
-    cabin.add(roofNumber);
+    // Match the opponents' five markings, adjusted to the taller player's
+    // roof, raised bonnet and longer body. Keep the decals off cockpit glass,
+    // lights and wheel arches, slightly above the paint to prevent z-fighting.
+    const playerNumberMaterial = createNumberMaterial(9);
+    addNumberDecal(car, playerNumberMaterial, 1.00, 0.50,
+      0, 2.036, 0.17, -Math.PI / 2); // Roof
+    addNumberDecal(car, playerNumberMaterial, 1.00, 0.44,
+      0, 1.087, -1.34, -Math.PI / 2); // Bonnet
+    addNumberDecal(car, playerNumberMaterial, 0.92, 0.40,
+      0, 0.775, 2.068); // Rear, between the tail lamps
+    addNumberDecal(car, playerNumberMaterial, 1.00, 0.39,
+      -1.040, 0.77, 0, 0, -Math.PI / 2); // Left door
+    addNumberDecal(car, playerNumberMaterial, 1.00, 0.39,
+      1.040, 0.77, 0, 0, Math.PI / 2); // Right door
     scene.add(car);
 
     // Nine lightweight opponent cars. They use the same circuit as the player,
@@ -188,43 +213,14 @@
     });
     const aiTyre = new THREE.MeshStandardMaterial({ color: 0x12181f, roughness: 1 });
 
-    // Paint each AI number once and reuse its high-contrast decal material on
-    // the roof, bonnet, rear and both doors. No canvas work occurs per frame.
+    // The AI's simpler, lower body needs its original decal positions.
     function addOpponentNumber(group, number) {
-      const canvas = canvasDocument.createElement("canvas");
-      canvas.width = 256;
-      canvas.height = 128;
-      const ctx = canvas.getContext("2d");
-      ctx.fillStyle = "#182536";
-      ctx.fillRect(0, 0, 256, 128);
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(8, 8, 240, 112);
-      ctx.fillStyle = "#182536";
-      ctx.font = "bold 100px sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(String(number), 128, 71);
-
-      const texture = new THREE.CanvasTexture(canvas);
-      texture.colorSpace = THREE.SRGBColorSpace;
-      const material = new THREE.MeshBasicMaterial({
-        map: texture, side: THREE.DoubleSide,
-      });
-      function decal(width, height, x, y, z, rotationX = 0, rotationY = 0) {
-        const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, height), material);
-        mesh.position.set(x, y, z);
-        mesh.rotation.x = rotationX;
-        mesh.rotation.y = rotationY;
-        group.add(mesh);
-      }
-
-      // Body dimensions are fixed below; decals sit just above each surface
-      // to avoid z-fighting and remain visible from the chase camera.
-      decal(1.00, 0.50, 0, 1.404, 0.06, -Math.PI / 2); // Roof
-      decal(1.00, 0.44, 0, 1.005, -1.27, -Math.PI / 2); // Bonnet
-      decal(0.94, 0.43, 0, 0.77, 1.844); // Rear
-      decal(0.98, 0.44, -0.991, 0.77, 0, 0, -Math.PI / 2); // Left door
-      decal(0.98, 0.44, 0.991, 0.77, 0, 0, Math.PI / 2); // Right door
+      const material = createNumberMaterial(number);
+      addNumberDecal(group, material, 1.00, 0.50, 0, 1.404, 0.06, -Math.PI / 2); // Roof
+      addNumberDecal(group, material, 1.00, 0.44, 0, 1.005, -1.27, -Math.PI / 2); // Bonnet
+      addNumberDecal(group, material, 0.94, 0.43, 0, 0.77, 1.844); // Rear
+      addNumberDecal(group, material, 0.98, 0.44, -0.991, 0.77, 0, 0, -Math.PI / 2); // Left
+      addNumberDecal(group, material, 0.98, 0.44, 0.991, 0.77, 0, 0, Math.PI / 2); // Right
     }
     for (let gridSlot = 0; gridSlot < Race.GRID_COUNT; gridSlot++) {
       if (gridSlot === Race.PLAYER_SLOT) continue;
