@@ -2,6 +2,8 @@
 
 Uniquement les améliorations, décisions à prendre, anomalies vérifiées et tâches **non terminées** propres au jeu.
 
-- [ ] Définir les prochaines évolutions du jeu après la première version.
+**Dernier identifiant attribué : aucun.** Pour le premier item, utiliser `<PREFIXE>1` (`MEMORY1` si le jeu se nomme `memory`). Remplacer ensuite cette ligne par le dernier ID attribué et conserver cette valeur même après suppression des tâches terminées.
 
-Retirer une entrée lorsqu'elle est terminée ; les changements déjà réalisés ne constituent pas un journal. Les sujets transversaux appartiennent à `docs/BACKLOG.md` à la racine.
+Format d'une tâche : `- [ ] **MEMORY1 — Intitulé.** Description et critères attendus.`
+
+Attribuer un identifiant unique et immuable par item, avec le préfixe de l'identifiant de jeu en majuscules et un numéro croissant. Ne jamais renuméroter ni réutiliser un identifiant. Retirer les entrées terminées ; l'historique reste dans Git. Les sujets transversaux appartiennent à `docs/BACKLOG.md` à la racine.
