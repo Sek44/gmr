@@ -18,7 +18,7 @@ Il n'existe ni serveur de jeu, ni build, ni moteur physique externe. Les autres 
 | `world-3d.js` | Construction Three.js du circuit, de la scène et du décor ; fournit points, tangentes et normales partagés |
 | `scenery.js` | Placement et paramètres du décor statique |
 | `barriers.js` | Géométrie/limites des rails, résolution de contact, glissement, frottement et réalignement du cap |
-| `vehicles.js` | Maillages 3D du joueur, cockpit et neuf concurrents ; marquages de numéros IA issus de `race.js`, dessinés une fois sur des textures Canvas partagées entre les faces de chaque voiture |
+| `vehicles.js` | Maillages 3D du joueur, cockpit et neuf concurrents ; marquages de numéros du joueur (n° 9) et des IA issus de `race.js`, avec une texture Canvas par voiture et des décalcomanies positionnées selon leur géométrie |
 | `physics.js` | Accélération, frein, direction, marche arrière, chute et émission théorique de boue |
 | `track-progress.js` | **Autorité unique** de progression physique et de validation des franchissements de ligne |
 | `lap-times.js` | Temps, trois secteurs, deltas et stockage des trois records personnels |
