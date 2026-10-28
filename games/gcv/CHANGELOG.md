@@ -5,6 +5,18 @@ versions (nombre de tours, vitesses, sauvegardes, état des fonctionnalités) ne
 **pas** nécessairement le jeu actuel. Consulter [SPECIFICATIONS.md](SPECIFICATIONS.md)
 pour les règles en vigueur.
 
+## 17. Extraction de la navigation et des sessions (28/10/2026)
+
+- `navigation.js` prend en charge le menu, la reprise, l'iframe des scores,
+  le plein écran et la pause des commandes avec retour sécurisé depuis l'iframe.
+- `session.js` isole la création/reprise des courses et essais, le retour
+  aux essais précédents, le redémarrage, les snapshots et l'autosauvegarde.
+- `game.js` conserve la simulation, le chronométrage, le HUD et les appels
+  de rendu, et utilise un adaptateur explicite pour l'état des sessions.
+- Révision de session synchronisée à 9 dans le jeu et le catalogue :
+  anciennes sessions annulées, records et historiques conservés.
+- Tests des transitions de navigation, sauvegarde/restauration, et chargement.
+
 ## 16. Refactoring du moteur de rendu 3D (27/10/2026)
 
 - Extraction dans `rendering.js` du moteur WebGL, du redimensionnement,

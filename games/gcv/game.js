@@ -34,8 +34,10 @@
   const Controls = window.GcvControls;
   const Hud = window.GcvHud;
   const MiniMap = window.GcvMiniMap;
+  const Navigation = window.GcvNavigation;
+  const Session = window.GcvSession;
   // Bump this revision after incompatible GCV updates. Old sessions are canceled.
-  const SAVE_REVISION = 8;
+  const SAVE_REVISION = 9;
 
   function announce(message) {
     notice.textContent = message;
@@ -43,7 +45,7 @@
   }
 
   try {
-    if (!Physics || !TrackProgress || !Scenery || !World3D || !TrackLayout || !LapTimes || !Race || !Barriers || !Vehicles || !VisualEffects || !Rendering || !Controls || !Hud || !MiniMap)
+    if (!Physics || !TrackProgress || !Scenery || !World3D || !TrackLayout || !LapTimes || !Race || !Barriers || !Vehicles || !VisualEffects || !Rendering || !Controls || !Hud || !MiniMap || !Navigation || !Session)
       throw new Error("Les modules de conduite sont introuvables.");
     const THREE = await import("https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js");
     start(THREE);
@@ -94,8 +96,6 @@
     let freeSession = null;
     let lapHold = null; // {ms, rank, remainingSeconds}; top chrono only, for 2s.
     let resultRefreshCooldown = 0;
-    let menuOpen = true;
-    let scoresOpen = false;
     let hasActiveSession = false;
     let falling = false, fall = null, respawnIndex = initialIndex;
 
@@ -134,61 +134,9 @@
       if (refreshed) resultRefreshCooldown = 0.25;
     }
 
-    function syncMenu() {
-      homePanel.hidden = !menuOpen;
-      stage.classList.toggle("gcv-in-menu", menuOpen);
-      resumeButton.hidden = !hasActiveSession;
-      resumeButton.textContent = gameMode === "race"
-        ? "Reprendre la course" : "Reprendre les essais libres";
-      scoresFrame.hidden = !scoresOpen;
-      stage.classList.toggle("gcv-scores-open", scoresOpen);
-    }
-
-    function resumeGame() {
-      menuOpen = false;
-      hasActiveSession = true;
-      syncMenu();
-      lastFrame = performance.now();
-      if (binding) binding.changed();
-    }
-
-    function openMenu() {
-      clearControls();
-      menuOpen = true;
-      syncMenu();
-      if (binding && hasActiveSession) binding.changed();
-    }
-
-    function openScores() {
-      clearControls();
-      scoresOpen = true;
-      syncMenu();
-      scoresFrame.src = "../../scores.html?game=gcv&from=gcv";
-      if (binding && hasActiveSession) binding.changed();
-    }
-
-    function closeScores() {
-      scoresOpen = false;
-      scoresFrame.hidden = true;
-      scoresFrame.removeAttribute("src");
-      syncMenu();
-      lastFrame = performance.now();
-    }
-
-    resumeButton.addEventListener("click", resumeGame);
-    menuButton.addEventListener("click", openMenu);
-    scoresButton.addEventListener("click", openScores);
-    menuScoresButton.addEventListener("click", openScores);
-    window.addEventListener("message", (event) => {
-      if (scoresOpen && event.origin === location.origin &&
-          event.source === scoresFrame.contentWindow &&
-          event.data?.type === "gmr-scores-back") closeScores();
-    });
-
     refreshBests();
     refreshChrono();
-    let lastFrame = performance.now(), autosaveElapsed = 0, mapElapsed = 0;
-    let binding = null;
+    let lastFrame = performance.now(), mapElapsed = 0;
 
     function closestRoad(x, z, hintIndex = null) {
       // Prefer nearby samples while still in the same road corridor. A tight
@@ -212,7 +160,7 @@
       lapTracker = TrackProgress.relocate(lapTracker, index);
       refreshChrono();
       announce("");
-      if (binding) binding.changed();
+      session?.changed();
     }
 
     const controls = Controls.create({
@@ -223,94 +171,6 @@
       brakeButton: document.getElementById("brake-button"),
     });
     const clearControls = controls.clear;
-    const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
-
-    function startRace() {
-      // Preserve a running time trial when switching to race mode.
-      if (gameMode === "free") freeSession = snapshot();
-      clearControls();
-      gameMode = "race";
-      clearLapHold();
-      resultRefreshCooldown = 0;
-      const grid = Race.gridSlot(Race.PLAYER_SLOT);
-      const start = startCenter.clone()
-        .addScaledVector(directions[startIndex], -grid.distance)
-        .addScaledVector(startSide, grid.lateral);
-      const current = closestRoad(start.x, start.z).index;
-      driver = { x: start.x, z: start.z, yaw: startYaw, speed: 0, reverseHold: 0 };
-      falling = false;
-      fall = null;
-      respawnIndex = current;
-      lapTracker = TrackProgress.createMotion(
-        trackLength, -grid.distance, current);
-      raceState = Race.create(trackLength, Math.random, lapTracker);
-      lapTimer = LapTimes.initial(SAMPLE_COUNT, progressSamples(lapTracker.progress));
-      announce("");
-      rendering.setView(cameraMode === "outside");
-      syncRaceCars();
-      syncRaceHud();
-      refreshChrono();
-      updateCar(0);
-      rendering.updateCamera(0);
-      drawMap();
-      resumeGame();
-    }
-
-    function chooseFree() {
-      if (gameMode === "free") { resumeGame(); return; }
-      clearLapHold();
-      resultRefreshCooldown = 0;
-      const priorFree = freeSession;
-      clearControls();
-      gameMode = "free";
-      raceState = null;
-      freeSession = null;
-      if (priorFree && LapTimes.sameCircuitRoute(priorFree.circuitKey, circuitKey)) {
-        restore(priorFree);
-      } else {
-        restartNearFinish();
-      }
-      syncRaceCars();
-      syncRaceHud();
-      refreshCameraButton();
-      refreshChrono();
-      rendering.setView(cameraMode === "outside");
-      updateCar(0);
-      rendering.updateCamera(0);
-      drawMap();
-      resumeGame();
-    }
-    freeModeButton.addEventListener("click", chooseFree);
-    raceModeButton.addEventListener("click", startRace);
-    replayButton.addEventListener("click", startRace);
-    raceFreeButton.addEventListener("click", chooseFree);
-
-    function restartNearFinish() {
-      if (gameMode === "race") { startRace(); return; }
-      clearLapHold();
-      // Put the car exactly ten metres before the visible finish line,
-      // facing in the racing direction. This resets the CURRENT attempt,
-      // not the permanent top-three lap records.
-      const beforeLine = startCenter.clone().addScaledVector(directions[startIndex], -10);
-      const index = closestRoad(beforeLine.x, beforeLine.z).index;
-      clearControls();
-      driver = { x: beforeLine.x, z: beforeLine.z, yaw: startYaw,
-        speed: 0, reverseHold: 0 };
-      falling = false;
-      fall = null;
-      respawnIndex = index;
-      lapTracker = TrackProgress.createMotion(trackLength, -10, index);
-      lapTimer = LapTimes.initial(SAMPLE_COUNT, progressSamples(lapTracker.progress));
-      hud.setLapCount(0);
-      refreshChrono();
-      announce("");
-      rendering.setView(cameraMode === "outside");
-      updateCar(0);
-      rendering.updateCamera(0);
-      drawMap();
-      if (binding) binding.changed();
-    }
-    restartButton.addEventListener("click", restartNearFinish);
 
     function refreshCameraButton() {
       const outside = cameraMode === "outside";
@@ -323,40 +183,8 @@
     cameraButton.addEventListener("click", () => {
       cameraMode = cameraMode === "inside" ? "outside" : "inside";
       refreshCameraButton();
-      if (binding) binding.changed();
+      session?.changed();
     });
-
-    function refreshFullscreen() {
-      const full = document.fullscreenElement === stage;
-      for (const button of [fullscreenButton, menuFullscreenButton]) {
-        button.querySelector(".gcv-action-label").textContent =
-          full ? "Écran normal" : "Plein écran";
-        button.classList.toggle("is-fullscreen", full);
-        button.setAttribute("aria-label",
-          full ? "Quitter le plein écran" : "Passer en plein écran");
-        button.title = full ? "Quitter le plein écran" : "Passer en plein écran";
-      }
-    }
-    async function toggleFullscreen() {
-      try {
-        if (document.fullscreenElement === stage) {
-          await document.exitFullscreen();
-        } else if (stage.requestFullscreen) {
-          await stage.requestFullscreen();
-        } else {
-          menuFullscreenButton.querySelector(".gcv-action-label").textContent = "Plein écran non disponible";
-          announce("Plein écran non disponible dans ce navigateur.");
-        }
-      } catch (error) {
-        console.warn("Fullscreen failed:", error);
-        menuFullscreenButton.querySelector(".gcv-action-label").textContent = "Plein écran refusé";
-        announce("Le plein écran a été refusé par le navigateur.");
-      }
-    }
-    fullscreenButton.addEventListener("click", toggleFullscreen);
-    menuFullscreenButton.addEventListener("click", toggleFullscreen);
-    document.addEventListener("fullscreenchange", refreshFullscreen);
-    refreshFullscreen();
 
     const miniMap = MiniMap.create({
       document, canvas: document.getElementById("mini-map"),
@@ -371,88 +199,67 @@
       );
     }
 
-    function snapshot() {
-      // A saved fall resumes at the nearest safe edge instead of mid-air.
-      const safe = falling ? positions[respawnIndex] : driver;
-      // A saved fall must restore the same track hint in both the player's
-      // progress and the race snapshot; relocation grants no travel.
-      const savedMotion = falling
-        ? TrackProgress.relocate(lapTracker, respawnIndex) : lapTracker;
-      return {
-        saveRevision: SAVE_REVISION,
-        x: safe.x, z: safe.z,
-        yaw: falling ? Math.atan2(-directions[respawnIndex].x, -directions[respawnIndex].z) : driver.yaw,
-        speed: falling ? 0 : driver.speed,
-        reverseHold: falling ? 0 : driver.reverseHold,
-        camera: cameraMode,
-        motion: savedMotion,
-        // On refresh during a fall the car respawns safely, but the active
-        // stopwatch must continue from the preserved elapsed time.
-        lapTimer,
-        mode: gameMode,
-        race: gameMode === "race" && raceState
-          ? { ...raceState, playerMotion: savedMotion,
-            playerProgress: savedMotion.progress }
-          : null,
-        freeSession: gameMode === "race" ? freeSession : null,
-        circuitKey,
-        layoutVersion: TrackLayout.VERSION,
-      };
-    }
-    function restore(saved) {
-      if (!saved || saved.saveRevision !== SAVE_REVISION) return;
-      // The redesigned, longer circuit invalidates prior saved coordinates
-      // and lap progress; retain the view but start a clean free-drive session.
-      if (!LapTimes.sameCircuitRoute(saved.circuitKey, circuitKey) ||
-          saved.layoutVersion !== TrackLayout.VERSION) {
-        cameraMode = saved.camera === "outside" ? "outside" : "inside";
-        return;
-      }
-      const valid = ["x", "z", "yaw", "speed"].every((key) => Number.isFinite(saved[key]));
-      if (valid && Math.abs(saved.x) < 220 && Math.abs(saved.z) < 220) {
-        driver = {
-          x: saved.x, z: saved.z, yaw: saved.yaw,
-          speed: clamp(saved.speed, -Physics.REVERSE_MAX_SPEED, Physics.MAX_SPEED),
-          reverseHold: clamp(Number(saved.reverseHold) || 0, 0, Physics.REVERSE_DELAY),
-        };
-        const near = closestRoad(driver.x, driver.z);
-        if (near.distanceSquared > OUTER_HALF_WIDTH * OUTER_HALF_WIDTH) {
-          snapBack(near.index);
-        }
-      }
-      const nearestIndex = closestRoad(driver.x, driver.z).index;
-      lapTracker = TrackProgress.createMotion(
-        trackLength, startOffset(nearestIndex), nearestIndex, saved.motion);
-      lapTimer = LapTimes.restore(saved.lapTimer, SAMPLE_COUNT,
-        progressSamples(lapTracker.progress));
-      hud.setLapCount(lapTracker.laps);
-      refreshChrono();
-      cameraMode = saved.camera === "outside" ? "outside" : "inside";
-      const restoredRace = saved.mode === "race"
-        ? Race.restore(saved.race, trackLength) : null;
-      gameMode = restoredRace ? "race" : "free";
-      raceState = restoredRace;
-      if (restoredRace) lapTracker = restoredRace.playerMotion;
-      freeSession = restoredRace &&
-        LapTimes.sameCircuitRoute(saved.freeSession?.circuitKey, circuitKey)
-        ? saved.freeSession : null;
+    function renderSession() {
       syncRaceCars();
       syncRaceHud();
-      hasActiveSession = true;
+      refreshCameraButton();
+      refreshChrono();
+      rendering.setView(cameraMode === "outside");
+      updateCar(0);
+      rendering.updateCamera(0);
+      drawMap();
     }
-    const sessionStore = window.GameState.create("gcv");
-    const previousSession = sessionStore.load();
-    if (previousSession && previousSession.saveRevision !== SAVE_REVISION) {
-      sessionStore.clear(); // Keep lap records and score history untouched.
-    }
-    binding = sessionStore.bind({ snapshot, restore });
+
+    // A writable facade; the physics loop retains authority over simulation.
+    const sessionState = {
+      get driver() { return driver; }, set driver(v) { driver = v; },
+      get cameraMode() { return cameraMode; }, set cameraMode(v) { cameraMode = v; },
+      get lapTracker() { return lapTracker; }, set lapTracker(v) { lapTracker = v; },
+      get lapTimer() { return lapTimer; }, set lapTimer(v) { lapTimer = v; },
+      get gameMode() { return gameMode; }, set gameMode(v) { gameMode = v; },
+      get raceState() { return raceState; }, set raceState(v) { raceState = v; },
+      get freeSession() { return freeSession; }, set freeSession(v) { freeSession = v; },
+      get falling() { return falling; }, set falling(v) { falling = v; },
+      get fall() { return fall; }, set fall(v) { fall = v; },
+      get respawnIndex() { return respawnIndex; }, set respawnIndex(v) { respawnIndex = v; },
+      get hasActiveSession() { return hasActiveSession; },
+      set hasActiveSession(v) { hasActiveSession = v; },
+    };
+    let session = null;
+    const navigation = Navigation.create({
+      window, document, location: window.location, stage, homePanel,
+      resumeButton, menuButton, scoresButton, menuScoresButton, scoresFrame,
+      fullscreenButton, menuFullscreenButton, clearControls,
+      getMode: () => gameMode,
+      hasSession: () => hasActiveSession,
+      activateSession: () => { hasActiveSession = true; },
+      onResume: () => { lastFrame = performance.now(); },
+      changed: () => session?.changed(), announce,
+    });
+    session = Session.create({
+      window, state: sessionState, revision: SAVE_REVISION,
+      circuitKey, layoutVersion: TrackLayout.VERSION, positions, directions,
+      startIndex, startCenter, startSide, startYaw, trackLength,
+      SAMPLE_COUNT, OUTER_HALF_WIDTH, Physics, TrackProgress, LapTimes, Race,
+      progressSamples, startOffset, closestRoad, snapBack, clearControls,
+      clearLapHold, resetResultsCooldown: () => { resultRefreshCooldown = 0; },
+      renderSession, setLapCount: (laps) => hud.setLapCount(laps), announce,
+      resume: navigation.resume,
+    });
+    freeModeButton.addEventListener("click", session.chooseFree);
+    raceModeButton.addEventListener("click", session.startRace);
+    replayButton.addEventListener("click", session.startRace);
+    raceFreeButton.addEventListener("click", session.chooseFree);
+    restartButton.addEventListener("click", session.restartNearFinish);
+
+    session.bind();
     syncRaceCars();
     syncRaceHud();
-    syncMenu(); // Always open on the home screen, even for saved games.
+    navigation.sync(); // Always open on home, including after restoration.
     refreshCameraButton();
 
     function updateCar(dt, fallDt = dt) {
-      if ((menuOpen || scoresOpen) && dt > 0) return;
+      if (navigation.paused && dt > 0) return;
       const brakePressed = controls.isBraking();
       let mudSkidIntensity = 0;
       let barrierSparkContact = null;
@@ -536,7 +343,7 @@
               progressSamples(event.progress));
             lapTimer = finish.state;
             timing.events.push(...finish.events);
-            if (binding) binding.changed();
+            session?.changed();
           }
           for (const event of timing.events) {
             if (event.type === "lap") {
@@ -545,7 +352,7 @@
                 recordedLapThisFrame = true;
                 refreshBests();
                 holdFinishedLap(event.ms, rank);
-                if (binding) binding.changed();
+                session?.changed();
               }
             }
           }
@@ -569,7 +376,7 @@
           resultRefreshCooldown = 0;
           driver.speed = 0;
           clearControls();
-          if (binding) binding.changed();
+          session?.changed();
         }
         syncRaceCars();
         syncRaceHud();
@@ -590,18 +397,14 @@
       const dt = Math.min(realDt, 0.05);
       lastFrame = now;
       if (document.hidden) return;
-      if (!menuOpen && !scoresOpen) {
+      if (!navigation.paused) {
         resultRefreshCooldown = Math.max(0, resultRefreshCooldown - dt);
         updateCar(dt, realDt);
         tickLapHold(realDt);
         refreshChrono();
       }
       rendering.updateCamera(dt);
-      autosaveElapsed += dt;
-      if (hasActiveSession && autosaveElapsed >= 1.5) {
-        autosaveElapsed = 0;
-        binding.changed();
-      }
+      session.tickAutosave(dt);
       mapElapsed += dt;
       if (mapElapsed >= 0.09) {
         mapElapsed = 0;
