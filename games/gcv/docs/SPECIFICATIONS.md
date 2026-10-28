@@ -36,7 +36,7 @@ Au premier lancement, la caméra est extérieure. Le joueur peut basculer entre 
 
 ## 5. Mode Course
 
-- Dix voitures participent : **le joueur n° 9 et neuf concurrents**, portant chacun un numéro distinct de 1 à 10.
+- Dix voitures participent : **le joueur n° 9 et neuf concurrents**, portant chacun un numéro distinct de 1 à 10. Les concurrents portent des numéros contrastés et lisibles directement sur leur carrosserie (toit, capot, portières et arrière), indépendamment du classement.
 - La grille possède cinq rangées de deux voitures ; le joueur démarre actuellement en **5ᵉ position**.
 - Les véhicules attendent sur la grille, puis un décompte **3, 2, 1** précède le départ. Aucun véhicule ne démarre avant la fin du décompte.
 - Les neuf concurrents suivent le circuit avec un rythme propre tiré aléatoirement au début de chaque course. Leurs **temps de tour cibles de croisière**, hors accélération initiale, se répartissent en secondes dans les plages suivantes : **13–14,5 ; 14,5–16 ; 16–17 ; 17,5–19,5 ; 19,5–21,5 ; 21,5–23,5 ; 23,5–25,5 ; 26–28 ; 28–30**. Ils partent de l'arrêt et accélèrent progressivement.

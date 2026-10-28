@@ -6,6 +6,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const Vehicles = require("../games/gcv/vehicles.js");
+const Race = require("../games/gcv/race.js");
 
 const gameDirectory = path.join(__dirname, "../games/gcv");
 
@@ -90,6 +91,9 @@ class Material {
     Object.assign(this, properties);
   }
 }
+class CanvasTexture {
+  constructor(image) { this.image = image; }
+}
 class Light extends SceneNode {
   constructor(color, intensity) {
     super();
@@ -101,7 +105,7 @@ const THREE = {
   Group: SceneNode, Mesh, PointLight: Light, Vector3: Vector,
   BoxGeometry: Geometry, CylinderGeometry: Geometry, BufferGeometry: Geometry,
   Float32BufferAttribute: Geometry, TorusGeometry: Geometry,
-  PlaneGeometry: Geometry, CanvasTexture: Geometry,
+  PlaneGeometry: Geometry, CanvasTexture,
   MeshBasicMaterial: Material, MeshStandardMaterial: Material,
   DoubleSide: 2, SRGBColorSpace: "srgb",
 };
@@ -109,26 +113,20 @@ const THREE = {
 test("vehicle factory builds the player and nine hidden opponent models", () => {
   const scene = new SceneNode();
   const canvasLabels = [];
-  const canvasContext = {
-    fillRect() {}, beginPath() {}, arc() {}, stroke() {},
-    moveTo() {}, lineTo() {}, fillText(text) { canvasLabels.push(text); },
-  };
   const document = {
     createElement(tag) {
       assert.equal(tag, "canvas");
-      return { getContext: () => canvasContext };
-    },
-  };
-  const Race = {
-    GRID_COUNT: 10,
-    PLAYER_SLOT: 4,
-    create(trackLength) {
-      assert.equal(trackLength, 1500);
-      return {
-        opponents: Array.from({ length: 10 }, (_, id) => ({
-          id, color: id * 111,
-        })).filter((ai) => ai.id !== this.PLAYER_SLOT),
+      const canvas = { labels: [] };
+      const context = {
+        fillRect() {}, beginPath() {}, arc() {}, stroke() {},
+        moveTo() {}, lineTo() {},
+        fillText(value) {
+          canvas.labels.push(value);
+          canvasLabels.push(value);
+        },
       };
+      canvas.getContext = () => context;
+      return canvas;
     },
   };
 
@@ -144,6 +142,26 @@ test("vehicle factory builds the player and nine hidden opponent models", () => 
     mesh.visible === false && scene.children.includes(mesh)));
   assert.ok(canvasLabels.includes("9"));
   assert.ok(canvasLabels.includes("GCV  09"));
+
+  const aiNumbers = new Set();
+  for (const [slot, group] of objects.opponentMeshes) {
+    const number = String(Race.opponentNumber(slot));
+    aiNumbers.add(Number(number));
+    const decals = group.children.filter((child) =>
+      child.material?.map?.image?.labels.includes(number));
+    assert.equal(decals.length, 5, `AI #${number} needs five visible decals`);
+    assert.equal(new Set(decals.map((mesh) => mesh.material)).size, 1,
+      "the same texture material must be shared across all faces");
+    assert.ok(decals.some((mesh) => mesh.position.y > 1.39), "roof decal");
+    assert.ok(decals.some((mesh) => mesh.position.z < -1), "bonnet decal");
+    assert.ok(decals.some((mesh) => mesh.position.z > 1.8), "rear decal");
+    assert.ok(decals.some((mesh) => mesh.position.x < -0.98), "left-side decal");
+    assert.ok(decals.some((mesh) => mesh.position.x > 0.98), "right-side decal");
+  }
+  assert.deepEqual([...aiNumbers].sort((a, b) => a - b),
+    [1, 2, 3, 4, 5, 6, 7, 8, 10]);
+  assert.equal(canvasLabels.filter((label) => /^[0-9]+$/.test(label)).length, 10,
+    "one painted number per car, including the player's number 9");
 
   // Regression: cockpit scene groups were moved to vehicles.js, but
   // refreshCameraButton() was still accessing them as game.js locals.

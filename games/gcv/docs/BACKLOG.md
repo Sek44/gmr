@@ -15,7 +15,6 @@ Travaux **ouverts uniquement**, extraits des exigences non réalisées, vérific
 - [ ] **GCV4 — Départ incarné.** Ajouter éventuellement un personnage donnant le départ et un message « PARTEZ ! » plus explicite. Aujourd'hui, seuls les états d'attente et le décompte sont affichés.
 - [ ] **GCV5 — Effets de terrain.** Définir un comportement de dérapage pour les flaques, graviers et cailloux visibles ; actuellement ils sont principalement décoratifs et l'adhérence reste homogène.
 - [ ] **GCV6 — Interactions entre concurrents.** Étudier collisions, réactions et dépassements physiques de l'IA ; les véhicules suivent aujourd'hui une progression simplifiée.
-- [ ] **GCV7 — Numéros lisibles sur les voitures IA.** Vérifier et compléter la représentation du numéro directement sur chaque carrosserie, distincte de la désignation dans le classement.
 - [ ] **GCV8 — Après-course et scores.** Décider du podium/animation, d'une récompense ou score numérique, de l'enregistrement éventuel des classements et du comportement attendu une fois le joueur arrivé.
 - [ ] **GCV9 — Caméra et confort.** Évaluer l'intérêt d'un zoom extérieur progressif ; valider le cadrage et la visibilité du cockpit avant de le développer.
 

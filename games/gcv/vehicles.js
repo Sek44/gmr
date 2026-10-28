@@ -187,6 +187,45 @@
       color: 0x193345, roughness: 0.34, metalness: 0.05,
     });
     const aiTyre = new THREE.MeshStandardMaterial({ color: 0x12181f, roughness: 1 });
+
+    // Paint each AI number once and reuse its high-contrast decal material on
+    // the roof, bonnet, rear and both doors. No canvas work occurs per frame.
+    function addOpponentNumber(group, number) {
+      const canvas = canvasDocument.createElement("canvas");
+      canvas.width = 256;
+      canvas.height = 128;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#182536";
+      ctx.fillRect(0, 0, 256, 128);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(8, 8, 240, 112);
+      ctx.fillStyle = "#182536";
+      ctx.font = "bold 100px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(String(number), 128, 71);
+
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      const material = new THREE.MeshBasicMaterial({
+        map: texture, side: THREE.DoubleSide,
+      });
+      function decal(width, height, x, y, z, rotationX = 0, rotationY = 0) {
+        const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, height), material);
+        mesh.position.set(x, y, z);
+        mesh.rotation.x = rotationX;
+        mesh.rotation.y = rotationY;
+        group.add(mesh);
+      }
+
+      // Body dimensions are fixed below; decals sit just above each surface
+      // to avoid z-fighting and remain visible from the chase camera.
+      decal(1.00, 0.50, 0, 1.404, 0.06, -Math.PI / 2); // Roof
+      decal(1.00, 0.44, 0, 1.005, -1.27, -Math.PI / 2); // Bonnet
+      decal(0.94, 0.43, 0, 0.77, 1.844); // Rear
+      decal(0.98, 0.44, -0.991, 0.77, 0, 0, -Math.PI / 2); // Left door
+      decal(0.98, 0.44, 0.991, 0.77, 0, 0, Math.PI / 2); // Right door
+    }
     for (let gridSlot = 0; gridSlot < Race.GRID_COUNT; gridSlot++) {
       if (gridSlot === Race.PLAYER_SLOT) continue;
       const group = new THREE.Group();
@@ -197,6 +236,7 @@
       box(group, 1.96, 0.49, 3.65, color, 0, 0.75, 0);
       box(group, 1.48, 0.46, 1.64, aiGlass, 0, 1.16, 0.06);
       box(group, 1.75, 0.10, 0.3, color, 0, 1.24, 1.77);
+      addOpponentNumber(group, Race.opponentNumber(gridSlot));
       for (const side of [-1, 1]) {
         for (const z of [-1.18, 1.18]) {
           const tyre = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.29, 9), aiTyre);
