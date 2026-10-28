@@ -143,6 +143,24 @@ test("vehicle factory builds the player and nine hidden opponent models", () => 
   assert.ok(canvasLabels.includes("9"));
   assert.ok(canvasLabels.includes("GCV  09"));
 
+  // Player #9 has the same five high-contrast number locations as the AI,
+  // fitted to its taller roof and longer, different body geometry.
+  const playerDecals = objects.car.children.filter((child) =>
+    child.material?.map?.image?.labels.includes("9"));
+  assert.equal(playerDecals.length, 5, "player #9 needs five visible decals");
+  assert.equal(new Set(playerDecals.map((mesh) => mesh.material)).size, 1,
+    "the player's five faces must share one racing-number texture");
+  const roof = playerDecals.find((mesh) => mesh.position.y > 2);
+  const bonnet = playerDecals.find((mesh) => mesh.position.z < -1);
+  const rear = playerDecals.find((mesh) => mesh.position.z > 2);
+  const left = playerDecals.find((mesh) => mesh.position.x < -1);
+  const right = playerDecals.find((mesh) => mesh.position.x > 1);
+  assert.ok(roof && roof.position.y > 2.025 && roof.rotation.x === -Math.PI / 2);
+  assert.ok(bonnet && bonnet.position.y > 1.075 && bonnet.rotation.x === -Math.PI / 2);
+  assert.ok(rear && rear.position.z > 2.06 && Math.abs(rear.position.x) < 0.01);
+  assert.ok(left && left.position.x < -1.03 && left.rotation.y === -Math.PI / 2);
+  assert.ok(right && right.position.x > 1.03 && right.rotation.y === Math.PI / 2);
+
   const aiNumbers = new Set();
   for (const [slot, group] of objects.opponentMeshes) {
     const number = String(Race.opponentNumber(slot));
