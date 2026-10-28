@@ -1,17 +1,30 @@
 # GMR — instructions de développement
 
-- Site statique destiné aux enfants, publié par GitHub Pages, sans framework ni étape de compilation.
-- Monorepo : un dossier par jeu dans games/<id>/ ; composants communs dans shared/.
-- Les jeux enregistrés dans games/catalog.js sont les seuls affichés sur l'accueil.
-- Utiliser des URLs relatives (compatibilité avec https://sek44.github.io/gmr/).
-- Conserver une présentation responsive tactile (téléphone, tablette portrait/paysage, ordinateur).
-- Réutiliser GameState, GameScores, AppConfirm, ScoreView et GameUI au lieu de dupliquer leur logique.
-- Sauvegarder la partie courante après chaque mutation importante, lors de pagehide et quand la page devient cachée.
-- Restaurer une partie après rechargement et retour depuis l'accueil. Une visite des scores ne doit pas perdre les saisies, minuteurs ni états de jeu.
-- Une partie terminée ne doit pas être restaurée ni ajouter deux fois son score.
-- Ne jamais effacer l'historique complet des scores. Suppression d'un seul score uniquement avec confirmation dans l'application.
-- Les clés localStorage de GMR commencent par gmr:v1:. Ne pas toucher aux clés de xfr1/exercices.
-- Les sauvegardes **GCV** d'une version antérieure peuvent être annulées lors d'une modification : incrémenter ensemble `SAVE_REVISION` dans `games/gcv/game.js` et `saveRevision` dans `games/catalog.js`. Au prochain chargement, le jeu revient au menu principal sans proposer de reprise incompatible.
-- Préserver les historiques de scores et records de tours ; ne pas les confondre avec les sessions annulables. Pour les autres jeux, conserver la compatibilité des sauvegardes existantes. S'il manque une heure dans un score, afficher 00:00.
-- Les échecs d'accès à localStorage doivent être gérés sans faire planter le jeu.
-- Vérifier les tests avant publication. Les jeux ne doivent pas importer du code spécifique à un autre jeu.
+## Projet et invariants
+
+- Site statique destiné aux enfants, publié sur GitHub Pages sans framework ni compilation obligatoire.
+- Monorepo : `games/<id>/` pour chaque jeu, `shared/` pour le commun, `docs/` pour l'architecture et le backlog transversaux. Les jeux présents dans `games/catalog.js` sont seuls affichés dans l'accueil.
+- Utiliser des URLs relatives (compatibilité avec `https://sek44.github.io/gmr/`) et une interface tactile responsive sur téléphone/tablette en portrait/paysage et sur ordinateur.
+- Réutiliser `GameState`, `GameScores`, `AppConfirm`, `ScoreView` et `GameUI` plutôt que copier leur logique. Aucun jeu ne doit importer du code spécifique à un autre jeu.
+- Sauvegarder la partie après les mutations importantes et lors de `pagehide` ou du masquage de l'onglet. Une visite des scores ou un retour à l'accueil ne doit pas faire perdre la partie.
+- Une partie terminée ne doit pas être restaurée ni enregistrer deux fois son score. Ne jamais effacer tout l'historique de scores ; une suppression individuelle exige confirmation.
+- Les clés `localStorage` de GMR commencent par `gmr:v1:` ; ne jamais toucher aux clés de xfr1/exercices. Les erreurs d'accès au stockage doivent rester non bloquantes.
+- Les sessions **GCV** anciennes peuvent être annulées après une modification incompatible : augmenter ensemble `SAVE_REVISION` dans `games/gcv/game.js` et `saveRevision` dans `games/catalog.js`. Après rejet, retour au menu principal. **Ne pas effacer les records de tours compatibles ni l'historique des scores.** Pour les autres jeux, préserver la compatibilité des sauvegardes ; si l'heure d'un score est absente, afficher `00:00`.
+
+## Documentation obligatoire avec le code
+
+Avant une modification, lire [les conventions documentaires](docs/README.md) puis les documents du périmètre concerné. Pour GCV, voir aussi [les instructions locales](games/gcv/AGENTS.md).
+
+- `docs/ARCHITECTURE.md` et `docs/BACKLOG.md` à la racine concernent uniquement les sujets transversaux.
+- Chaque jeu maintient `games/<id>/docs/SPECIFICATIONS.md` (règles **actuelles**), `ARCHITECTURE.md` (organisation **actuelle**) et `BACKLOG.md` (travaux **ouverts**). Le modèle est dans `games/_template/docs/`.
+- Modifier spécifications et architecture **dans le même changement** que le comportement ou les responsabilités qui évoluent ; supprimer/remplacer les affirmations devenues fausses, ne pas ajouter un journal des étapes.
+- Lorsqu'un travail du backlog est terminé, **retirer** son entrée ; lorsqu'un nouveau besoin est envisagé, l'inscrire au backlog plutôt que dans les règles du jeu livrées.
+- Consigner seulement les **décisions architecturales structurantes** avec leur contexte, options et conséquences dans `docs/adr/` ou `games/<id>/docs/adr/`. Un ADR accepté reste historique ; s'il est remis en cause, créer le successeur et marquer l'ancien comme remplacé. L'architecture de référence décrit toujours la décision active.
+- **Ne pas créer de changelog ni de fichier `REFACTORING.md` permanent.** L'historique est conservé dans Git. Un plan de chantier temporaire peut exister le temps des travaux.
+- Éviter la duplication entre documents : préférer un lien vers la source de vérité.
+
+## Vérification
+
+- Exécuter `node --test tests/*.test.cjs` avant publication.
+- Vérifier les liens et chemins relatifs après déplacement de documentation.
+- Signaler explicitement les vérifications navigateur (WebGL, plein écran, tactile) non réalisées.
