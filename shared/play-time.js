@@ -76,7 +76,10 @@ const GmrPlayTime = (() => {
   }
   function mountSummary(element) {
     if (!element) return;
-    const store = createStore(localStorage);
+    const store = createStore({
+      getItem: (key) => localStorage.getItem(key),
+      setItem: (key, value) => localStorage.setItem(key, value),
+    });
     function refresh() {
       const state = store.read();
       element.textContent = state.error
@@ -97,7 +100,10 @@ const GmrPlayTime = (() => {
   // host is a positioned game element, including a fullscreen stage.
   // isPlaying must exclude menus, scores, paused games and finished sessions.
   function mountGame({ host, isPlaying, onBlocked = () => {} }) {
-    const store = createStore(localStorage);
+    const store = createStore({
+      getItem: (key) => localStorage.getItem(key),
+      setItem: (key, value) => localStorage.setItem(key, value),
+    });
     const status = document.createElement("div");
     status.className = "gmr-play-status";
     status.setAttribute("role", "status");
@@ -115,7 +121,16 @@ const GmrPlayTime = (() => {
     link.href = "/xfr1/";
     link.textContent = "Faire des exercices";
     link.className = "button button-primary";
-    panel.append(title, message, link);
+    const scoresLink = document.createElement("a");
+    scoresLink.href = "../../scores.html";
+    scoresLink.textContent = "Voir mes scores";
+    const homeLink = document.createElement("a");
+    homeLink.href = "../../";
+    homeLink.textContent = "Accueil";
+    const actions = document.createElement("div");
+    actions.className = "gmr-play-lock-actions";
+    actions.append(link, scoresLink, homeLink);
+    panel.append(title, message, actions);
     lock.append(panel);
     host.append(status, lock);
 
@@ -123,13 +138,7 @@ const GmrPlayTime = (() => {
     let day = localDay(new Date());
     let active = false;
     let notified = false;
-    function tick() {
-      const now = performance.now();
-      const currentDay = localDay(new Date());
-      // Never charge yesterday's active time to today's account.
-      if (active && day === currentDay) store.spend(Math.max(0, now - last));
-      last = now;
-      day = currentDay;
+    function refresh() {
       const state = store.read();
       const playing = !document.hidden && Boolean(isPlaying());
       if (playing && !state.allowed && !notified) {
@@ -146,13 +155,25 @@ const GmrPlayTime = (() => {
       title.textContent = state.error ? "Temps de jeu indisponible" : "Temps de jeu terminé";
       message.textContent = state.error
         ? "Impossible de vérifier le crédit de jeu. Vérifie les données du navigateur."
-        : "Tu as utilisé tes " + state.minutes +
-          " minutes de jeu aujourd’hui. Termine des exercices pour en gagner davantage.";
+        : state.minutes === 0
+          ? "Aucune minute disponible aujourd’hui. Termine des exercices pour en gagner."
+          : "Tu as utilisé tes " + state.minutes +
+            " minutes de jeu aujourd’hui. Termine des exercices pour en gagner davantage.";
       return state;
+    }
+    function tick() {
+      const now = performance.now();
+      const currentDay = localDay(new Date());
+      // Hidden/frozen tabs must not spend time while the game is suspended.
+      if (active && !document.hidden && day === currentDay)
+        store.spend(Math.max(0, now - last));
+      last = now;
+      day = currentDay;
+      return refresh();
     }
     const timer = window.setInterval(tick, 250);
     window.addEventListener("storage", (event) => {
-      if (event.key === CREDIT_KEY || event.key === USAGE_KEY || event.key === null) tick();
+      if (event.key === CREDIT_KEY || event.key === USAGE_KEY || event.key === null) refresh();
     });
     window.addEventListener("focus", tick);
     document.addEventListener("visibilitychange", tick);

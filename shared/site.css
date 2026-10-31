@@ -100,3 +100,6 @@ h1 { font-size: clamp(2.2rem, 7vw, 3.25rem); margin: 0; line-height: 1.2; }
   .gmr-play-status { padding: 4px 8px; font-size: .68rem; }
   .gmr-play-lock-panel { padding: 18px; }
 }
+
+.gmr-play-lock-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 12px; }
+.gmr-play-lock-actions a:not(.button) { color: #1d5eb6; font-weight: 700; }
