@@ -4,7 +4,7 @@ Décrire les composants qui existent réellement et leurs responsabilités. Supp
 
 ## Point d'entrée et modules
 
-À compléter selon le code réel du jeu.
+À compléter selon le code réel du jeu. Le modèle utilise `GmrPlayTime.mountGame` depuis `shared/play-time.js` : adapter `isPlaying` pour exclure les menus, pauses, scores et écrans de fin.
 
 ## Flux et état du jeu
 

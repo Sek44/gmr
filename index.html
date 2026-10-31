@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="./shared/site.css">
   <script defer src="./games/catalog.js"></script>
   <script defer src="./shared/game-state.js"></script>
+  <script defer src="./shared/play-time.js"></script>
   <script defer src="./shared/home.js"></script>
 </head>
 <body>
@@ -21,6 +22,11 @@
       </div>
       <a class="button button-secondary" href="./scores.html" aria-label="Consulter tous mes scores">Mes scores</a>
     </header>
+    <section class="gmr-daily-panel" aria-labelledby="gmr-daily-title">
+      <h2 id="gmr-daily-title">Temps de jeu aujourd’hui</h2>
+      <p id="gmr-daily-summary" role="status" aria-live="polite"></p>
+      <a href="/xfr1/">Gagner du temps avec des exercices</a>
+    </section>
     <section aria-labelledby="games-title">
       <h2 id="games-title" class="section-title">Les jeux</h2>
       <div id="game-grid" class="game-grid"></div>

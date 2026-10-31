@@ -54,6 +54,7 @@ Au premier lancement, la caméra est extérieure. Le joueur peut basculer entre 
 
 ## 7. Navigation et données locales
 
+- Le temps de jeu quotidien est partagé par tous les jeux GMR. Chaque exercice xfr1 validé donne actuellement 10 minutes. Seules les phases de jeu actives consomment du temps ; le menu, les scores, les onglets masqués et une course terminée sont exclus. Le temps restant est affiché, et à épuisement la session est mise en pause dans le menu jusqu'à l'obtention de crédits supplémentaires. Crédit et consommation repartent à zéro chaque jour local.
 - Le menu permet de commencer les essais, lancer une course, reprendre la session disponible, accéder aux scores et activer le plein écran. Le retour au menu ou la consultation des scores ne doit pas faire avancer le temps du jeu.
 - La consultation des scores se fait sans perdre la session actuelle. Lors d'un passage des essais à la course, une session d'essais antérieure peut être retrouvée au retour.
 - La partie en cours est sauvegardée localement et peut être reprise si son format reste compatible. **Une mise à jour incompatible peut annuler les anciennes courses ou essais et revenir au menu** ; il n'est pas nécessaire de migrer ces sessions.

@@ -9,6 +9,11 @@
   const again = document.getElementById("again");
   const message = document.getElementById("message");
   let score = 0;
+  let finished = false;
+  window.GmrPlayTime.mountGame({
+    host: document.querySelector(".panel"),
+    isPlaying: () => !finished,
+  });
 
   function draw() { points.textContent = String(score); }
   const autosave = store.bind({
@@ -29,6 +34,7 @@
   });
 
   finish.addEventListener("click", () => {
+    finished = true;
     autosave.stop({ discard: true });
     const stored = score === 0 || GameScores.save({ gameId, score });
     add.disabled = true;

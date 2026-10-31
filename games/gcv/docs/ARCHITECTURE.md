@@ -8,6 +8,8 @@ Documentation technique du code situé dans `games/gcv/`. Les règles observable
 
 Il n'existe ni serveur de jeu, ni build, ni moteur physique externe. Les autres fichiers utilisent actuellement les globales `Gcv*` pour le navigateur et, en général, `module.exports` pour les tests Node.
 
+`game.js` monte également `GmrPlayTime` sur la scène pour conserver l'affichage et le blocage en plein écran. Le service commun reçoit un indicateur d'activité issu de `flow` et déclenche le retour au menu lorsque le crédit est épuisé ; il reste indépendant du chrono des tours et des sauvegardes de session.
+
 `game.js` demeure l'**orchestrateur de simulation** : il possède l'état mutable de conduite (position, vitesse, caméra, chute, suivi de progression, chronométrage et course), délègue aux modules spécialisés, puis transmet leur état aux composants d'affichage et à la sauvegarde. La simulation n'est pas pilotée par le rendu.
 
 ## 2. Modules par responsabilité

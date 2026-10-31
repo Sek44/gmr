@@ -1,5 +1,6 @@
 "use strict";
 (() => {
+  window.GmrPlayTime.mountSummary(document.getElementById("gmr-daily-summary"));
   const grid = document.getElementById("game-grid");
   const empty = document.getElementById("empty-games");
   const games = window.GmrCatalog.games;

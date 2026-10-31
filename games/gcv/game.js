@@ -246,6 +246,12 @@
     raceFreeButton.addEventListener("click", session.chooseFree);
     restartButton.addEventListener("click", session.restartNearFinish);
 
+    window.GmrPlayTime.mountGame({
+      host: stage,
+      isPlaying: () => !flow.paused && flow.activity !== "finished",
+      onBlocked: () => navigation.openMenu(),
+    });
+
     session.bind();
     syncRaceCars();
     syncRaceHud();

@@ -42,3 +42,7 @@ Commande de tests Node.js : `node --test tests/*.test.cjs`.
 Le rendu WebGL et le plein écran nécessitent encore une validation manuelle sur Chrome Android. Vérifier également la navigation et les contrôles tactiles sur téléphone et tablette. GitHub Actions lance les tests sur `main` et les pull requests.
 
 La publication GitHub Pages est prévue depuis la branche `main`, répertoire racine : https://sek44.github.io/gmr/.
+
+## Temps de jeu quotidien
+
+Les exercices du site xfr1 donnent un crédit quotidien (actuellement 10 minutes par exercice). GMR lit `entrainement_daily_exercises_v1` et conserve séparément le temps consommé dans `gmr:v1:daily-play-time`. Le quota est commun à tous les jeux GMR, ne décompte que les parties actives et visibles, bloque le jeu à épuisement et repart à zéro à chaque date locale. Le partage xfr1/GMR exige une même origine web ; il ne traverse ni les navigateurs ni les appareils.

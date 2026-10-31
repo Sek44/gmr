@@ -5,10 +5,10 @@
 - Site statique destiné aux enfants, publié sur GitHub Pages sans framework ni compilation obligatoire.
 - Monorepo : `games/<id>/` pour chaque jeu, `shared/` pour le commun, `docs/` pour l'architecture et le backlog transversaux. Les jeux présents dans `games/catalog.js` sont seuls affichés dans l'accueil.
 - Utiliser des URLs relatives (compatibilité avec `https://sek44.github.io/gmr/`) et une interface tactile responsive sur téléphone/tablette en portrait/paysage et sur ordinateur.
-- Réutiliser `GameState`, `GameScores`, `AppConfirm`, `ScoreView` et `GameUI` plutôt que copier leur logique. Aucun jeu ne doit importer du code spécifique à un autre jeu.
+- Réutiliser `GameState`, `GameScores`, `AppConfirm`, `ScoreView`, `GameUI` et `GmrPlayTime` plutôt que copier leur logique. Aucun jeu ne doit importer du code spécifique à un autre jeu.
 - Sauvegarder la partie après les mutations importantes et lors de `pagehide` ou du masquage de l'onglet. Une visite des scores ou un retour à l'accueil ne doit pas faire perdre la partie.
 - Une partie terminée ne doit pas être restaurée ni enregistrer deux fois son score. Ne jamais effacer tout l'historique de scores ; une suppression individuelle exige confirmation.
-- Les clés `localStorage` de GMR commencent par `gmr:v1:` ; ne jamais toucher aux clés de xfr1/exercices. Les erreurs d'accès au stockage doivent rester non bloquantes.
+- Les clés propres à GMR commencent par `gmr:v1:`. Exception : `shared/play-time.js` **lit uniquement** la clé xfr1 `entrainement_daily_exercises_v1` et écrit `gmr:v1:daily-play-time`. Ne jamais écrire dans la clé xfr1 depuis GMR. Si le crédit ne peut être vérifié, bloquer les jeux sans effacer les données ; la navigation et les scores restent accessibles.
 - Les sessions **GCV** anciennes peuvent être annulées après une modification incompatible : augmenter ensemble `SAVE_REVISION` dans `games/gcv/game.js` et `saveRevision` dans `games/catalog.js`. Après rejet, retour au menu principal. **Ne pas effacer les records de tours compatibles ni l'historique des scores.** Pour les autres jeux, préserver la compatibilité des sauvegardes ; si l'heure d'un score est absente, afficher `00:00`.
 
 ## Documentation obligatoire avec le code
