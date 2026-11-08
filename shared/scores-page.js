@@ -38,6 +38,7 @@
   // before the selected game (or the global history) is rendered.
   async function loadScoreScripts() {
     for (const game of games) {
+      if (selected !== null && game.id !== selected) continue;
       for (const source of game.scoreScripts || []) {
         await new Promise((resolve, reject) => {
           const script = document.createElement("script");
