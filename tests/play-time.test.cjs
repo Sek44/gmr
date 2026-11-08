@@ -12,7 +12,7 @@ function fixture() {
   const store = PlayTime.createStore(storage, () => date);
   function credit(minutes, day = "2026-10-31") {
     map.set(PlayTime.CREDIT_KEY, JSON.stringify({
-      version: 1, date: day, points: minutes / 10, minutes, progress: {}, events: [],
+      version: 1, date: day, points: 1, minutes, progress: {}, events: [],
     }));
   }
   return { map, storage, store, credit, setDate: (value) => { date = value; } };
