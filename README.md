@@ -12,7 +12,7 @@ Site statique sans étape de build, conçu pour GitHub Pages, téléphone, table
 - `shared/site.css` : point d'entrée CSS stable, avec des feuilles spécialisées dans `shared/styles/` (`base`, `components`, `home`, `scores`, `play-time`).
 - `games/<id>/game.css` : styles du jeu (scène, commandes, HUD, animations) chargés **après** le CSS partagé. Ne pas déplacer ces règles dans `shared/`.
 - `shared/game-state.js` : sauvegarde et restauration des sessions.
-- `shared/scores.js` : historique, courbe et suppression confirmée ; les présentations propres à un jeu se branchent par `GameScores.registerRenderer(id, render)`.
+- `shared/scores.js` : historique, courbe et suppression confirmée ; les présentations propres à un jeu se branchent par `GameScores.registerRenderer(id, render)` et leurs scripts sont déclarés dans `games/catalog.js` (`scoreScripts`).
 - `games/gcv/scores-adapter.js` : présentation des records de tours GCV, sans dépendance GCV dans le module partagé.
 - `shared/score-view.js` : ouverture des scores en conservant le jeu courant (pour les jeux qui l'utilisent).
 - `shared/app-confirm.js` : fenêtres de confirmation dans l'application.
@@ -27,7 +27,7 @@ Ces modules ont été sélectionnés et adaptés des éléments communs de Sek44
 
 Copier `games/_template` vers `games/<id>`, adapter `game.js`, `index.html` et `docs/`, puis ajouter le jeu dans `games/catalog.js`. L'accueil détecte automatiquement les jeux du catalogue et affiche « Reprendre » si une sauvegarde existe.
 
-La frontière est volontaire : **GMR fournit le catalogue, les pages, les styles de structure, le stockage, le temps de jeu, les scores, les confirmations et la navigation** ; chaque jeu reste maître de son rendu, ses commandes, ses règles, ses animations et ses données métiers. Un jeu ne doit pas importer un autre jeu. Les vues de scores non génériques sont déclarées par des adaptateurs du jeu, chargés après `shared/scores.js`.
+La frontière est volontaire : **GMR fournit le catalogue, les pages, les styles de structure, le stockage, le temps de jeu, les scores, les confirmations et la navigation** ; chaque jeu reste maître de son rendu, ses commandes, ses règles, ses animations et ses données métiers. Un jeu ne doit pas importer un autre jeu. Les vues de scores non génériques sont déclarées par des adaptateurs du jeu dans `scoreScripts` du catalogue, chargés en ordre par la page Scores après `shared/scores.js`.
 
 Chaque jeu appelle `GameState.create(id).bind({ snapshot, restore })` pour restaurer les données locales, puis `changed()` après les actions modifiant la partie. Les événements `pagehide` et `visibilitychange` sont gérés par le module partagé. À la fin, `stop({ discard: true })` efface la partie en cours et `GameScores.save({ gameId: id, score, total })` conserve son résultat.
 
