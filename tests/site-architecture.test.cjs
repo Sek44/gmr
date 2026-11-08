@@ -14,10 +14,10 @@ test("shared site styles have one stable entry and focused owners", () => {
     assert.match(entry, new RegExp('@import[^;]*styles/' + name + '\\.css'));
     assert.ok(fs.existsSync(path.join(root, "shared/styles", name + ".css")));
   }
-  assert.match(file("shared/styles/home.css"), /\\.game-card/);
-  assert.match(file("shared/styles/scores.css"), /\\.history-table/);
-  assert.match(file("shared/styles/play-time.css"), /\\.gmr-play-lock/);
-  assert.doesNotMatch(file("shared/site.css"), /\\.game-card\\s*\\{/);
+  assert.match(file("shared/styles/home.css"), /\.game-card/);
+  assert.match(file("shared/styles/scores.css"), /\.history-table/);
+  assert.match(file("shared/styles/play-time.css"), /\.gmr-play-lock/);
+  assert.doesNotMatch(file("shared/site.css"), /\.game-card\s*\{/);
 });
 
 test("catalog entries have independent game directories and documentation", () => {
@@ -30,7 +30,7 @@ test("catalog entries have independent game directories and documentation", () =
     assert.ok(!seen.has(game.id), "duplicate game identifier: " + game.id);
     seen.add(game.id);
     const index = file("games/" + game.id + "/index.html");
-    assert.match(index, /\\.\\.\\/\\.\\.\\/shared\\/site\\.css/);
+    assert.match(index, /\.\.\/\.\.\/shared\/site\.css/);
     for (const doc of ["SPECIFICATIONS.md", "ARCHITECTURE.md", "BACKLOG.md"]) {
       assert.ok(fs.existsSync(path.join(root, "games", game.id, "docs", doc)));
     }
