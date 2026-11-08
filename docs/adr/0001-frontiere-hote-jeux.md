@@ -18,12 +18,12 @@ GMR doit héberger des jeux très différents, tout en conservant un site léger
 
 - `shared/` gère exclusivement les services de site : présentation du cadre commun, catalogue, navigation et scores, état de session, confirmations, crédit de temps de jeu. `shared/site.css` conserve une URL stable et importe `shared/styles/{base,components,home,scores,play-time}.css`.
 - Chaque jeu possède son propre HTML, son code, son CSS métier et ses ressources sous `games/<id>/`. Le jeu peut utiliser les APIs publiques de `shared/`, mais ne dépend pas d'un autre jeu.
-- Les services partagés ne connaissent aucun module interne de jeu. Un format de scores particulier ajoute un adaptateur dans son propre dossier, enregistré auprès de `GameScores.registerRenderer(id, render)` avant l'affichage de la page.
+- Les services partagés ne connaissent aucun module interne de jeu. Un format de scores particulier ajoute un adaptateur dans son propre dossier, enregistré auprès de `GameScores.registerRenderer(id, render)` avant l'affichage de la page. Son chargement est déclaré dans `games/catalog.js` via `scoreScripts` ; l'HTML commun ne contient aucune référence à GCV.
 - Les contrats de stockage existants sont conservés. Aucun changement de révision de sauvegarde GCV n'est nécessaire pour un déplacement de code de présentation.
 - Une vérification automatisée contrôle les chemins de catalogue et les frontières communes. Le navigateur réel reste nécessaire pour les interactions WebGL et tactiles.
 
 ## Conséquences
 
-Les jeux restent libres de choisir leurs moteurs et leurs architectures internes. L'ajout d'un jeu demande l'enregistrement au catalogue, sa page autonome et ses documents ; les services existants sont réutilisables sans réécrire le site. Un nouveau format de score peut nécessiter un adaptateur et son chargement dans la page Scores, sans modification du service de base.
+Les jeux restent libres de choisir leurs moteurs et leurs architectures internes. L'ajout d'un jeu demande l'enregistrement au catalogue, sa page autonome et ses documents ; les services existants sont réutilisables sans réécrire le site. Un nouveau format de score peut nécessiter un adaptateur et son inscription dans le catalogue, sans modification de la page Scores ni du service de base.
 
 La réorganisation de CSS est additive sous le point d'entrée existant ; elle n'est pas une refonte visuelle. Les feuilles partagées restent chargées sur les pages de jeux afin de conserver les styles de conteneur et les compatibilités historiques.
