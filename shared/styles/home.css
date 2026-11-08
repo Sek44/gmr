@@ -1,0 +1,50 @@
+/* GMR shared home styles. Keep game-specific rules in games/<id>/. */
+.home-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 12px 0 36px; }
+
+.eyebrow { color: #5078af; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; font-size: .82rem; margin: 0 0 6px; }
+
+.subtitle { color: #64758a; line-height: 1.5; margin: 10px 0 0; }
+
+.section-title { font-size: 1.35rem; margin: 0 0 18px; }
+
+.game-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 235px), 1fr)); gap: 18px; }
+
+.game-card { display: flex; flex-direction: column; align-items: flex-start; min-height: 235px; padding: 25px; border-radius: 18px; background: #fff; box-shadow: 0 5px 20px #1e3d6814; text-decoration: none; color: inherit; border: 2px solid transparent; transition: transform .15s ease, border-color .15s ease; }
+
+.game-card:hover, .game-card:focus-visible { border-color: #2265c5; transform: translateY(-2px); }
+
+.game-symbol { font-size: 2.2rem; font-weight: 800; color: #2265c5; line-height: 1.2; }
+
+.game-card h3 { font-size: 1.35rem; margin: 14px 0 6px; }
+
+.game-card p { margin: 0 0 16px; line-height: 1.5; color: #64758a; }
+
+.game-action { margin-top: auto; color: #1d5eb6; font-weight: 750; }
+
+.empty-state { background: #fff; border-radius: 18px; padding: 24px; box-shadow: 0 5px 20px #1e3d6812; }
+
+.empty-state { color: #64758a; line-height: 1.5; }
+
+.site-footer { text-align: center; font-size: .9rem; color: #64758a; margin-top: 40px; }
+
+@media (max-width: 520px) {
+  .home-header { align-items: flex-start; margin-bottom: 28px; }
+}
+
+@media (max-width: 520px) {
+  .home-header .button { padding: 10px 12px; font-size: .9rem; white-space: nowrap; }
+}
+
+@media (max-width: 520px) {
+  .game-card { min-height: 185px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-card { transition: none; }
+}
+
+.gmr-daily-panel { padding: 16px 20px; margin: 0 0 24px; background: #e7effb; border-radius: 14px; }
+
+.gmr-daily-panel h2 { font-size: 1.12rem; margin: 0 0 8px; }
+
+.gmr-daily-panel p { margin: 0 0 8px; line-height: 1.5; }
