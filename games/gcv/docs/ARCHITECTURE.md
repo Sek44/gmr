@@ -24,6 +24,7 @@ Il n'existe ni serveur de jeu, ni build, ni moteur physique externe. Les autres 
 | `physics.js` | Accélération, frein, direction, marche arrière, chute et émission théorique de boue |
 | `track-progress.js` | **Autorité unique** de progression physique et de validation des franchissements de ligne |
 | `lap-times.js` | Temps, trois secteurs, deltas et stockage des trois records personnels |
+| `scores-adapter.js` | Rendu des records de tours dans la page Scores générale, enregistré auprès de `GameScores` sans dépendance GCV dans le service partagé |
 | `race.js` | Grille, phases de départ, trajectoires/vitesses des IA, arrivée et classement |
 | `flow.js` | État de l'écran, activité courante et chute, avec transitions contrôlées |
 | `session.js` | Entrée dans les modes, reprise, redémarrage, snapshots et autosauvegarde |
@@ -59,7 +60,7 @@ L'unification de cette iframe spécifique avec `shared/score-view.js` reste ouve
 - **Session jetable** : `shared/game-state.js` enregistre `gmr:v1:state:gcv`. Le snapshot inclut notamment caméra, véhicule, état de progression, chrono, course/IA et essais éventuellement conservés. `session.js` sauvegarde lors des changements significatifs, environ toutes les 1,5 s de simulation, et sur les événements de fermeture/masquage gérés par `GameState`.
 - **Compatibilité des sessions** : `SAVE_REVISION` dans `game.js` et `saveRevision` dans `games/catalog.js` doivent évoluer **ensemble** en cas de rupture ; une ancienne session peut alors être rejetée, puis le menu reste le point d'entrée.
 - **Records personnels** : `lap-times.js` enregistre les trois meilleurs temps et secteurs sous `gmr:v1:gcv:lap-records:v2`, indépendamment des sessions. Une clé/empreinte du tracé conditionne leur validité ; les ajustements de largeur des accotements peuvent rester compatibles.
-- **Historique général** : `shared/scores.js` gère séparément `gmr:v1:scores`. Le classement d'une course GCV n'est pas actuellement enregistré comme score générique.
+- **Historique général** : `shared/scores.js` gère séparément `gmr:v1:scores`. L'affichage des records de tours relève de `scores-adapter.js`, chargé par `scores.html` après le service partagé. Le classement d'une course GCV n'est pas actuellement enregistré comme score générique.
 
 Une modification de session ne doit jamais effacer automatiquement les records de tours compatibles ou l'historique général.
 
