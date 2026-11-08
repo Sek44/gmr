@@ -20,6 +20,18 @@ test("shared site styles have one stable entry and focused owners", () => {
   assert.doesNotMatch(file("shared/site.css"), /\.game-card\s*\{/);
 });
 
+test("shared services do not import game-specific engines or assets", () => {
+  const shared = path.join(root, "shared");
+  for (const entry of fs.readdirSync(shared).filter((name) => name.endsWith(".js"))) {
+    const source = file("shared/" + entry);
+    assert.doesNotMatch(source, /\bGcv[A-Z][A-Za-z]*\b|games\/gcv\//, "Shared file depends on GCV: " + entry);
+  }
+  for (const name of ["base", "components", "home", "scores", "play-time"]) {
+    const source = file("shared/styles/" + name + ".css");
+    assert.doesNotMatch(source, /\.gcv-/, "Shared styles depend on GCV: " + name);
+  }
+});
+
 test("catalog entries have independent game directories and documentation", () => {
   const context = { window: {} };
   vm.runInNewContext(file("games/catalog.js"), context);
