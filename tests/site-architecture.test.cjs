@@ -41,8 +41,8 @@ test("game-specific score renderers are registered without importing games into 
   const shared = file("shared/scores.js");
   assert.doesNotMatch(shared, /GcvLapTimes|GcvTrackLayout/);
   const html = file("scores.html");
-  assert.doesNotMatch(html, /games\\/gcv\\//);
-  assert.match(file("shared/scores-page.js"), /game\\.scoreScripts/);
+  assert.doesNotMatch(html, /games\/gcv\//);
+  assert.match(file("shared/scores-page.js"), /game\.scoreScripts/);
   const catalogContext = { window: {} };
   vm.runInNewContext(file("games/catalog.js"), catalogContext);
   const gcv = catalogContext.window.GmrCatalog.games.find((game) => game.id === "gcv");
