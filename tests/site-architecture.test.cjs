@@ -37,6 +37,28 @@ test("catalog entries have independent game directories and documentation", () =
   }
 });
 
+test("static pages reference existing local styles and scripts", () => {
+  const pages = ["index.html", "scores.html", "games/_template/index.html"];
+  const context = { window: {} };
+  vm.runInNewContext(file("games/catalog.js"), context);
+  for (const game of context.window.GmrCatalog.games) {
+    pages.push("games/" + game.id + "/index.html");
+    for (const script of game.scoreScripts || []) {
+      assert.ok(fs.existsSync(path.resolve(root, script)), "Missing score script: " + script);
+    }
+  }
+  for (const page of pages) {
+    const html = file(page);
+    const tags = /<(?:script|link)\b[^>]*\b(?:src|href)="([^"]+)"/g;
+    for (const match of html.matchAll(tags)) {
+      const source = match[1].split(/[?#]/, 1)[0];
+      if (/^(?:https?:|\/\/|\/|data:)/.test(source)) continue;
+      const target = path.resolve(root, path.dirname(page), source);
+      assert.ok(fs.existsSync(target), page + ": missing asset " + source);
+    }
+  }
+});
+
 test("game-specific score renderers are registered without importing games into shared code", () => {
   const shared = file("shared/scores.js");
   assert.doesNotMatch(shared, /GcvLapTimes|GcvTrackLayout/);
