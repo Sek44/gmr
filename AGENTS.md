@@ -5,7 +5,8 @@
 - Site statique destiné aux enfants, publié sur GitHub Pages sans framework ni compilation obligatoire.
 - Monorepo : `games/<id>/` pour chaque jeu, `shared/` pour le commun, `docs/` pour l'architecture et le backlog transversaux. Les jeux présents dans `games/catalog.js` sont seuls affichés dans l'accueil.
 - Utiliser des URLs relatives (compatibilité avec `https://sek44.github.io/gmr/`) et une interface tactile responsive sur téléphone/tablette en portrait/paysage et sur ordinateur.
-- Réutiliser `GameState`, `GameScores`, `AppConfirm`, `ScoreView`, `GameUI` et `GmrPlayTime` plutôt que copier leur logique. Aucun jeu ne doit importer du code spécifique à un autre jeu.
+- Réutiliser `GameState`, `GameScores`, `AppConfirm`, `ScoreView`, `GameUI` et `GmrPlayTime` plutôt que copier leur logique. Aucun jeu ne doit importer du code spécifique à un autre jeu. **La couche `shared/` ne doit pas non plus dépendre d'un moteur ou d'un format métier particulier** : les vues spécialisées passent par des adaptateurs locaux (`games/<id>/scores-adapter.js`), enregistrés via `GameScores.registerRenderer`.
+- Séparer les styles par responsabilité : `shared/site.css` est le point d'entrée stable, `shared/styles/` contient les styles du site (base, composants, accueil, scores, temps de jeu), et `games/<id>/game.css` contient exclusivement le jeu. Ne pas placer des règles `gcv-*` dans les CSS partagés. Ne pas dupliquer les styles de page ou de navigation dans les CSS de jeu.
 - Sauvegarder la partie après les mutations importantes et lors de `pagehide` ou du masquage de l'onglet. Une visite des scores ou un retour à l'accueil ne doit pas faire perdre la partie.
 - Une partie terminée ne doit pas être restaurée ni enregistrer deux fois son score. Ne jamais effacer tout l'historique de scores ; une suppression individuelle exige confirmation.
 - Les clés propres à GMR commencent par `gmr:v1:`. Exception : `shared/play-time.js` **lit uniquement** la clé xfr1 `entrainement_daily_exercises_v1` et écrit `gmr:v1:daily-play-time`. Ne jamais écrire dans la clé xfr1 depuis GMR. Si le crédit ne peut être vérifié, bloquer les jeux sans effacer les données ; la navigation et les scores restent accessibles.
@@ -27,6 +28,7 @@ Avant une modification, lire [les conventions documentaires](docs/README.md) pui
 
 ## Vérification
 
-- Exécuter `node --test tests/*.test.cjs` avant publication.
+- Exécuter `node --test tests/*.test.cjs` avant publication. Les tests de contrat du catalogue et du CSS partagés s'appliquent aussi aux nouveaux jeux.
+- Garder le format HTML/JS/CSS cohérent avec xfr1 : Prettier 3.6.2 sur les fichiers modifiés ; ne pas reformater tout un moteur pour une modification ciblée.
 - Vérifier les liens et chemins relatifs après déplacement de documentation.
 - Signaler explicitement les vérifications navigateur (WebGL, plein écran, tactile) non réalisées.
