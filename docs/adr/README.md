@@ -7,3 +7,5 @@ Conventions : `0001-titre-court.md`, un sujet par fichier, sections **Contexte**
 Un ADR accepté décrit une décision prise à une date donnée ; il n'est pas réécrit pour masquer une décision antérieure. Si elle change, ajouter un ADR et relier les deux. Seuls les documents `ARCHITECTURE.md` décrivent l'architecture courante.
 
 Premier exemple réel : [ADR GCV — progression unique des tours](../../games/gcv/docs/adr/0001-progression-des-tours.md).
+
+Décision transversale : [ADR-0001 — Frontière entre l'hôte et les jeux](0001-frontiere-hote-jeux.md).
