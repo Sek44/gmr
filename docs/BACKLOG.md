@@ -11,7 +11,6 @@ Ce document ne contient que des **travaux ouverts** concernant plusieurs jeux ou
 ## Priorité moyenne
 
 - [ ] **GMR2 — Unifier l'ouverture des scores.** GCV possède une iframe/navigation de scores dédiée, tandis que `shared/score-view.js` fournit un mécanisme générique. Définir une seule interface pour ouverture, pause, retour, historique et fermeture, sans régression de reprise de session.
-- [ ] **GMR3 — Découpler les scores partagés des formats GCV.** `shared/scores.js` charge directement `GcvLapTimes` et `GcvTrackLayout`. Concevoir un mécanisme d'extension par type de jeu/record, puis supprimer les dépendances spécifiques du code partagé.
 - [ ] **GMR4 — Clarifier les conventions de persistance communes.** Définir le cycle de vie des sessions jetables et des scores pérennes, le comportement sur données corrompues, l'obsolescence des clés et la politique de migration des seules données à conserver. Éviter de remettre à zéro les records lors d'une révision de session.
 
 ## Priorité basse
