@@ -26,7 +26,7 @@ GMR est un monorepo de petits jeux jouables directement dans le navigateur, publ
 | `shared/game-ui.js` (`GameUI`) | Composants d'interface réutilisables, dont le pavé numérique |
 | `shared/play-time.js` (`GmrPlayTime`) | Lecture du crédit xfr1, temps de jeu partagé, affichage et verrouillage |
 
-Le mode d'affichage des scores de GCV dispose encore de sa propre navigation/iframe ; l'unification avec `ScoreView` est dans le [backlog global](BACKLOG.md). Le rendu des records chronométriques appartient maintenant à `games/gcv/scores-adapter.js`, enregistré par `GameScores.registerRenderer("gcv", render)` ; `scores.html` charge cet adaptateur après `shared/scores.js` et avant `shared/scores-page.js`. Les autres jeux peuvent enregistrer leur propre vue sans introduire d'import de jeu dans `shared/scores.js`.
+Le mode d'affichage des scores de GCV dispose encore de sa propre navigation/iframe ; l'unification avec `ScoreView` est dans le [backlog global](BACKLOG.md). Le rendu des records chronométriques appartient maintenant à `games/gcv/scores-adapter.js`, enregistré par `GameScores.registerRenderer("gcv", render)` ; `games/catalog.js` déclare les scripts de chaque adaptateur dans `scoreScripts` ; `shared/scores-page.js` les charge en ordre après le service commun, avant d'afficher les résultats. Les autres jeux peuvent enregistrer leur propre vue sans introduire d'import de jeu dans `shared/scores.js`.
 
 ## Stockage et données
 
