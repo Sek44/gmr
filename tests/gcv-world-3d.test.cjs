@@ -13,7 +13,7 @@ const directory = path.join(__dirname, "../games/gcv");
 
 test("world is loaded before the GCV entry point", () => {
   const html = fs.readFileSync(path.join(directory, "index.html"), "utf8")
-    .replace(/\?v=20261111g/g, "");
+    .replace(/\?v=\d{8}[a-z]/g, "");
   const scenery = html.indexOf('<script defer src="./scenery.js"></script>');
   const layout = html.indexOf('<script defer src="./track-layout.js"></script>');
   const barriers = html.indexOf('<script defer src="./barriers.js"></script>');
@@ -177,5 +177,5 @@ test("all local GCV scripts share one cache-busting release version", () => {
     .map((match) => match[1]);
   assert.equal(versions.length, 18);
   assert.equal(new Set(versions).size, 1);
-  assert.match(html, /game\.css\?v=20261111g/);
+  assert.match(html, /game\.css\?v=\d{8}[a-z]/);
 });
