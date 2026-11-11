@@ -167,6 +167,18 @@ test("camera starts outside on first launch and restores the saved choice", () =
   assert.equal(resumed.state.cameraMode, "inside");
 });
 
+test("an incompatible circuit never changes the selected vehicle or camera", () => {
+  const { s, state, flow } = fixture({
+    saveRevision: 9, circuitKey: "other-layout", layoutVersion: 1,
+    vehicle: "moto", camera: "inside",
+  });
+  state.vehicleId = "kart";
+  s.bind();
+  assert.equal(state.vehicleId, "kart");
+  assert.equal(state.cameraMode, "outside");
+  assert.equal(flow.hasSession, false);
+});
+
 test("session switches free -> race -> previous free trial, and restarts", () => {
   const { s, state, flow, counters, stored } = fixture();
   s.bind();

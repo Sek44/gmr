@@ -8,7 +8,8 @@
 .gcv-home {
   position: absolute; inset: 0; z-index: 9; display: flex; align-items: flex-start;
   justify-content: center; padding: 64px 16px 16px; overflow-y: auto;
-  background: linear-gradient(145deg, #071626db, #142e43bc);
+  /* Full-screen selection view: do not reveal the hidden WebGL scene. */
+  background: linear-gradient(145deg, #071626, #142e43);
   touch-action: pan-y;
 }
 .gcv-home-panel {
@@ -86,6 +87,7 @@
 }
 .gcv-scene, .gcv-scene canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .gcv-scene { z-index: 0; }
+.gcv-stage.gcv-in-menu .gcv-scene { visibility: hidden; }
 .gcv-stage button { -webkit-tap-highlight-color: transparent; font-family: inherit; }
 .gcv-hud-left, .gcv-hud-right { position: absolute; top: 14px; z-index: 2; display: flex; flex-direction: column; gap: 7px; pointer-events: none; }
 .gcv-hud-left { left: 16px; align-items: flex-start; }

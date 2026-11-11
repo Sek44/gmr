@@ -38,12 +38,14 @@
   const Navigation = window.GcvNavigation;
   const Session = window.GcvSession;
   const Flow = window.GcvFlow;
+  const Preferences = window.GcvPreferences;
   // Bump this revision after incompatible GCV updates. Old sessions are canceled.
   const SAVE_REVISION = 11;
   // Keep this same fullscreen DOM element while rebuilding only the circuit.
   let disposeGame = null;
   let activeFlow = null;
   let activeNavigation = null;
+  const preferences = Preferences.create();
 
   function announce(message) {
     notice.textContent = message;
@@ -51,7 +53,7 @@
   }
 
   try {
-    if (!Physics || !TrackProgress || !Scenery || !World3D || !Tracks || !LapTimes || !Race || !Barriers || !Vehicles || !VisualEffects || !Rendering || !Controls || !Hud || !MiniMap || !Navigation || !Session || !Flow)
+    if (!Physics || !TrackProgress || !Scenery || !World3D || !Tracks || !LapTimes || !Race || !Barriers || !Vehicles || !VisualEffects || !Rendering || !Controls || !Hud || !MiniMap || !Navigation || !Session || !Flow || !Preferences)
       throw new Error("Les modules de conduite sont introuvables.");
     const THREE = await import("https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js");
     // Mount the shared time budget once; each rebuilt circuit supplies its
@@ -76,7 +78,13 @@
   }
 
   function start(THREE) {
-    const TrackLayout = Tracks.select(new URL(window.location.href).searchParams.get("track"));
+    const url = new URL(window.location.href);
+    const savedPreferences = preferences.get();
+    const TrackLayout = Tracks.select(url.searchParams.get("track") ?? savedPreferences.track);
+    const initialVehicle = Vehicles.normalize(
+      url.searchParams.get("vehicle") ?? savedPreferences.vehicle);
+    // A deep link takes precedence over saved defaults; it becomes the latest choice.
+    preferences.set({ track: TrackLayout.ID, vehicle: initialVehicle });
     const listeners = new AbortController();
     const { signal } = listeners;
     const {
@@ -112,7 +120,7 @@
       speed: 0, roadY: initial.y, jumpY: 0,
     };
     let cameraMode = "outside";
-    let vehicleId = Vehicles.normalize(new URL(window.location.href).searchParams.get("vehicle"));
+    let vehicleId = initialVehicle;
     setVehicle(vehicleId);
     rendering.setVehicle(vehicleId);
     function startOffset(index) {
@@ -226,6 +234,7 @@
     cameraButton.addEventListener("click", () => {
       cameraMode = cameraMode === "inside" ? "outside" : "inside";
       refreshCameraButton();
+      preferences.set({ camera: cameraMode });
       session?.changed();
     }, { signal });
 
@@ -306,7 +315,8 @@
         button.setAttribute("aria-pressed", String(selected));
       });
       if (updateUrl) {
-        // The URL keeps the selected crew when switching circuits/reloading.
+        preferences.set({ vehicle: vehicleId });
+        // Keep explicit URLs shareable without making them the preference store.
         const url = new URL(window.location.href);
         if (vehicleId === Vehicles.DEFAULT_ID) url.searchParams.delete("vehicle");
         else url.searchParams.set("vehicle", vehicleId);
@@ -320,6 +330,18 @@
           chooseVehicle(button.dataset.gcvVehicle, true);
       }, { signal });
     });
+    function syncModeButtons() {
+      const isRace = preferences.get().mode === "race";
+      freeModeButton.classList.toggle("is-selected", !isRace);
+      freeModeButton.setAttribute("aria-pressed", String(!isRace));
+      raceModeButton.classList.toggle("is-selected", isRace);
+      raceModeButton.setAttribute("aria-pressed", String(isRace));
+    }
+    function startMode(mode, action) {
+      preferences.set({ mode });
+      syncModeButtons();
+      action();
+    }
     document.querySelectorAll("[data-gcv-track]").forEach((button) => {
       const active = button.dataset.gcvTrack === TrackLayout.ID;
       button.classList.toggle("is-selected", active);
@@ -332,6 +354,11 @@
         if (button.dataset.gcvTrack === "classic") url.searchParams.delete("track");
         else url.searchParams.set("track", button.dataset.gcvTrack);
         url.searchParams.delete("rev");
+        // A previous circuit's session must not overwrite the chosen crew.
+        preferences.set({ track: button.dataset.gcvTrack,
+          vehicle: vehicleId, camera: cameraMode });
+        if (vehicleId === Vehicles.DEFAULT_ID) url.searchParams.delete("vehicle");
+        else url.searchParams.set("vehicle", vehicleId);
         disposeGame?.();
         window.GameState.create("gcv").clear();
         window.history.replaceState(null, "", url.href);
@@ -340,14 +367,23 @@
     });
     const raceModeCaption = raceModeButton.querySelector("strong");
     raceModeCaption.textContent = closed ? "Course · 3 tours" : "Course · parcours unique";
-    freeModeButton.addEventListener("click", session.chooseFree, { signal });
-    raceModeButton.addEventListener("click", session.startRace, { signal });
-    replayButton.addEventListener("click", session.startRace, { signal });
-    raceFreeButton.addEventListener("click", session.chooseFree, { signal });
+    freeModeButton.addEventListener("click", () =>
+      startMode("free", session.chooseFree), { signal });
+    raceModeButton.addEventListener("click", () =>
+      startMode("race", session.startRace), { signal });
+    replayButton.addEventListener("click", () =>
+      startMode("race", session.startRace), { signal });
+    raceFreeButton.addEventListener("click", () =>
+      startMode("free", session.chooseFree), { signal });
     restartButton.addEventListener("click", session.restartNearFinish, { signal });
 
     session.bind();
+    // Session snapshots are resumable gameplay, not menu preferences. Their
+    // vehicle/camera must not silently replace the last explicit selections.
+    vehicleId = initialVehicle;
+    cameraMode = preferences.get().camera;
     chooseVehicle(vehicleId);
+    syncModeButtons();
     syncRaceCars();
     syncRaceHud();
     navigation.sync(); // Always open on home, including after restoration.
@@ -571,13 +607,14 @@
         mapElapsed = 0;
         drawMap();
       }
-      rendering.render();
+      // The menu and score iframe cover the stage; skip all WebGL draw calls.
+      if (!navigation.paused) rendering.render();
     }
 
     drawMap();
     updateCar(0);
     rendering.updateCamera(0);
-    rendering.render();
+    if (!navigation.paused) rendering.render();
     frameId = requestAnimationFrame(frame);
     return () => {
       // Prevent duplicate listeners, animation loops and WebGL contexts when

@@ -50,8 +50,7 @@ const GcvSession = (() => {
       if (!saved || saved.saveRevision !== revision) return false;
       if (!LapTimes.sameCircuitRoute(saved.circuitKey, circuitKey) ||
           saved.layoutVersion !== layoutVersion) {
-        state.cameraMode = saved.camera === "outside" ? "outside" : "inside";
-        if (saved.vehicle) state.vehicleId = saved.vehicle;
+        // This run belongs to another track. Do not import its menu choices.
         return false;
       }
       const valid = ["x", "z", "yaw", "speed"].every((key) => Number.isFinite(saved[key]));
