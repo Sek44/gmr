@@ -133,7 +133,7 @@ test("rendering module is loaded before game.js and exposes a browser factory", 
   const vm = require("node:vm");
   const folder = path.join(__dirname, "../games/gcv");
   const html = fs.readFileSync(path.join(folder, "index.html"), "utf8")
-    .replace(/\?v=20261111d/g, "");
+    .replace(/\?v=20261111e/g, "");
   const renderingOffset = html.indexOf('src="./rendering.js"');
   const gameOffset = html.indexOf('src="./game.js"');
   assert.ok(renderingOffset >= 0 && gameOffset > renderingOffset);
@@ -159,4 +159,19 @@ test("the open route caps WebGL framebuffer memory on large Android screens", ()
   assert.ok(renderer.pixelRatio < 1);
   assert.ok(renderer.pixelRatio ** 2 * stage.clientWidth * stage.clientHeight <= 750001);
   assert.deepEqual(renderer.size, [1400, 800, false]);
+});
+
+test("motorcycle banks into curves and jump nose pitches through flight", () => {
+  const { view, car } = fixture();
+  view.setVehicle("moto");
+  const rider = (yaw, jumpY = 0) => ({ x: 0, z: 0, yaw, speed: 30, jumpY });
+  view.updatePlayer({ driver: rider(0), dt: 1 / 60, fall: null,
+    brakePressed: false });
+  view.updatePlayer({ driver: rider(0.14, 0.5), dt: 1 / 60, fall: null,
+    jumpVelocity: 7, brakePressed: false });
+  assert.ok(car.rotation.z < 0, "motorcycle should lean through a turn");
+  assert.ok(car.rotation.x < -0.1, "nose lifts on takeoff");
+  view.updatePlayer({ driver: rider(0.16, 0.1), dt: 1 / 60, fall: null,
+    jumpVelocity: -7, brakePressed: false });
+  assert.ok(car.rotation.x > 0.1, "nose drops shortly before landing");
 });

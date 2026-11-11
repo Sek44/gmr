@@ -11,7 +11,7 @@ const gameDirectory = path.join(__dirname, "../games/gcv");
 
 test("visual effects are loaded before the game entry point", () => {
   const html = fs.readFileSync(path.join(gameDirectory, "index.html"), "utf8")
-    .replace(/\?v=20261111d/g, "");
+    .replace(/\?v=20261111e/g, "");
   const world = html.indexOf('<script defer src="./world-3d.js"></script>');
   const effects = html.indexOf('<script defer src="./visual-effects.js"></script>');
   const game = html.indexOf('<script type="module" src="./game.js"></script>');
@@ -118,4 +118,19 @@ test("sparks need a moving barrier contact and disappear when their lifetime end
   assert.ok(sparks.geometry.attributes.color.array.some((value) => value > 0));
   effects.update(1, driver, 0, null);
   assert.equal(visible(sparks), 0);
+});
+
+test("landing produces a single pale dust burst without extra draw calls", () => {
+  const { effects, scene, mud, sparks, visible } = harness();
+  const driver = { x: 12, z: 8, roadY: 1.1, yaw: 0, speed: 32 };
+  effects.land(driver);
+  effects.update(0.016, driver, 0, null);
+  assert.equal(scene.children.length, 2);
+  assert.equal(visible(mud), 20);
+  assert.equal(visible(sparks), 0);
+  assert.ok(mud.geometry.attributes.color.array.some((value) => value > 0.7));
+  effects.update(1, driver, 0, null);
+  assert.equal(visible(mud), 0);
+  effects.update(0.016, driver, 0, null);
+  assert.equal(visible(mud), 0, "no delayed or repeated dust");
 });

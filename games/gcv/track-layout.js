@@ -45,18 +45,25 @@ const GcvTrackLayout = (() => {
     zigzagAt,
     HUMPS: Object.freeze([0.23, 0.39, 0.81]),
   });
-  // Four pronounced, deterministic side-to-side swerves. The entry and
-  // exit taper smoothly so the automatic guide never jerks at a boundary.
+  // Seven short, lively swerves with a much smaller lateral excursion.
+  // Smoothstep fades the motion AND its derivative at both section edges.
   function zigzagAt(progress) {
     const t = Math.min(1, Math.max(0, Number(progress) || 0));
-    const phase = t * Math.PI * 8;
-    const envelope = Math.min(1, t * 7, (1 - t) * 7);
-    const derivative = t < 1 / 7 ? 7 : t > 6 / 7 ? -7 : 0;
-    const amplitude = 4.1; // Metres: within the 9 m road half-width.
+    const fade = 0.12;
+    const smoothstep = (x) => x * x * (3 - 2 * x);
+    const smoothstepDerivative = (x) => 6 * x * (1 - x);
+    const entry = Math.min(1, t / fade);
+    const exit = Math.min(1, (1 - t) / fade);
+    const envelope = smoothstep(entry) * smoothstep(exit);
+    const envelopeDerivative =
+      (t < fade ? smoothstepDerivative(entry) * smoothstep(exit) / fade : 0) -
+      (t > 1 - fade ? smoothstepDerivative(exit) * smoothstep(entry) / fade : 0);
+    const phase = t * Math.PI * 14;
+    const amplitude = 1.65; // Metres, safely inside the 9 m half-width.
     return {
       offset: amplitude * envelope * Math.sin(phase),
-      slope: amplitude * (derivative * Math.sin(phase) +
-        envelope * Math.PI * 8 * Math.cos(phase)),
+      slope: amplitude * (envelopeDerivative * Math.sin(phase) +
+        envelope * Math.PI * 14 * Math.cos(phase)),
     };
   }
   function select(id) { return id === SPRINT.ID ? SPRINT : GcvTrackLayout; }

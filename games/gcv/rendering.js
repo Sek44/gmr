@@ -26,6 +26,9 @@ const GcvRendering = (() => {
     const desiredTarget = new THREE.Vector3();
     let outsideView = false;
     let initializedCamera = false;
+    let selectedVehicle = "classic";
+    let previousYaw = null;
+    let motoLean = 0;
 
     function resize() {
       const width = Math.max(1, stage.clientWidth);
@@ -62,15 +65,24 @@ const GcvRendering = (() => {
       }
     }
 
-    function updatePlayer({ driver, fall, dt, brakePressed }) {
+    function updatePlayer({ driver, fall, dt, brakePressed, jumpVelocity = 0 }) {
+      const deltaYaw = previousYaw === null ? 0 :
+        Math.atan2(Math.sin(driver.yaw - previousYaw),
+          Math.cos(driver.yaw - previousYaw));
+      previousYaw = driver.yaw;
+      const rate = dt > 0 ? deltaYaw / dt : 0;
+      const targetLean = selectedVehicle === "moto" && !fall
+        ? Math.max(-0.19, Math.min(0.19, -rate * 0.18)) : 0;
+      motoLean += (targetLean - motoLean) * (1 - Math.exp(-12 * Math.max(0, dt)));
       if (fall) {
         car.position.set(fall.x, fall.y, fall.z);
         // The nose tips down while falling, independently of steering.
         car.rotation.set(Math.min(0.68, fall.elapsed * 0.42), driver.yaw, 0, "YXZ");
       } else {
         car.position.set(driver.x, 0.14 + (driver.roadY || 0) + (driver.jumpY || 0), driver.z);
-        car.rotation.set((driver.jumpY || 0) > 0 ? -0.045 : 0,
-          driver.yaw, 0, "YXZ");
+        const pitch = (driver.jumpY || 0) > 0
+          ? Math.max(-0.16, Math.min(0.16, -jumpVelocity * 0.018)) : 0;
+        car.rotation.set(pitch, driver.yaw, motoLean, "YXZ");
       }
       for (const wheel of wheelPivots) wheel.rotation.x -= driver.speed * dt / 0.46;
       for (const wheel of extraWheelPivots) wheel.rotation.x -= driver.speed * dt / 0.49;
@@ -82,6 +94,9 @@ const GcvRendering = (() => {
     // Place the cockpit camera above the selected pilot's seat or helmet,
     // keeping the road unobstructed for each vehicle silhouette.
     function setVehicle(id) {
+      selectedVehicle = id;
+      previousYaw = null;
+      motoLean = 0;
       const cockpits = {
         classic: [-0.42, 1.51, 0.34],
         moto: [0, 2.22, 0.29],

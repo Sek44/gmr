@@ -8,6 +8,8 @@ const GcvPhysics = (() => {
   const REVERSE_MAX_SPEED = 8; // 28.8 km/h: twice the previous reverse speed.
   const REVERSE_ACCELERATION = 7;
   const GRAVITY = 9.81;
+  const JUMP_TAKEOFF_SPEED = 8.5; // Sharper lift off a crest (m/s).
+  const JUMP_GRAVITY = 32; // Fast, punchy touchdown; distinct from fall gravity.
   const FALL_SECONDS = 2;
   const CAR_HEIGHT = 0.14;
   const INITIAL_FALL_VELOCITY = -7; // m/s: descent is immediate at the track edge.
@@ -63,6 +65,24 @@ const GcvPhysics = (() => {
     return Math.min(1.5, Math.max(0, (lateralLoad - 45) / 32));
   }
 
+  // Short ballistic jump above the road, independent from the long off-road
+  // fall. Analytic integration gives a single reliable touchdown event even
+  // with uneven frame times.
+  function advanceJump(height, velocity, dt) {
+    const y = Math.max(0, Number(height) || 0);
+    const vy = Number(velocity) || 0;
+    const step = clamp(Number.isFinite(dt) ? dt : 0, 0, 0.05);
+    if (y === 0 && vy <= 0) return { height: 0, velocity: 0, landed: false };
+    const nextHeight = y + vy * step - JUMP_GRAVITY * step * step / 2;
+    if (step > 0 && y > 0 && nextHeight <= 0)
+      return { height: 0, velocity: 0, landed: true };
+    return {
+      height: Math.max(0, nextHeight),
+      velocity: vy - JUMP_GRAVITY * step,
+      landed: false,
+    };
+  }
+
   // Airborne motion is independent from road steering/braking. Timer starts
   // immediately when the outer edge of the gravel is crossed.
   function startFall(state) {
@@ -99,8 +119,8 @@ const GcvPhysics = (() => {
   return Object.freeze({
     MAX_SPEED, MAX_STEER_RATE, BRAKE_DECELERATION,
     REVERSE_DELAY, REVERSE_MAX_SPEED, GRAVITY, FALL_SECONDS,
-    INITIAL_FALL_VELOCITY,
-    advance, skidIntensity, startFall, advanceFall,
+    INITIAL_FALL_VELOCITY, JUMP_TAKEOFF_SPEED, JUMP_GRAVITY,
+    advance, skidIntensity, advanceJump, startFall, advanceFall,
   });
 })();
 

@@ -10,6 +10,7 @@ const GcvVisualEffects = (() => {
     const mudColors = new Float32Array(MAX_MUD_PARTICLES * 3);
     const mudState = Array.from({ length: MAX_MUD_PARTICLES }, () => ({
       lifetime: 0, duration: 0, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0,
+      groundY: 0.11, landing: false,
     }));
     for (let i = 0; i < MAX_MUD_PARTICLES; i++) mudPositions[i * 3 + 1] = -2000;
     const mudGeometry = new THREE.BufferGeometry();
@@ -36,16 +37,17 @@ const GcvVisualEffects = (() => {
           p.z += p.vz * dt;
           p.y += p.vy * dt;
           p.vy -= 9.81 * dt;
-          if (p.y < 0.11) p.lifetime = 0;
+          if (p.y < p.groundY) p.lifetime = 0;
         }
         if (p.lifetime > 0) {
           mudPositions[j] = p.x;
           mudPositions[j + 1] = p.y;
           mudPositions[j + 2] = p.z;
           const brightness = 0.3 + 0.7 * (p.lifetime / p.duration);
-          mudColors[j] = brightness * 0.42;
-          mudColors[j + 1] = brightness * 0.29;
-          mudColors[j + 2] = brightness * 0.16;
+          // Landing dust is pale and punchy; steering mud stays dark brown.
+          mudColors[j] = brightness * (p.landing ? 0.84 : 0.42);
+          mudColors[j + 1] = brightness * (p.landing ? 0.74 : 0.29);
+          mudColors[j + 2] = brightness * (p.landing ? 0.55 : 0.16);
         } else {
           mudPositions[j + 1] = -2000;
         }
@@ -70,12 +72,36 @@ const GcvVisualEffects = (() => {
           p.vz = Math.cos(driver.yaw) * backSpeed - Math.sin(driver.yaw) * spread;
           p.vy = 1.4 + Math.random() * 2.2;
           p.duration = 0.4 + Math.random() * 0.4;
+          p.groundY = 0.11;
+          p.landing = false;
           p.lifetime = p.duration;
           nextMudParticle = (nextMudParticle + 1) % MAX_MUD_PARTICLES;
         }
       }
       mudPositionAttribute.needsUpdate = true;
       mudColorAttribute.needsUpdate = true;
+    }
+
+    // One radial burst at the exact road touchdown, reusing the mud buffer.
+    // No new draw calls or textures on mobile. Never called during falls.
+    function land(driver) {
+      const groundY = (Number(driver.roadY) || 0) + 0.1;
+      for (let i = 0; i < 20; i++) {
+        const p = mudState[nextMudParticle];
+        const angle = i * Math.PI * 2 / 20;
+        const speed = 2.1 + (i % 4) * 0.42;
+        p.x = driver.x + Math.cos(angle) * 0.62;
+        p.z = driver.z + Math.sin(angle) * 0.62;
+        p.y = groundY + 0.12;
+        p.vx = Math.cos(angle) * speed;
+        p.vz = Math.sin(angle) * speed;
+        p.vy = 1.45 + (i % 3) * 0.30;
+        p.duration = 0.28 + (i % 5) * 0.04;
+        p.lifetime = p.duration;
+        p.groundY = groundY;
+        p.landing = true;
+        nextMudParticle = (nextMudParticle + 1) % MAX_MUD_PARTICLES;
+      }
     }
 
     // Small bright particles from actual guardrail contact; one batched system.
@@ -153,6 +179,7 @@ const GcvVisualEffects = (() => {
     }
 
     return Object.freeze({
+      land,
       update(dt, driver, mudIntensity, barrierContact) {
         tickMudParticles(dt, mudIntensity, driver);
         tickBarrierSparks(dt, barrierContact, driver);

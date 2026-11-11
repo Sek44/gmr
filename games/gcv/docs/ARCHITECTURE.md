@@ -21,7 +21,7 @@ Il n'existe ni serveur de jeu, ni build, ni moteur physique externe. Les autres 
 | `scenery.js` | Placement et paramètres du décor statique |
 | `barriers.js` | Collision latérale de précision contre les rails, glissement/frottement/réalignement du cap et arrêt contre les deux barrières de fermeture de la route ouverte |
 | `vehicles.js` | Modèle de voiture historique, quatre couples pilote/véhicule low-poly originaux sélectionnables et neuf voitures IA ; textures de numéros partagées et visibilité exclusive du modèle actif ; API `CHOICES`, `normalize`, `setVehicle`, `setCameraMode` |
-| `physics.js` | Accélération, frein, direction, marche arrière, chute et émission théorique de boue |
+| `physics.js` | Accélération, frein, direction, marche arrière, chute, saut balistique court (`advanceJump` avec un seul événement d'atterrissage) et émission théorique de boue |
 | `track-progress.js` | **Autorité unique** pour les tours fermés (`move`) et les traversées ouvertes (`moveOpen`), sans bouclage artificiel des échantillons |
 | `lap-times.js` | Temps et trois secteurs, terminaison de trajet ouvert, stockage distinct des records de chaque circuit |
 | `scores-adapter.js` | Rendu des records de tours dans la page Scores générale, enregistré auprès de `GameScores` sans dépendance GCV dans le service partagé |
@@ -30,8 +30,8 @@ Il n'existe ni serveur de jeu, ni build, ni moteur physique externe. Les autres 
 | `session.js` | Entrée dans les modes, reprise, redémarrage, snapshots et autosauvegarde |
 | `navigation.js` | Menu, scores en iframe, commandes plein écran et pause liée à la navigation |
 | `controls.js` | Clavier, direction tactile, pédales multitouch et remise à zéro des commandes |
-| `rendering.js` | WebGL, caméras adaptées au véhicule choisi, transformations et animations des roues |
-| `visual-effects.js` | Particules dynamiques de boue et étincelles de friction |
+| `rendering.js` | WebGL, caméras adaptées au véhicule choisi, transformations, rotation des roues, inclinaison de la moto en virage et assiette du véhicule pendant les sauts |
+| `visual-effects.js` | Particules dynamiques de boue et étincelles de friction ; petite gerbe radiale de poussière à l'atterrissage réutilisant le tampon de particules existant (`land`) sans nouvel appel de dessin |
 | `hud.js` | Indicateurs de conduite, chrono, classements et panneau d'arrivée |
 | `mini-map.js` | Carte ouverte/fermée, départ et arrivée distincts, secteurs et marqueurs dynamiques |
 
@@ -74,4 +74,4 @@ Pour les GPU modestes, le parcours ouvert utilise un échantillonnage à 720 seg
 
 Le parcours est sélectionné via `?track=rainbow` (absence = classique), avec rechargement de la scène et annulation possible des anciennes sessions. `world-3d.js` livre les indices de départ/arrivée au moteur ; `game.js` calcule la longueur entre les deux portes pour la progression/IA tout en conservant la longueur intégrale de spline pour le rendu. Le saut est un écart vertical temporaire qui ne produit aucun événement de course.
 
-Les barrières de la route ouverte ne constituent jamais une boucle de collision : le maillage des côtés est échantillonné moins finement que les collisions, les deux capuchons transversaux sont dessinés par `world-3d.js` aux extrémités réelles et `barriers.js` bloque les franchissements. L'assistance de zigzag exploite une fonction continue et déterministe `SPRINT.zigzagAt` dans `track-layout.js`.
+Les barrières de la route ouverte ne constituent jamais une boucle de collision : le maillage des côtés est échantillonné moins finement que les collisions, les deux capuchons transversaux sont dessinés par `world-3d.js` aux extrémités réelles et `barriers.js` bloque les franchissements. L'assistance de zigzag exploite une fonction continue et déterministe `SPRINT.zigzagAt` dans `track-layout.js`, avec oscillations rapides à faible amplitude et enveloppe `smoothstep`. Les sauts restent indépendants du comptage de tours : `game.js` détecte la descente d'une bosse, `physics.js` intègre une trajectoire verticale courte et retourne un événement unique `landed`, puis `visual-effects.js` émet la poussière exactement à ce moment. Le déplacement horizontal et les chronos suivent toujours le moteur principal.
