@@ -5,17 +5,21 @@ const assert = require("node:assert/strict");
 const Layout = require("../games/gcv/track-layout.js");
 const Barriers = require("../games/gcv/barriers.js");
 
-test("rainbow slalom is pronounced but fades to zero at both ends", () => {
-  assert.equal(Layout.SPRINT.zigzagAt(0).offset, 0);
-  assert.ok(Math.abs(Layout.SPRINT.zigzagAt(1).offset) < 1e-12);
-  assert.ok(Math.abs(Layout.SPRINT.zigzagAt(0.3125).offset) > 4);
-  const points = Array.from({ length: 401 }, (_, i) =>
-    Layout.SPRINT.zigzagAt(i / 400));
-  assert.ok(points.every(({ offset, slope }) =>
-    Number.isFinite(offset) && Number.isFinite(slope) &&
-    Math.abs(offset) <= 4.1 + 1e-9));
-  assert.ok(points.some(({ offset }) => offset > 3.5));
-  assert.ok(points.some(({ offset }) => offset < -3.5));
+test("rainbow slalom is short, fast, bounded and smooth at both ends", () => {
+  const zigzag = Layout.SPRINT.zigzagAt;
+  assert.equal(zigzag(0).offset, 0);
+  assert.ok(Math.abs(zigzag(1).offset) < 1e-12);
+  assert.ok(Math.abs(zigzag(0).slope) < 1e-12);
+  assert.ok(Math.abs(zigzag(1).slope) < 1e-10);
+  const points = Array.from({ length: 1001 }, (_, i) => zigzag(i / 1000));
+  assert.ok(points.every(({ offset, slope }) => Number.isFinite(offset) &&
+    Number.isFinite(slope) && Math.abs(offset) <= 1.65 + 1e-9));
+  assert.ok(points.some(({ offset }) => offset > 1.45));
+  assert.ok(points.some(({ offset }) => offset < -1.45));
+  const signs = points.map(({ offset }) => Math.abs(offset) < 0.02
+    ? 0 : Math.sign(offset)).filter(Boolean);
+  const changes = signs.slice(1).filter((sign, i) => sign !== signs[i]).length;
+  assert.ok(changes >= 12, "seven short slaloms should change side repeatedly");
 });
 
 test("physical terminal walls keep the racer on the open course", () => {
