@@ -381,18 +381,28 @@
         riderParts.position.set(0, -1.32, -0.22);
         riderBody.add(riderParts);
         group.add(riderBody);
-        motoRider = { body: riderBody, helmet: null, baseY: 1.32 };
+        motoRider = { body: riderBody, helmet: null, arms: [], baseY: 1.32 };
         // Hands naturally grip the bars; bent arms and knees show the pose.
         const suit = paint(0x105dc6);
         rounded(riderParts, suit, 0, 1.80, 0.10, 0.46, 0.43, 0.33);
         box(riderParts, 0.55, 0.10, 0.37, sunYellow, 0, 1.91, 0.33);
         for (const side of [-1, 1]) {
-          rounded(riderParts, sunYellow, side * 0.43, 1.88, 0.02,
+          // Shoulder pivots let each arm follow the handlebars separately.
+          // Nested counter-offset preserves the existing pose at rest.
+          const shoulder = new THREE.Group();
+          shoulder.position.set(side * 0.43, 1.88, 0.02);
+          const arm = new THREE.Group();
+          arm.position.set(-side * 0.43, -1.88, -0.02);
+          shoulder.add(arm);
+          riderParts.add(shoulder);
+          motoRider.arms.push(shoulder);
+          rounded(arm, sunYellow, side * 0.43, 1.88, 0.02,
             0.21, 0.19, 0.26);
-          tube(riderParts, [side * 0.43, 1.80, -0.04],
+          tube(arm, [side * 0.43, 1.80, -0.04],
             [side * 0.49, 1.53, -0.96], 0.135, suit);
-          rounded(riderParts, gloves, side * 0.49, 1.51, -0.96,
+          rounded(arm, gloves, side * 0.49, 1.51, -0.96,
             0.15, 0.12, 0.15);
+          // Knees and boots stay attached to the seated pelvis.
           tube(riderParts, [side * 0.30, 1.53, 0.42],
             [side * 0.43, 1.00, 0.76], 0.16, suit);
           tube(riderParts, [side * 0.43, 1.00, 0.76],

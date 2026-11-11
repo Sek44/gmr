@@ -12,7 +12,7 @@ const gameDirectory = path.join(__dirname, "../games/gcv");
 
 test("GCV loads its vehicle module before the game entry point", () => {
   const html = fs.readFileSync(path.join(gameDirectory, "index.html"), "utf8")
-    .replace(/\?v=20261111f/g, "");
+    .replace(/\?v=20261111g/g, "");
   const race = html.indexOf('<script defer src="./race.js"></script>');
   const vehicles = html.indexOf('<script defer src="./vehicles.js"></script>');
   const game = html.indexOf('<script type="module" src="./game.js"></script>');
@@ -253,6 +253,11 @@ test("sport motorcycle has a crouched rider, full-face helmet and visible fairin
     "the full-face helmet remains independently articulated");
   assert.ok(body.children.some((child) => child.children.includes(helmet)),
     "the helmet is attached to the moving pilot, not the frame");
+  assert.equal(models.motoRider.arms.length, 2,
+    "both handlebars have separately articulated shoulder pivots");
+  assert.ok(models.motoRider.arms.every((arm) =>
+    arm.children.length === 1 && arm.children[0].children.length >= 3),
+  "the arms follow the new pivots without adding new mesh geometry");
   models.setCameraMode(false);
   assert.equal(helmet.visible, false, "inside camera must not see the helmet");
   models.setCameraMode(true);
