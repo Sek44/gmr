@@ -30,6 +30,7 @@ const GcvSession = (() => {
         speed: flow.falling ? 0 : state.driver.speed,
         reverseHold: flow.falling ? 0 : state.driver.reverseHold,
         camera: state.cameraMode,
+        vehicle: state.vehicleId || "classic",
         motion: savedMotion,
         // A fall retains its lap time, but resumes at a safe location.
         lapTimer: state.lapTimer,
@@ -49,6 +50,8 @@ const GcvSession = (() => {
       if (!LapTimes.sameCircuitRoute(saved.circuitKey, circuitKey) ||
           saved.layoutVersion !== layoutVersion) {
         state.cameraMode = saved.camera === "outside" ? "outside" : "inside";
+      if (saved.vehicle) state.vehicleId = saved.vehicle;
+        if (saved.vehicle) state.vehicleId = saved.vehicle;
         return false;
       }
       const valid = ["x", "z", "yaw", "speed"].every((key) => Number.isFinite(saved[key]));
