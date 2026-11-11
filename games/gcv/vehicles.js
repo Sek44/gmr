@@ -485,7 +485,7 @@
         ], racingRed);
 
         // Under-fairing engine, twin fork tubes, silver swingarm and one
-        // short silencer remain readable even in the low camera view.
+        // short silencer remain readable without stand-like support rods.
         rounded(group, graphite, 0, 0.76, 0.13, 0.38, 0.30, 0.40);
         box(group, 0.48, 0.20, 2.30, graphite, 0, 0.86, 0.18);
         for (const side of [-1, 1]) {
@@ -495,8 +495,6 @@
             [side * 0.31, 0.89, 0.52], 0.082, wheelSilver);
           tube(group, [side * 0.31, 0.89, 0.52],
             [side * 0.18, 0.59, 1.35], 0.075, wheelSilver);
-          tube(group, [side * 0.21, 0.87, 0.34],
-            [side * 0.18, 0.59, 1.35], 0.047, brakeMetal);
           const engineCover = new THREE.Mesh(
             new THREE.CylinderGeometry(0.23, 0.23, 0.035, 12), brakeMetal);
           engineCover.rotation.z = Math.PI / 2;
@@ -531,8 +529,6 @@
           0.52, 0.77, 0.99);
         exhaust.rotation.x = -0.12;
         box(group, 0.16, 0.16, 0.035, graphite, 0.52, 0.79, 1.34);
-        tube(group, [-0.24, 0.62, 0.92],
-          [0.24, 0.62, 0.92], 0.045, brakeMetal);
         // Rider-only joint at the hips. The counter-offset keeps every limb
         // in the original position at rest; only these two Groups move.
         const riderBody = new THREE.Group();
@@ -573,13 +569,9 @@
         const helmetGroup = new THREE.Group();
         helmetGroup.position.set(0, 2.30, -0.42);
         rounded(helmetGroup, racingRed, 0, 0, 0, 0.43, 0.42, 0.42);
-        rounded(helmetGroup, white, 0, 0.21, 0.01, 0.16, 0.21, 0.35);
-        // Wide full-face visor, mouth guard and rear aerodynamic fin.
+        // Uniform red helmet shell, with a dark full-face visor and mouth guard.
         rounded(helmetGroup, visor, 0, -0.025, -0.355, 0.36, 0.185, 0.13);
         box(helmetGroup, 0.60, 0.20, 0.22, graphite, 0, -0.24, -0.24);
-        const crest = box(helmetGroup, 0.18, 0.19, 0.62, white,
-          0, 0.35, 0.13);
-        crest.rotation.x = -0.14;
         riderParts.add(helmetGroup);
         motoRider.helmet = helmetGroup;
         helmetHeads.push(helmetGroup);
