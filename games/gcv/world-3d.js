@@ -107,8 +107,8 @@ const GcvWorld3D = (() => {
       }
     }
 
-    // Continuous guardrails on BOTH sides along the entire closed circuit.
-    // The same full-loop collision mask and limit drive their render geometry.
+    // Continuous collision rails retain full sample precision; the visible
+    // mesh is a much cheaper single flat strip per side at lower resolution.
     const barriers = closed
       ? Barriers.create(positions.slice(0, SAMPLE_COUNT), trackLength,
         OUTER_HALF_WIDTH, sides.slice(0, SAMPLE_COUNT), ROAD_HALF_WIDTH)
@@ -122,13 +122,23 @@ const GcvWorld3D = (() => {
         a.x, y1 + high, a.z, b.x, y2 + high, b.z);
       railIndices.push(v, v + 1, v + 2, v + 1, v + 3, v + 2);
     }
-    for (let i = 0; i < SAMPLE_COUNT; i++) {
-      const next = closed ? (i + 1) % SAMPLE_COUNT : i + 1;
+    const railStep = closed ? 2 : 3;
+    for (let i = 0; i < SAMPLE_COUNT; i += railStep) {
+      const next = closed ? (i + railStep) % SAMPLE_COUNT :
+        Math.min(SAMPLE_COUNT, i + railStep);
       for (const side of [-1, 1]) {
         const rail = side > 0 ? barriers.rails.left : barriers.rails.right;
-        const a = rail.points[i], b = rail.points[next];
-        railQuad(a, b, 0.66, 0.91, positions[i].y, positions[next].y);
-        railQuad(a, b, 1.24, 1.45, positions[i].y, positions[next].y);
+        railQuad(rail.points[i], rail.points[next], 0.58, 1.38,
+          positions[i].y, positions[next].y);
+      }
+    }
+    // Close only the physical start and finish of the OPEN route, never its
+    // two timing gates. The classic lap remains unobstructed.
+    if (!closed) {
+      for (const index of [0, SAMPLE_COUNT]) {
+        railQuad(barriers.rails.left.points[index],
+          barriers.rails.right.points[index], 0.58, 1.38,
+          positions[index].y, positions[index].y);
       }
     }
     const railGeometry = new THREE.BufferGeometry();
@@ -142,7 +152,7 @@ const GcvWorld3D = (() => {
     })));
 
     const guardrailPostSamples = [];
-    for (let i = 0; i < SAMPLE_COUNT; i += 5) {
+    for (let i = 0; i < SAMPLE_COUNT; i += 15) {
       guardrailPostSamples.push(i);
     }
     const guardrailPosts = new THREE.InstancedMesh(
