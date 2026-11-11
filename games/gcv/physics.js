@@ -65,6 +65,19 @@ const GcvPhysics = (() => {
     return Math.min(1.5, Math.max(0, (lateralLoad - 45) / 32));
   }
 
+  // Detect the approach to a hump's crest, before the road starts falling.
+  // The look-ahead covers at least one physics frame even at high speed.
+  function shouldLaunchAtCrest(progress, speed, dt, trackLength, humps) {
+    if (!Array.isArray(humps) || !Number.isFinite(progress) ||
+        !Number.isFinite(trackLength) || trackLength <= 0 || speed <= 24)
+      return false;
+    const lead = Math.max(2.1, speed * Math.max(0.016, dt || 0) + 0.75);
+    return humps.some((fraction) => {
+      const metresToCrest = (fraction - progress) * trackLength;
+      return metresToCrest >= -0.8 && metresToCrest <= lead;
+    });
+  }
+
   // Short ballistic jump above the road, independent from the long off-road
   // fall. Analytic integration gives a single reliable touchdown event even
   // with uneven frame times.
@@ -120,7 +133,7 @@ const GcvPhysics = (() => {
     MAX_SPEED, MAX_STEER_RATE, BRAKE_DECELERATION,
     REVERSE_DELAY, REVERSE_MAX_SPEED, GRAVITY, FALL_SECONDS,
     INITIAL_FALL_VELOCITY, JUMP_TAKEOFF_SPEED, JUMP_GRAVITY,
-    advance, skidIntensity, advanceJump, startFall, advanceFall,
+    advance, skidIntensity, shouldLaunchAtCrest, advanceJump, startFall, advanceFall,
   });
 })();
 
