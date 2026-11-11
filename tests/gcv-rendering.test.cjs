@@ -27,7 +27,7 @@ class PerspectiveCamera {
   lookAt(v) { this.target = new Vector().copy(v); }
 }
 
-function fixture(closed = true) {
+function fixture(closed = true, withMotoRider = false) {
   const window = { devicePixelRatio: 3, listeners: {},
     addEventListener(name, cb) { this.listeners[name] = cb; } };
   const stage = { clientWidth: 800, clientHeight: 400 };
@@ -48,10 +48,15 @@ function fixture(closed = true) {
   const curve = { getPointAt(t) { return new Vector(t * 100, 0, 20); },
     getTangentAt() { return new Vector(1, 0, 0); } };
   const THREE = { WebGLRenderer, PerspectiveCamera, Vector3: Vector, SRGBColorSpace: "srgb" };
+  const motoRider = withMotoRider ? {
+    body: { position: new Vector(0, 1.32, 0.22), rotation: { x: 0, y: 0, z: 0 } },
+    helmet: { rotation: { x: 0, y: 0, z: 0 } },
+    baseY: 1.32,
+  } : null;
   const view = Rendering.create({ THREE, window, stage, sceneHost, scene, car,
     wheelPivots, brakeLights, rearBrakeGlows, opponentMeshes, curve,
-    startIndex: 0, SAMPLE_COUNT: 100, trackLength: 1000, closed });
-  return { view, window, stage, sceneHost, scene, car, wheelPivots,
+    startIndex: 0, SAMPLE_COUNT: 100, trackLength: 1000, closed, motoRider });
+  return { view, window, stage, sceneHost, scene, car, motoRider, wheelPivots,
     brakeLights, rearBrakeGlows, ai, renderer: latestRenderer, camera: latestCamera };
 }
 
@@ -174,4 +179,64 @@ test("motorcycle banks into curves and jump nose pitches through flight", () => 
   view.updatePlayer({ driver: rider(0.16, 0.1), dt: 1 / 60, fall: null,
     jumpVelocity: -7, brakePressed: false });
   assert.ok(car.rotation.x > 0.1, "nose drops shortly before landing");
+});
+
+test("Milo reacts subtly to cornering, acceleration and braking", () => {
+  const { view, car, motoRider } = fixture(true, true);
+  view.setVehicle("moto");
+  const sample = (speed, yaw, jumpY = 0) =>
+    ({ x: 0, z: 0, yaw, speed, jumpY });
+  const draw = (driver, jumpVelocity = 0) => view.updatePlayer({
+    driver, fall: null, dt: 0.05, brakePressed: false, jumpVelocity,
+  });
+
+  draw(sample(10, 0));
+  draw(sample(11, 0.08));
+  const { body, helmet } = motoRider;
+  assert.ok(body.rotation.z < -0.005 && body.rotation.z > -0.11,
+    "hips counter the turn with a small, bounded lean");
+  assert.ok(car.rotation.z < 0, "motorcycle itself still leans");
+  assert.ok(helmet.rotation.z > 0 && helmet.rotation.z <= 0.10,
+    "the helmet counterbalances the bike and body");
+  assert.ok(helmet.rotation.y < 0, "the head looks slightly into the corner");
+  assert.ok(body.rotation.x > 0,
+    "acceleration pulls the torso slightly back from the handlebars");
+
+  draw(sample(4, 0.08));
+  assert.ok(body.rotation.x < 0, "hard braking moves the torso forward");
+  assert.ok(body.rotation.x >= -0.14, "braking recoil is restrained");
+});
+
+test("Milo absorbs touchdown once and settles, without affecting other cars", () => {
+  const { view, motoRider } = fixture(true, true);
+  const { body, helmet, baseY } = motoRider;
+  const driver = (jumpY, speed = 27) =>
+    ({ x: 0, z: 0, yaw: 0, speed, jumpY });
+  const draw = (jumpY, velocity = 0, fall = null) => view.updatePlayer({
+    driver: driver(jumpY), jumpVelocity: velocity,
+    fall, dt: 0.05, brakePressed: false,
+  });
+  view.setVehicle("moto");
+  draw(0.3, 7);
+  assert.ok(body.position.y > baseY, "the rider extends slightly on takeoff");
+  draw(0.1, -5);
+  const aboveGround = body.position.y;
+  draw(0);
+  assert.ok(body.position.y < aboveGround,
+    "the rider compresses briefly on touchdown");
+  for (let i = 0; i < 40; i++) draw(0);
+  assert.ok(Math.abs(body.position.y - baseY) < 0.002);
+  assert.ok(Math.abs(body.rotation.x) < 0.002);
+
+  draw(0, 0);
+  view.updatePlayer({ driver: driver(0), fall: { x: 0, y: -1, z: 0, elapsed: 0.2 },
+    dt: 0.05, brakePressed: false });
+  assert.ok(Number.isFinite(body.rotation.z), "fall never destabilizes the pilot");
+  view.setVehicle("kart");
+  assert.equal(body.rotation.x, 0);
+  assert.equal(body.rotation.z, 0);
+  assert.equal(body.position.y, baseY);
+  assert.equal(helmet.rotation.y, 0);
+  draw(0);
+  assert.equal(body.position.y, baseY, "the hidden moto pilot is not animated");
 });
