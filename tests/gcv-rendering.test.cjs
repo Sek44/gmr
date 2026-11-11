@@ -333,10 +333,12 @@ test("motorcycle banks into curves and jump nose pitches through flight", () => 
   view.updatePlayer({ driver: rider(0.14, 0.5), dt: 1 / 60, fall: null,
     jumpVelocity: 7, brakePressed: false });
   assert.ok(car.rotation.z > 0, "motorcycle banks left in a left turn");
-  assert.ok(car.rotation.x < -0.1, "nose lifts on takeoff");
+  assert.ok(car.rotation.x < 0 && car.rotation.x > -0.08,
+    "nose lifts progressively without an initial snap");
   view.updatePlayer({ driver: rider(0.16, 0.1), dt: 1 / 60, fall: null,
     jumpVelocity: -7, brakePressed: false });
-  assert.ok(car.rotation.x > 0.1, "nose drops shortly before landing");
+  assert.ok(car.rotation.x > 0 && car.rotation.x < 0.08,
+    "nose eases downward before landing");
 });
 
 test("motorcycle and rider lean right in right turns, then return upright", () => {
