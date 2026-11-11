@@ -79,7 +79,8 @@ const GcvRendering = (() => {
       const turn = !fall ? clamp(
         (moving ? yawRate : 0) - steerInput * 0.75, -2.8, 2.8) : 0;
       const speed = moving ? Math.abs(driver.speed) : 0;
-      const bodyRoll = clamp(-turn * 0.12, -0.29, 0.29);
+      // Positive yaw and roll both mean a leftward turn/lean.
+      const bodyRoll = clamp(turn * 0.12, -0.29, 0.29);
       const bodyPitch = clamp(
         (moving ? acceleration * 0.006 - Math.min(0.055, speed * 0.0015) : 0) +
         (airborne ? jumpVelocity * 0.010 : 0), -0.24, 0.19);
@@ -100,7 +101,7 @@ const GcvRendering = (() => {
       const headRoll = clamp(-motoLean * 0.20 - body.rotation.z * 0.24,
         -0.10, 0.10);
       helmet.rotation.z += (headRoll - helmet.rotation.z) * headBlend;
-      helmet.rotation.y += (clamp(-turn * 0.075, -0.18, 0.18) -
+      helmet.rotation.y += (clamp(turn * 0.075, -0.18, 0.18) -
         helmet.rotation.y) * headBlend;
       helmet.rotation.x += (clamp(-body.rotation.x * 0.5 +
         bounce * 0.6, -0.12, 0.12) - helmet.rotation.x) * headBlend;
@@ -186,7 +187,7 @@ const GcvRendering = (() => {
         ? clamp((driver.speed - previousSpeed) / dt, -55, 35) : 0;
       previousSpeed = fall ? null : driver.speed;
       const targetLean = selectedVehicle === "moto" && !fall
-        ? Math.max(-0.19, Math.min(0.19, -rate * 0.18)) : 0;
+        ? Math.max(-0.19, Math.min(0.19, rate * 0.18)) : 0;
       motoLean += (targetLean - motoLean) * (1 - Math.exp(-12 * Math.max(0, dt)));
       if (fall) {
         car.position.set(fall.x, fall.y, fall.z);
