@@ -62,7 +62,7 @@
       scene, ROAD_HALF_WIDTH, OUTER_HALF_WIDTH, SAMPLE_COUNT, curve,
       trackLength, positions, directions, sides, barriers,
       startIndex, finishIndex, startCenter, finishCenter, startSide, startYaw,
-      islands, closed,
+      islands, closed, heightAt,
     } = World3D.create({ THREE, TrackLayout, Barriers, Scenery });
     const { car, wheelPivots, brakeLights, rearBrakeGlows, opponentMeshes, setCameraMode } =
       Vehicles.create({ THREE, scene, Race, trackLength, document });
@@ -70,7 +70,7 @@
     const rendering = Rendering.create({
       THREE, window, stage, sceneHost, scene, car, wheelPivots,
       brakeLights, rearBrakeGlows, opponentMeshes, curve,
-      startIndex, SAMPLE_COUNT, trackLength, closed,
+      startIndex, SAMPLE_COUNT, trackLength, closed, heightAt,
     });
     const visualEffects = VisualEffects.create({ THREE, scene, car });
     const hud = Hud.create({ document, LapTimes, Race, layout: TrackLayout });

@@ -5,7 +5,7 @@
 const GcvRendering = (() => {
   function create({ THREE, window, stage, sceneHost, scene, car, wheelPivots,
     brakeLights, rearBrakeGlows, opponentMeshes, curve, startIndex,
-    SAMPLE_COUNT, trackLength, closed = true }) {
+    SAMPLE_COUNT, trackLength, closed = true, heightAt = () => 0 }) {
     const renderer = new THREE.WebGLRenderer({
       antialias: true, alpha: false, powerPreference: "high-performance",
     });
@@ -46,8 +46,8 @@ const GcvRendering = (() => {
         const center = curve.getPointAt(t);
         const forward = curve.getTangentAt(t).normalize();
         const sideX = -forward.z, sideZ = forward.x;
-        mesh.position.set(center.x + sideX * ai.lateral, center.y + 0.14,
-          center.z + sideZ * ai.lateral);
+        mesh.position.set(center.x + sideX * ai.lateral,
+          heightAt(t) + 0.14, center.z + sideZ * ai.lateral);
         mesh.rotation.y = Math.atan2(-forward.x, -forward.z);
       }
     }
