@@ -189,6 +189,31 @@ test("camera has rigid cockpit view and outside view follows smoothly", () => {
   assert.equal(camera.position.x, 19.58);
 });
 
+test("jump takeoff does not jerk chase-camera orientation or body pitch", () => {
+  const { view, car, camera } = fixture();
+  const driver = { x: 10, z: 20, yaw: Math.PI / 2, speed: 35,
+    roadY: 2, jumpY: 0 };
+  view.setView(true);
+  view.updatePlayer({ driver, fall: null, dt: 0, brakePressed: false });
+  view.updateCamera(0);
+  assert.ok(Math.abs(camera.position.x - 19.7) < 1e-8,
+    "chase camera follows heading without vehicle pitch or roll");
+  const startTarget = camera.target.y;
+  const startCameraHeight = camera.position.y;
+  driver.jumpY = 0.14;
+  view.updatePlayer({ driver, fall: null, dt: 1 / 60,
+    brakePressed: false, jumpVelocity: 8.5 });
+  assert.ok(car.rotation.x < 0 && Math.abs(car.rotation.x) < 0.07,
+    "visual pitch eases into the takeoff");
+  view.updateCamera(1 / 60);
+  assert.ok(camera.target.y > startTarget &&
+    camera.target.y - startTarget < 0.05,
+    "look-at direction eases in instead of snapping with the jump");
+  assert.ok(camera.position.y > startCameraHeight &&
+    camera.position.y - startCameraHeight < 0.05,
+    "chase position keeps its existing smoothing");
+});
+
 test("race intro travels smoothly from the side to the exact chase camera", () => {
   const { view, camera, visibility } = fixture();
   view.updatePlayer({ driver: { x: 0, z: 0, yaw: 0, speed: 0 },
