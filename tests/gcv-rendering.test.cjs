@@ -207,7 +207,7 @@ test("rendering module is loaded before game.js and exposes a browser factory", 
   const vm = require("node:vm");
   const folder = path.join(__dirname, "../games/gcv");
   const html = fs.readFileSync(path.join(folder, "index.html"), "utf8")
-    .replace(/\?v=20261111g/g, "");
+    .replace(/\?v=[\w-]+/g, "");
   const renderingOffset = html.indexOf('src="./rendering.js"');
   const gameOffset = html.indexOf('src="./game.js"');
   assert.ok(renderingOffset >= 0 && gameOffset > renderingOffset);
@@ -243,11 +243,30 @@ test("motorcycle banks into curves and jump nose pitches through flight", () => 
     brakePressed: false });
   view.updatePlayer({ driver: rider(0.14, 0.5), dt: 1 / 60, fall: null,
     jumpVelocity: 7, brakePressed: false });
-  assert.ok(car.rotation.z < 0, "motorcycle should lean through a turn");
+  assert.ok(car.rotation.z > 0, "motorcycle banks left in a left turn");
   assert.ok(car.rotation.x < -0.1, "nose lifts on takeoff");
   view.updatePlayer({ driver: rider(0.16, 0.1), dt: 1 / 60, fall: null,
     jumpVelocity: -7, brakePressed: false });
   assert.ok(car.rotation.x > 0.1, "nose drops shortly before landing");
+});
+
+test("motorcycle and rider lean right in right turns, then return upright", () => {
+  const { view, car, motoRider } = fixture(true, true);
+  view.setVehicle("moto");
+  const draw = (yaw) => view.updatePlayer({
+    driver: { x: 0, z: 0, yaw, speed: 20, jumpY: 0 },
+    fall: null, dt: 1 / 60, brakePressed: false,
+  });
+  draw(0);
+  draw(-0.08); // Negative yaw turns right with -Z as forward.
+  assert.ok(car.rotation.z < 0, "motorcycle banks right");
+  assert.ok(motoRider.body.rotation.z < 0, "rider leans right");
+  assert.ok(motoRider.body.position.x > 0, "rider shifts inward");
+  assert.ok(motoRider.helmet.rotation.z > 0, "head counterbalances");
+  assert.ok(motoRider.helmet.rotation.y < 0, "head looks right");
+  for (let i = 0; i < 45; i++) draw(-0.08);
+  assert.ok(Math.abs(car.rotation.z) < 0.001, "bike straightens");
+  assert.ok(Math.abs(motoRider.body.rotation.z) < 0.001, "rider straightens");
 });
 
 test("Milo reacts subtly to cornering, acceleration and braking", () => {
@@ -262,12 +281,12 @@ test("Milo reacts subtly to cornering, acceleration and braking", () => {
   draw(sample(10, 0));
   draw(sample(11, 0.08));
   const { body, helmet, arms } = motoRider;
-  assert.ok(body.rotation.z < -0.04 && body.rotation.z > -0.29,
-    "hips counter the turn with a small, bounded lean");
-  assert.ok(car.rotation.z < 0, "motorcycle itself still leans");
-  assert.ok(helmet.rotation.z > 0 && helmet.rotation.z <= 0.10,
+  assert.ok(body.rotation.z > 0.04 && body.rotation.z < 0.29,
+    "hips lean with the bike into the corner");
+  assert.ok(car.rotation.z > 0, "motorcycle itself leans into the turn");
+  assert.ok(helmet.rotation.z < 0 && helmet.rotation.z >= -0.10,
     "the helmet counterbalances the bike and body");
-  assert.ok(helmet.rotation.y < -0.04, "the head visibly looks into the corner");
+  assert.ok(helmet.rotation.y > 0.04, "the head visibly looks into the corner");
   assert.ok(Math.abs(body.position.x) > 0.04,
     "the torso shifts enough to be visible from the chase camera");
   assert.ok(arms[0].rotation.x * arms[1].rotation.x < 0,
@@ -327,15 +346,15 @@ test("steering input makes Milo move immediately and visibly even at low speed",
   });
   for (let i = 0; i < 8; i++) render(1);
   assert.ok(motoRider.body.position.x > 0.05);
-  assert.ok(motoRider.body.rotation.z > 0.07);
-  assert.ok(motoRider.helmet.rotation.y > 0.04);
+  assert.ok(motoRider.body.rotation.z < -0.07);
+  assert.ok(motoRider.helmet.rotation.y < -0.04);
   const firstArm = motoRider.arms[0].rotation.x;
   const secondArm = motoRider.arms[1].rotation.x;
   assert.ok(Math.abs(firstArm - secondArm) > 0.10);
   for (let i = 0; i < 16; i++) render(-1);
   assert.ok(motoRider.body.position.x < -0.05,
     "pilot visibly crosses to the other side");
-  assert.ok(motoRider.helmet.rotation.y < -0.04);
+  assert.ok(motoRider.helmet.rotation.y > 0.04);
   for (let i = 0; i < 25; i++) render(0);
   assert.ok(Math.abs(motoRider.body.position.x) < 0.003,
     "the pilot smoothly returns to center");
