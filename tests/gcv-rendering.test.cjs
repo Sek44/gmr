@@ -160,3 +160,18 @@ test("the open route caps WebGL framebuffer memory on large Android screens", ()
   assert.ok(renderer.pixelRatio ** 2 * stage.clientWidth * stage.clientHeight <= 750001);
   assert.deepEqual(renderer.size, [1400, 800, false]);
 });
+
+test("motorcycle banks into curves and jump nose pitches through flight", () => {
+  const { view, car } = fixture();
+  view.setVehicle("moto");
+  const rider = (yaw, jumpY = 0) => ({ x: 0, z: 0, yaw, speed: 30, jumpY });
+  view.updatePlayer({ driver: rider(0), dt: 1 / 60, fall: null,
+    brakePressed: false });
+  view.updatePlayer({ driver: rider(0.14, 0.5), dt: 1 / 60, fall: null,
+    jumpVelocity: 7, brakePressed: false });
+  assert.ok(car.rotation.z < 0, "motorcycle should lean through a turn");
+  assert.ok(car.rotation.x < -0.1, "nose lifts on takeoff");
+  view.updatePlayer({ driver: rider(0.16, 0.1), dt: 1 / 60, fall: null,
+    jumpVelocity: -7, brakePressed: false });
+  assert.ok(car.rotation.x > 0.1, "nose drops shortly before landing");
+});
