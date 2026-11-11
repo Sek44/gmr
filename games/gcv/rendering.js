@@ -153,7 +153,9 @@ const GcvRendering = (() => {
       camera.updateProjectionMatrix();
     }
     window.addEventListener("resize", resize);
-    if (typeof ResizeObserver !== "undefined") new ResizeObserver(resize).observe(stage);
+    const resizeObserver = typeof ResizeObserver !== "undefined"
+      ? new ResizeObserver(resize) : null;
+    resizeObserver?.observe(stage);
     resize();
 
     function syncOpponents(opponents) {
@@ -295,9 +297,33 @@ const GcvRendering = (() => {
     }
 
     function render() { renderer.render(scene, camera); }
+    function dispose() {
+      window.removeEventListener("resize", resize);
+      resizeObserver?.disconnect();
+      // Free the old track before allocating another WebGL context on tablets.
+      const materials = new Set();
+      const geometries = new Set();
+      scene.traverse((object) => {
+        if (object.geometry) geometries.add(object.geometry);
+        if (object.material) {
+          for (const material of Array.isArray(object.material)
+            ? object.material : [object.material]) materials.add(material);
+        }
+      });
+      for (const geometry of geometries) geometry.dispose();
+      for (const material of materials) {
+        for (const value of Object.values(material)) {
+          if (value?.isTexture) value.dispose();
+        }
+        material.dispose();
+      }
+      renderer.dispose();
+      renderer.forceContextLoss();
+      renderer.domElement.remove();
+    }
     return {
       syncOpponents, updatePlayer, setView, setVehicle,
-      startGridIntro, cancelGridIntro, updateCamera, render,
+      startGridIntro, cancelGridIntro, updateCamera, render, dispose,
       get gridIntroActive() { return gridIntroElapsed !== null; },
     };
   }
