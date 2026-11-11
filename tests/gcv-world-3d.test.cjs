@@ -12,7 +12,8 @@ const Scenery = require("../games/gcv/scenery.js");
 const directory = path.join(__dirname, "../games/gcv");
 
 test("world is loaded before the GCV entry point", () => {
-  const html = fs.readFileSync(path.join(directory, "index.html"), "utf8");
+  const html = fs.readFileSync(path.join(directory, "index.html"), "utf8")
+    .replace(/\?v=20261111c/g, "");
   const scenery = html.indexOf('<script defer src="./scenery.js"></script>');
   const layout = html.indexOf('<script defer src="./track-layout.js"></script>');
   const barriers = html.indexOf('<script defer src="./barriers.js"></script>');
@@ -168,4 +169,13 @@ test("rainbow world initializes with distinct, valid start and finish gates", ()
     0x37b6d5, 0x5e74df, 0xc879da];
   assert.equal(world.scene.children.filter((node) =>
     rainbowColors.includes(node.material?.color)).length, 7);
+});
+
+test("all local GCV scripts share one cache-busting release version", () => {
+  const html = fs.readFileSync(path.join(directory, "index.html"), "utf8");
+  const versions = [...html.matchAll(/src="\.\/[^"]+\.js\?v=([^"]+)"/g)]
+    .map((match) => match[1]);
+  assert.equal(versions.length, 18);
+  assert.equal(new Set(versions).size, 1);
+  assert.match(html, /game\.css\?v=20261111c/);
 });

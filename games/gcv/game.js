@@ -273,6 +273,8 @@
         const url = new URL(window.location.href);
         if (button.dataset.gcvTrack === "classic") url.searchParams.delete("track");
         else url.searchParams.set("track", button.dataset.gcvTrack);
+        // A new page URL forces an updated HTML document on older tablets.
+        url.searchParams.set("rev", "20261111c");
         window.location.assign(url.href);
       });
     });
@@ -320,7 +322,11 @@
         // The dirt course now handles like the previous paved road, including
         // its safety shoulders. Only truly extreme steering emits particles.
         const previousPosition = { x: driver.x, z: driver.z };
-        driver = Physics.advance(driver, { steer, accelerate, brake }, dt);
+        // Preserve the vertical state; Physics.advance only returns x/z/yaw
+        // and speed. Otherwise the jump resets on every simulation frame.
+        const { roadY = 0, jumpY = 0 } = driver;
+        driver = { ...Physics.advance(driver, { steer, accelerate, brake }, dt),
+          roadY, jumpY };
         mudSkidIntensity = Physics.skidIntensity(driver.speed, steer);
         let nearest = closestRoad(driver.x, driver.z, lapTracker.index);
         // Slide along the barrier and progressively match its forward

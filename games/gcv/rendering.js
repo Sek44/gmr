@@ -6,10 +6,14 @@ const GcvRendering = (() => {
   function create({ THREE, window, stage, sceneHost, scene, car, wheelPivots,
     brakeLights, rearBrakeGlows, opponentMeshes, curve, startIndex,
     SAMPLE_COUNT, trackLength, closed = true, heightAt = () => 0 }) {
+    // Limit framebuffer allocations for the longer open route. On older
+    // tablet GPUs, MSAA at 1.7x pixel ratio can exhaust WebGL memory during
+    // initialization, leaving the menu apparently frozen.
+    const compact = !closed;
+    const MAX_OPEN_TRACK_PIXELS = 750000;
     const renderer = new THREE.WebGLRenderer({
-      antialias: true, alpha: false, powerPreference: "high-performance",
+      antialias: !compact, alpha: false, powerPreference: "high-performance",
     });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.7));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     sceneHost.append(renderer.domElement);
 
@@ -26,6 +30,12 @@ const GcvRendering = (() => {
     function resize() {
       const width = Math.max(1, stage.clientWidth);
       const height = Math.max(1, stage.clientHeight);
+      const deviceRatio = window.devicePixelRatio || 1;
+      const pixelRatio = compact
+        ? Math.min(deviceRatio, 1.15,
+          Math.sqrt(MAX_OPEN_TRACK_PIXELS / (width * height)))
+        : Math.min(deviceRatio, 1.7);
+      renderer.setPixelRatio(pixelRatio);
       renderer.setSize(width, height, false);
       camera.aspect = width / height;
       camera.fov = width < height ? 77 : 72;

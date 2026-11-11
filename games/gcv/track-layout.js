@@ -33,8 +33,8 @@ const GcvTrackLayout = (() => {
   // original track. Array waypoints are only for Catmull-Rom construction.
   const pointAt = ([x, z]) => Object.freeze({ x, z });
   const SPRINT = Object.freeze({
-    ID: "rainbow", NAME: "Route Arc-en-ciel", VERSION: 1,
-    CLOSED: false, SAMPLE_COUNT: 1200, ROAD_HALF_WIDTH,
+    ID: "rainbow", NAME: "Route Arc-en-ciel", VERSION: 2,
+    CLOSED: false, SAMPLE_COUNT: 720, ROAD_HALF_WIDTH,
     SHOULDER_WIDTH, WAYPOINTS: SPRINT_POINTS,
     START: pointAt(SPRINT_POINTS[2]),
     FINISH: pointAt(SPRINT_POINTS[SPRINT_POINTS.length - 2]),

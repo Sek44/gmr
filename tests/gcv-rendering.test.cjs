@@ -27,7 +27,7 @@ class PerspectiveCamera {
   lookAt(v) { this.target = new Vector().copy(v); }
 }
 
-function fixture() {
+function fixture(closed = true) {
   const window = { devicePixelRatio: 3, listeners: {},
     addEventListener(name, cb) { this.listeners[name] = cb; } };
   const stage = { clientWidth: 800, clientHeight: 400 };
@@ -50,7 +50,7 @@ function fixture() {
   const THREE = { WebGLRenderer, PerspectiveCamera, Vector3: Vector, SRGBColorSpace: "srgb" };
   const view = Rendering.create({ THREE, window, stage, sceneHost, scene, car,
     wheelPivots, brakeLights, rearBrakeGlows, opponentMeshes, curve,
-    startIndex: 0, SAMPLE_COUNT: 100, trackLength: 1000 });
+    startIndex: 0, SAMPLE_COUNT: 100, trackLength: 1000, closed });
   return { view, window, stage, sceneHost, scene, car, wheelPivots,
     brakeLights, rearBrakeGlows, ai, renderer: latestRenderer, camera: latestCamera };
 }
@@ -132,7 +132,8 @@ test("rendering module is loaded before game.js and exposes a browser factory", 
   const path = require("node:path");
   const vm = require("node:vm");
   const folder = path.join(__dirname, "../games/gcv");
-  const html = fs.readFileSync(path.join(folder, "index.html"), "utf8");
+  const html = fs.readFileSync(path.join(folder, "index.html"), "utf8")
+    .replace(/\?v=20261111c/g, "");
   const renderingOffset = html.indexOf('src="./rendering.js"');
   const gameOffset = html.indexOf('src="./game.js"');
   assert.ok(renderingOffset >= 0 && gameOffset > renderingOffset);
@@ -146,4 +147,16 @@ test("rendering module is loaded before game.js and exposes a browser factory", 
   assert.match(entry, /Rendering\.create\(/);
   assert.match(entry, /rendering\.render\(\)/);
   assert.doesNotMatch(entry, /new THREE\.WebGLRenderer/);
+});
+
+test("the open route caps WebGL framebuffer memory on large Android screens", () => {
+  const { renderer, window, stage } = fixture(false);
+  assert.equal(renderer.options.antialias, false);
+  assert.equal(renderer.pixelRatio, 1.15);
+  stage.clientWidth = 1400;
+  stage.clientHeight = 800;
+  window.listeners.resize();
+  assert.ok(renderer.pixelRatio < 1);
+  assert.ok(renderer.pixelRatio ** 2 * stage.clientWidth * stage.clientHeight <= 750001);
+  assert.deepEqual(renderer.size, [1400, 800, false]);
 });

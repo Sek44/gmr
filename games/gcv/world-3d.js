@@ -357,8 +357,9 @@ const GcvWorld3D = (() => {
     });
     const rockGeometry = new THREE.DodecahedronGeometry(1, 1);
     const islands = [];
-    for (let i = 0; i < 22; i++) {
-      const index = Math.floor(i * SAMPLE_COUNT / 22);
+    const rockCount = closed ? 22 : 12;
+    for (let i = 0; i < rockCount; i++) {
+      const index = Math.floor(i * SAMPLE_COUNT / rockCount);
       const side = i % 2 === 0 ? -1 : 1;
       const rockRadius = 8.5 + (i % 4) * 1.4;
       const rockHeight = 22 + (i % 5) * 3.5;
