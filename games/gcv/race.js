@@ -228,7 +228,9 @@ const GcvRace = (() => {
 
   // Sessions from prior game revisions are intentionally not migrated.
   function restore(saved, trackLength, laps = LAPS) {
-    if (!saved || saved.laps !== laps || saved.paceVersion !== PACE_VERSION ||
+    // Legacy callers supplied an optional third callback, not a lap count.
+    const expectedLaps = Number.isSafeInteger(laps) && laps > 0 ? laps : LAPS;
+    if (!saved || saved.laps !== expectedLaps || saved.paceVersion !== PACE_VERSION ||
         saved.distanceModel !== "unified-motion-v1" ||
         !Number.isFinite(trackLength) ||
         Math.abs(saved.trackLength - trackLength) > 0.01 ||
@@ -239,7 +241,7 @@ const GcvRace = (() => {
         Math.abs(saved.playerMotion.progress - saved.playerProgress) > 0.001 ||
         saved.playerMotion.laps !== saved.playerLapTimes?.length ||
         !Array.isArray(saved.playerLapTimes) ||
-        saved.playerLapTimes.length > laps ||
+        saved.playerLapTimes.length > expectedLaps ||
         saved.playerLapTimes.some((ms) => !Number.isFinite(ms) || ms < 0) ||
         !Array.isArray(saved.opponents) || saved.opponents.length !== AI_COUNT ||
         saved.opponents.some((ai) => !Number.isFinite(ai.progress) ||
