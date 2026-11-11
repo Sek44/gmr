@@ -45,7 +45,7 @@
   let disposeGame = null;
   let activeFlow = null;
   let activeNavigation = null;
-  const preferences = Preferences.create();
+  let preferences = null;
 
   function announce(message) {
     notice.textContent = message;
@@ -55,6 +55,7 @@
   try {
     if (!Physics || !TrackProgress || !Scenery || !World3D || !Tracks || !LapTimes || !Race || !Barriers || !Vehicles || !VisualEffects || !Rendering || !Controls || !Hud || !MiniMap || !Navigation || !Session || !Flow || !Preferences)
       throw new Error("Les modules de conduite sont introuvables.");
+    preferences = Preferences.create();
     const THREE = await import("https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js");
     // Mount the shared time budget once; each rebuilt circuit supplies its
     // current flow to the same persistent counter and fullscreen stage.

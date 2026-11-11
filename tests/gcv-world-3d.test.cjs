@@ -175,7 +175,7 @@ test("all local GCV scripts share one cache-busting release version", () => {
   const html = fs.readFileSync(path.join(directory, "index.html"), "utf8");
   const versions = [...html.matchAll(/src="\.\/[^"]+\.js\?v=([^"]+)"/g)]
     .map((match) => match[1]);
-  assert.equal(versions.length, 18);
+  assert.equal(versions.length, 19);
   assert.equal(new Set(versions).size, 1);
   assert.match(html, /game\.css\?v=\d{8}[a-z]/);
 });
