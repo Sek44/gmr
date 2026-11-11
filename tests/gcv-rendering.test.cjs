@@ -55,11 +55,14 @@ function fixture(closed = true, withMotoRider = false) {
       ({ rotation: { x: 0, y: 0, z: 0 } })),
     baseY: 1.32,
   } : null;
+  const visibility = [];
   const view = Rendering.create({ THREE, window, stage, sceneHost, scene, car,
     wheelPivots, brakeLights, rearBrakeGlows, opponentMeshes, curve,
-    startIndex: 0, SAMPLE_COUNT: 100, trackLength: 1000, closed, motoRider });
+    startIndex: 0, SAMPLE_COUNT: 100, trackLength: 1000, closed, motoRider,
+    onCameraVisibility: (outside) => visibility.push(outside) });
   return { view, window, stage, sceneHost, scene, car, motoRider, wheelPivots,
-    brakeLights, rearBrakeGlows, ai, renderer: latestRenderer, camera: latestCamera };
+    brakeLights, rearBrakeGlows, ai, visibility,
+    renderer: latestRenderer, camera: latestCamera };
 }
 
 test("WebGL renderer initializes, handles portrait resize and draws", () => {
@@ -121,6 +124,69 @@ test("camera has rigid cockpit view and outside view follows smoothly", () => {
   view.setView(false);
   view.updateCamera(0.016);
   assert.equal(camera.position.x, 19.58);
+});
+
+test("race intro travels smoothly from the side to the exact chase camera", () => {
+  const { view, camera, visibility } = fixture();
+  view.updatePlayer({ driver: { x: 0, z: 0, yaw: 0, speed: 0 },
+    fall: null, dt: 0, brakePressed: false });
+  view.setView(true);
+  view.startGridIntro();
+  view.updateCamera(0);
+  assert.equal(view.gridIntroActive, true);
+  assert.equal(camera.position.x, -7.5);
+  assert.equal(camera.position.z, 4.1);
+  const midway = Rendering.GRID_INTRO_DURATION / 2;
+  view.updateCamera(midway);
+  assert.ok(camera.position.x > -7.5 && camera.position.x < 0);
+  view.updateCamera(midway);
+  assert.equal(view.gridIntroActive, false);
+  assert.deepEqual([camera.position.x, camera.position.y, camera.position.z],
+    [0, 4.64, 9.7]);
+  assert.deepEqual([camera.target.x, camera.target.y, camera.target.z],
+    [0, 1.27, -8]);
+  assert.deepEqual(visibility, [true, true]);
+  view.updateCamera(0.016);
+  assert.equal(camera.position.z, 9.7, "handoff must not change the chase pose");
+});
+
+test("cockpit intro enters only in the final third and hides the helmet late", () => {
+  const { view, camera, visibility } = fixture();
+  view.setVehicle("moto");
+  view.updatePlayer({ driver: { x: 0, z: 0, yaw: 0, speed: 0 },
+    fall: null, dt: 0, brakePressed: false });
+  view.setView(false);
+  view.startGridIntro();
+  view.updateCamera(Rendering.GRID_INTRO_DURATION * 2 / 3);
+  assert.equal(camera.position.x, 0);
+  assert.equal(camera.position.z, 8.6);
+  assert.deepEqual(visibility, [true]);
+  view.updateCamera(Rendering.GRID_INTRO_DURATION / 6);
+  assert.ok(camera.position.z < 8.6 && camera.position.z > 0.29);
+  assert.deepEqual(visibility, [true]);
+  view.updateCamera(Rendering.GRID_INTRO_DURATION / 6);
+  assert.equal(view.gridIntroActive, false);
+  assert.deepEqual([camera.position.x, camera.position.y, camera.position.z],
+    [0, 2.36, 0.29]);
+  assert.deepEqual(visibility, [true, false, false]);
+  view.updateCamera(0.016);
+  assert.equal(camera.position.z, 0.29, "handoff must not jump into the cockpit");
+});
+
+test("race intro freezes when paused and cancels on a manual camera change", () => {
+  const { view, camera, visibility } = fixture();
+  view.setView(false);
+  view.startGridIntro();
+  view.updateCamera(0.8);
+  const pausedPosition = [camera.position.x, camera.position.y, camera.position.z];
+  view.updateCamera(0);
+  assert.deepEqual([camera.position.x, camera.position.y, camera.position.z],
+    pausedPosition);
+  view.setView(true);
+  assert.equal(view.gridIntroActive, false);
+  assert.deepEqual(visibility, [true, false]);
+  view.updateCamera(0);
+  assert.equal(camera.position.z, 9.7);
 });
 
 test("race opponents follow track and disappear in free mode", () => {

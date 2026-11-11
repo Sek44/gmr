@@ -7,7 +7,8 @@ const GcvSession = (() => {
     trackLength, SAMPLE_COUNT, OUTER_HALF_WIDTH, Physics, TrackProgress,
     LapTimes, Race, progressSamples, startOffset, closestRoad, snapBack,
     clearControls, clearLapHold, resetResultsCooldown, renderSession,
-    setLapCount, announce, resume, raceLaps = Race.LAPS }) {
+    setLapCount, announce, resume, onRaceStart = () => {},
+    raceLaps = Race.LAPS }) {
     let binding = null;
     let autosaveElapsed = 0;
     const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -108,6 +109,7 @@ const GcvSession = (() => {
       state.lapTimer = LapTimes.initial(SAMPLE_COUNT, progressSamples(state.lapTracker.progress));
       announce("");
       renderSession();
+      onRaceStart();
       resume();
     }
 

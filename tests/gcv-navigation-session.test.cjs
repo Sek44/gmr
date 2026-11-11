@@ -99,6 +99,7 @@ function fixture(previous = null) {
   };
   const flow = Flow.create();
   let stored = previous, clears = 0, writes = 0, renders = 0, resumes = 0;
+  let intros = 0;
   const store = {
     load: () => stored,
     clear() { clears++; stored = null; },
@@ -136,10 +137,11 @@ function fixture(previous = null) {
     startOffset: () => 0, closestRoad: () => ({ index: 0, distanceSquared: 0 }),
     snapBack() {}, clearControls() {}, clearLapHold() {},
     resetResultsCooldown() {}, renderSession() { renders++; },
+    onRaceStart() { intros++; },
     setLapCount() {}, announce() {}, resume() { resumes++; flow.resume(); },
   });
   return { s, state, flow, store,
-    counters: () => ({ clears, writes, renders, resumes }),
+    counters: () => ({ clears, writes, renders, resumes, intros }),
     stored: () => stored };
 }
 
@@ -186,9 +188,14 @@ test("session switches free -> race -> previous free trial, and restarts", () =>
   assert.equal(state.lapTimer.elapsedMs, 0);
   assert.equal(counters().renders >= 3, true);
   assert.equal(counters().resumes, 2);
+  assert.equal(counters().intros, 1, "only a new race triggers the intro");
   assert.equal(counters().writes >= 2, true);
   s.tickAutosave(1.6);
   assert.equal(counters().writes >= 3, true);
+  s.startRace();
+  assert.equal(counters().intros, 2, "restarting a race replays the intro");
+  s.restartNearFinish();
+  assert.equal(counters().intros, 3, "the Départ button also replays it");
 });
 
 test("fall snapshots respawn safely without losing stopwatch or race progress", () => {

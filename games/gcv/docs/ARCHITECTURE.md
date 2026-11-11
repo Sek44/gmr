@@ -27,10 +27,10 @@ Il n'existe ni serveur de jeu, ni build, ni moteur physique externe. Les autres 
 | `scores-adapter.js` | Rendu des records de tours dans la page Scores générale, enregistré auprès de `GameScores` sans dépendance GCV dans le service partagé |
 | `race.js` | Grille, phases, IA, classement ; trois tours du circuit fermé ou une traversée du parcours ouvert |
 | `flow.js` | État de l'écran, activité courante et chute, avec transitions contrôlées |
-| `session.js` | Entrée dans les modes, reprise, redémarrage, snapshots et autosauvegarde |
+| `session.js` | Entrée dans les modes, reprise, redémarrage, snapshots et autosauvegarde ; signal `onRaceStart` uniquement lors d'un nouveau départ en course (y compris « Départ ») |
 | `navigation.js` | Menu, scores en iframe, commandes plein écran et pause liée à la navigation |
 | `controls.js` | Clavier, direction tactile, pédales multitouch et remise à zéro des commandes |
-| `rendering.js` | WebGL, caméras adaptées au véhicule choisi, transformations, rotation des roues, inclinaison de la moto en virage, assiette pendant les sauts et animation procédurale amortie du motard suivant vitesse, accélération, rotation et atterrissage |
+| `rendering.js` | WebGL, caméras adaptées au véhicule choisi, travelling de grille (`startGridIntro`, progression de 3,8 s côté → arrière → cockpit selon la vue, annulable et interrompu pendant une pause), visibilité du pilote coordonnée via `onCameraVisibility`, transformations, rotation des roues, inclinaison de la moto en virage, assiette pendant les sauts et animation procédurale amortie du motard suivant vitesse, accélération, rotation et atterrissage |
 | `visual-effects.js` | Particules dynamiques de boue et étincelles de friction ; petite gerbe radiale de poussière à l'atterrissage réutilisant le tampon de particules existant (`land`) sans nouvel appel de dessin |
 | `hud.js` | Indicateurs de conduite, chrono, classements et panneau d'arrivée |
 | `mini-map.js` | Carte ouverte/fermée, départ et arrivée distincts, secteurs et marqueurs dynamiques |
@@ -41,7 +41,7 @@ Il n'existe ni serveur de jeu, ni build, ni moteur physique externe. Les autres 
 2. `barriers.js` corrige le contact avec les rails ; le suivi du segment de piste utilise les points et tangentes générés par `world-3d.js`.
 3. `track-progress.js` projette le déplacement réel sur la tangente, reconnaît le passage géométrique de ligne et produit des événements `start` ou `lap` **validés**. Les indices d'échantillon n'autorisent pas les tours.
 4. `lap-times.js` reçoit la progression pour les secteurs et les événements de ligne validés pour le chrono. `race.js` reçoit le même mouvement/les mêmes événements pour les tours, les temps de passage et le classement ; le moteur de course avance aussi les IA.
-5. `race.js` reste autoritaire pour ses phases (`staging`, `countdown`, `racing`, `finished`) ; `flow.js` synchronise ces phases et contrôle leur transition. Les axes écran (`menu`, `play`, `scores`) et chute sont indépendants de l'avancement de la course.
+5. `race.js` reste autoritaire pour ses phases (`staging`, `countdown`, `racing`, `finished`) ; `flow.js` synchronise ces phases et contrôle leur transition. Les axes écran (`menu`, `play`, `scores`) et chute sont indépendants de l'avancement de la course. `session.js` déclenche le travelling de départ par `onRaceStart` après le placement sur la grille ; `rendering.js` anime uniquement la caméra pendant l'attente et le décompte, sans modifier la simulation ni la progression des phases. Le temps de travelling n'est pas persisté.
 6. `hud.js`, `mini-map.js`, `rendering.js` et `visual-effects.js` présentent l'état résultant, sans recalculer les tours.
 7. `session.js` extrait des snapshots du même état pour la persistance.
 

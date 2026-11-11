@@ -3,10 +3,28 @@
 // GCV Three.js rendering: WebGL lifecycle, car transforms, camera and viewport.
 // The driving simulation, lap timing and requestAnimationFrame loop stay in game.js.
 const GcvRendering = (() => {
+  // The camera reveal finishes before the 3-2-1 countdown ends (2 s grid
+  // staging plus 3 s countdown). No extra delay is added to the race.
+  const GRID_INTRO_DURATION = 3.8;
+  const GRID_REAR_FRACTION = 2 / 3;
+  const smoothStep = (value) => {
+    const t = Math.max(0, Math.min(1, value));
+    return t * t * (3 - 2 * t);
+  };
+
+  function introFractions(progress, outsideView) {
+    if (outsideView) return { approach: smoothStep(progress), enter: 0 };
+    return {
+      approach: smoothStep(progress / GRID_REAR_FRACTION),
+      enter: smoothStep((progress - GRID_REAR_FRACTION) /
+        (1 - GRID_REAR_FRACTION)),
+    };
+  }
+
   function create({ THREE, window, stage, sceneHost, scene, car, wheelPivots,
     brakeLights, rearBrakeGlows, opponentMeshes, extraWheelPivots = [], curve, startIndex,
     SAMPLE_COUNT, trackLength, closed = true, heightAt = () => 0,
-    motoRider = null }) {
+    motoRider = null, onCameraVisibility = () => {} }) {
     // Limit framebuffer allocations for the longer open route. On older
     // tablet GPUs, MSAA at 1.7x pixel ratio can exhaust WebGL memory during
     // initialization, leaving the menu apparently frozen.
@@ -23,10 +41,16 @@ const GcvRendering = (() => {
     const outsidePosition = new THREE.Vector3(0, 4.5, 9.7);
     const insideTarget = new THREE.Vector3(-0.42, 1.49, -14);
     const outsideTarget = new THREE.Vector3(0, 1.13, -8);
+    // Start on the player's outer grid side, at an oblique angle that shows
+    // the bodywork and pilot. The grid's adjacent car is on the other side.
+    const introSidePosition = new THREE.Vector3(-7.5, 3.2, 4.1);
+    const introSideTarget = new THREE.Vector3(0, 1.3, 0);
     const desiredPosition = new THREE.Vector3();
     const desiredTarget = new THREE.Vector3();
     let outsideView = false;
     let initializedCamera = false;
+    let gridIntroElapsed = null;
+    let introCockpitVisible = false;
     let selectedVehicle = "classic";
     let previousYaw = null;
     let motoLean = 0;
@@ -181,9 +205,25 @@ const GcvRendering = (() => {
       for (const glow of rearBrakeGlows) glow.intensity = brakePressed ? 3.5 : 0;
     }
 
+    function cancelGridIntro() {
+      if (gridIntroElapsed !== null) onCameraVisibility(outsideView);
+      gridIntroElapsed = null;
+      introCockpitVisible = false;
+    }
+
+    function startGridIntro() {
+      gridIntroElapsed = 0;
+      introCockpitVisible = false;
+      initializedCamera = false;
+      // Keep the rider and helmet visible while orbiting the vehicle, even
+      // when the selected driving view is the cockpit.
+      onCameraVisibility(true);
+    }
+
     // Place the cockpit camera above the selected pilot's seat or helmet,
     // keeping the road unobstructed for each vehicle silhouette.
     function setVehicle(id) {
+      cancelGridIntro();
       selectedVehicle = id;
       previousYaw = null;
       motoLean = 0;
@@ -205,10 +245,40 @@ const GcvRendering = (() => {
     }
     function setView(outside) {
       outsideView = Boolean(outside);
+      cancelGridIntro();
       initializedCamera = false;
     }
 
     function updateCamera(dt) {
+      if (gridIntroElapsed !== null) {
+        gridIntroElapsed = Math.min(GRID_INTRO_DURATION,
+          gridIntroElapsed + Math.max(0, dt));
+        const progress = gridIntroElapsed / GRID_INTRO_DURATION;
+        const { approach, enter } = introFractions(progress, outsideView);
+        desiredPosition.copy(introSidePosition).lerp(outsidePosition, approach);
+        desiredTarget.copy(introSideTarget).lerp(outsideTarget, approach);
+        if (!outsideView) {
+          // Only the final third moves from the exact chase-camera pose into
+          // the cockpit; at completion it is identical to the driving view.
+          desiredPosition.lerp(insidePosition, enter);
+          desiredTarget.lerp(insideTarget, enter);
+          if (enter > 0.88 && !introCockpitVisible) {
+            introCockpitVisible = true;
+            onCameraVisibility(false);
+          }
+        }
+        car.localToWorld(desiredPosition);
+        car.localToWorld(desiredTarget);
+        camera.position.copy(desiredPosition);
+        camera.lookAt(desiredTarget);
+        initializedCamera = true;
+        if (gridIntroElapsed >= GRID_INTRO_DURATION) {
+          gridIntroElapsed = null;
+          onCameraVisibility(outsideView);
+        }
+        return;
+      }
+
       desiredPosition.copy(outsideView ? outsidePosition : insidePosition);
       desiredTarget.copy(outsideView ? outsideTarget : insideTarget);
       car.localToWorld(desiredPosition);
@@ -225,10 +295,14 @@ const GcvRendering = (() => {
     }
 
     function render() { renderer.render(scene, camera); }
-    return { syncOpponents, updatePlayer, setView, setVehicle, updateCamera, render };
+    return {
+      syncOpponents, updatePlayer, setView, setVehicle,
+      startGridIntro, cancelGridIntro, updateCamera, render,
+      get gridIntroActive() { return gridIntroElapsed !== null; },
+    };
   }
 
-  return { create };
+  return { create, GRID_INTRO_DURATION, introFractions };
 })();
 
 if (typeof window !== "undefined") window.GcvRendering = GcvRendering;

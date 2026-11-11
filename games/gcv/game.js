@@ -80,6 +80,7 @@
       THREE, window, stage, sceneHost, scene, car, wheelPivots,
       brakeLights, rearBrakeGlows, opponentMeshes, extraWheelPivots, motoRider, curve,
       startIndex, SAMPLE_COUNT, trackLength, closed, heightAt,
+      onCameraVisibility: setCameraMode,
     });
     const visualEffects = VisualEffects.create({ THREE, scene, car });
     const hud = Hud.create({ document, LapTimes, Race, layout: TrackLayout });
@@ -273,6 +274,10 @@
       progressSamples, startOffset, closestRoad, snapBack, clearControls,
       clearLapHold, resetResultsCooldown: () => { resultRefreshCooldown = 0; },
       renderSession, setLapCount: (laps) => hud.setLapCount(laps), announce,
+      onRaceStart: () => {
+        rendering.startGridIntro();
+        rendering.updateCamera(0);
+      },
       resume: navigation.resume,
     });
     function chooseVehicle(id, updateUrl = false) {
@@ -545,7 +550,8 @@
         tickLapHold(realDt);
         refreshChrono();
       }
-      rendering.updateCamera(dt);
+      // The opening shot must freeze with the race if menu/scores are open.
+      rendering.updateCamera(navigation.paused ? 0 : dt);
       session.tickAutosave(dt);
       mapElapsed += dt;
       if (mapElapsed >= 0.09) {
