@@ -62,6 +62,7 @@ const GcvRendering = (() => {
     const introSideTarget = new THREE.Vector3(0, 1.3, 0);
     const desiredPosition = new THREE.Vector3();
     const desiredTarget = new THREE.Vector3();
+    const smoothedTarget = new THREE.Vector3();
     let outsideView = false;
     let initializedCamera = false;
     let gridIntroElapsed = null;
@@ -69,6 +70,7 @@ const GcvRendering = (() => {
     let selectedVehicle = "classic";
     let previousYaw = null;
     let motoLean = 0;
+    let visualPitch = 0;
     let previousSpeed = null;
     let wasJumping = false;
     let landingCompression = 0;
@@ -264,14 +266,18 @@ const GcvRendering = (() => {
         ? Math.max(-0.19, Math.min(0.19, rate * 0.18)) : 0;
       motoLean += (targetLean - motoLean) * (1 - Math.exp(-12 * Math.max(0, dt)));
       if (fall) {
+        visualPitch = 0;
         car.position.set(fall.x, fall.y, fall.z);
         // The nose tips down while falling, independently of steering.
         car.rotation.set(Math.min(0.68, fall.elapsed * 0.42), driver.yaw, 0, "YXZ");
       } else {
         car.position.set(driver.x, 0.14 + (driver.roadY || 0) + (driver.jumpY || 0), driver.z);
-        const pitch = (driver.jumpY || 0) > 0
+        const targetPitch = (driver.jumpY || 0) > 0
           ? Math.max(-0.16, Math.min(0.16, -jumpVelocity * 0.018)) : 0;
-        car.rotation.set(pitch, driver.yaw, motoLean, "YXZ");
+        // Avoid an instantaneous body rotation on the launch frame.
+        visualPitch += (targetPitch - visualPitch) *
+          (1 - Math.exp(-16 * Math.max(0, dt)));
+        car.rotation.set(visualPitch, driver.yaw, motoLean, "YXZ");
       }
       animateMotoRider(dt, driver, rate, steerInput, acceleration,
         jumpVelocity, fall);
@@ -304,6 +310,7 @@ const GcvRendering = (() => {
       selectedVehicle = id;
       previousYaw = null;
       motoLean = 0;
+      visualPitch = 0;
       resetMotoRider();
       const cockpits = {
         classic: [-0.42, 1.51, 0.34],
@@ -324,6 +331,16 @@ const GcvRendering = (() => {
       outsideView = Boolean(outside);
       cancelGridIntro();
       initializedCamera = false;
+    }
+
+    // Chase framing follows heading and position, not instantaneous
+    // pitch/roll from the vehicle's jump or motorcycle lean.
+    function yawToWorld(point) {
+      const angle = car.rotation.y;
+      const x = point.x, z = point.z;
+      point.set(car.position.x + x * Math.cos(angle) + z * Math.sin(angle),
+        car.position.y + point.y,
+        car.position.z - x * Math.sin(angle) + z * Math.cos(angle));
     }
 
     function updateCamera(dt) {
@@ -348,6 +365,7 @@ const GcvRendering = (() => {
         car.localToWorld(desiredTarget);
         camera.position.copy(desiredPosition);
         camera.lookAt(desiredTarget);
+        smoothedTarget.copy(desiredTarget);
         initializedCamera = true;
         if (gridIntroElapsed >= GRID_INTRO_DURATION) {
           gridIntroElapsed = null;
@@ -358,16 +376,21 @@ const GcvRendering = (() => {
 
       desiredPosition.copy(outsideView ? outsidePosition : insidePosition);
       desiredTarget.copy(outsideView ? outsideTarget : insideTarget);
-      car.localToWorld(desiredPosition);
-      car.localToWorld(desiredTarget);
-      if (!outsideView) {
-        // Rigid cockpit mount: never smooth the inside camera.
-        camera.position.copy(desiredPosition);
-      } else {
-        const blend = initializedCamera ? 1 - Math.exp(-8 * dt) : 1;
+      if (outsideView) {
+        yawToWorld(desiredPosition);
+        yawToWorld(desiredTarget);
+        const blend = initializedCamera ? 1 - Math.exp(-8 * Math.max(0, dt)) : 1;
+        const aimBlend = initializedCamera ? 1 - Math.exp(-10 * Math.max(0, dt)) : 1;
         camera.position.lerp(desiredPosition, blend);
+        smoothedTarget.lerp(desiredTarget, aimBlend);
+      } else {
+        car.localToWorld(desiredPosition);
+        car.localToWorld(desiredTarget);
+        // The cockpit remains mounted to the vehicle.
+        camera.position.copy(desiredPosition);
+        smoothedTarget.copy(desiredTarget);
       }
-      camera.lookAt(desiredTarget);
+      camera.lookAt(smoothedTarget);
       initializedCamera = true;
     }
 
