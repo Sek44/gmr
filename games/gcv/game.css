@@ -6,14 +6,14 @@
 .gcv-number { justify-self: end; font-weight: 850; color: #ce273a; font-size: 1.05rem; }
 
 .gcv-home {
-  position: absolute; inset: 0; z-index: 9; display: flex; align-items: center;
+  position: absolute; inset: 0; z-index: 9; display: flex; align-items: flex-start;
   justify-content: center; padding: 64px 16px 16px; overflow-y: auto;
   background: linear-gradient(145deg, #071626db, #142e43bc);
   touch-action: pan-y;
 }
 .gcv-home-panel {
   display: flex; flex-direction: column; align-items: center; gap: 10px;
-  width: min(470px, 100%); padding: clamp(14px, 3vw, 27px);
+  width: min(525px, 100%); padding: clamp(12px, 2.5vw, 24px); margin-block: auto;
   border-radius: 22px; border: 1px solid #aecbd58c;
   background: #0b2036eb; box-shadow: 0 16px 54px #0009;
   color: white; text-align: center;
@@ -418,4 +418,42 @@
   background: #74352c;
   font-weight: 700;
   text-align: center;
+}
+
+/* Five compact, touch-friendly vehicle/pilot cards. The menu scrolls rather
+   than clipping its top row on short landscape tablets and phones. */
+.gcv-vehicle-chooser {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px; width: 100%;
+}
+.gcv-vehicle-choice {
+  min-width: 0; min-height: 61px; padding: 7px 9px;
+  display: flex; flex-direction: row; align-items: center;
+  justify-content: flex-start; gap: 9px;
+}
+.gcv-vehicle-icon {
+  font-size: 1.7rem !important; line-height: 1; flex: 0 0 32px;
+  text-align: center;
+}
+.gcv-vehicle-label {
+  min-width: 0; display: flex; flex-direction: column;
+  gap: 2px; text-align: left;
+}
+.gcv-vehicle-label strong { font-size: .85rem; line-height: 1.14; }
+.gcv-vehicle-label small { font-size: .68rem; color: #cbdce8; line-height: 1.15; }
+.gcv-vehicle-choice[data-gcv-vehicle="moto"] { border-left: 3px solid #41aaf0; }
+.gcv-vehicle-choice[data-gcv-vehicle="kart"] { border-left: 3px solid #f2cc4e; }
+.gcv-vehicle-choice[data-gcv-vehicle="buggy"] { border-left: 3px solid #64c974; }
+.gcv-vehicle-choice[data-gcv-vehicle="comet"] { border-left: 3px solid #bc91e7; }
+.gcv-track-chooser { width: 100%; margin-block: 3px; }
+@media (max-width: 380px) {
+  .gcv-vehicle-chooser { gap: 5px; }
+  .gcv-vehicle-choice { padding: 6px; gap: 5px; }
+  .gcv-vehicle-icon { flex-basis: 27px; font-size: 1.4rem !important; }
+  .gcv-vehicle-label strong { font-size: .76rem; }
+}
+@media (max-height: 480px) and (orientation: landscape) {
+  .gcv-home { padding-top: 48px; }
+  .gcv-home-panel { gap: 6px; }
+  .gcv-vehicle-choice { min-height: 43px; padding-block: 4px; }
 }
