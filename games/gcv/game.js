@@ -510,14 +510,22 @@
             }
           }
           hud.setLapCount(lapTracker.laps);
-          // The three crests launch a short, sharp ballistic hop. Its
-          // touchdown is a single event for the dust FX, not a new race lap.
-          const previousRoadY = driver.roadY || 0;
-          driver.roadY = positions[nearest.index].y;
+          // Project the vehicle between track samples rather than stepping
+          // its altitude by a whole sample (visible as a camera hitch).
+          const roadCenter = positions[nearest.index];
+          const tangent = directions[nearest.index];
+          const along = (driver.x - roadCenter.x) * tangent.x +
+            (driver.z - roadCenter.z) * tangent.z;
+          const trackFraction = Math.max(0, Math.min(1,
+            nearest.index / SAMPLE_COUNT + along / trackLength));
+          driver.roadY = heightAt(trackFraction);
+          // Anticipate the crest instead of detecting a drop after passing it.
+          // Landing dust remains a single event, separate from race progress.
           jumpCooldown = Math.max(0, jumpCooldown - dt);
-          if (!closed && driver.speed > 24 && jumpCooldown === 0 &&
+          if (!closed && jumpCooldown === 0 &&
               jumpVelocity === 0 && driver.jumpY === 0 &&
-              previousRoadY > 1.7 && driver.roadY < previousRoadY - 0.09) {
+              Physics.shouldLaunchAtCrest(trackFraction, driver.speed, dt,
+                trackLength, TrackLayout.HUMPS)) {
             jumpVelocity = Physics.JUMP_TAKEOFF_SPEED;
             driver.jumpY = 0.01;
             jumpCooldown = 0.85; // No repeated takeoff on the same hump.
