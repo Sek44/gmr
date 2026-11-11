@@ -213,6 +213,21 @@ test("short ramp jumps lift off sharply and land once within 0.65 seconds", () =
   assert.ok(2 * physics.JUMP_TAKEOFF_SPEED / physics.JUMP_GRAVITY < 0.65);
 });
 
+test("a hump launches the vehicle just before its crest, not after the descent", () => {
+  const humps = [0.23, 0.39, 0.81];
+  const takeoff = (progress, speed = 30, dt = 1 / 60) =>
+    physics.shouldLaunchAtCrest(progress, speed, dt, 1000, humps);
+  assert.equal(takeoff(0.227), false, "too far from the first crest");
+  assert.equal(takeoff(0.228), true, "takeoff begins two metres before the top");
+  assert.equal(takeoff(0.389), true, "every crest is considered");
+  assert.equal(takeoff(0.811), false, "must not take off down the slope");
+  assert.equal(takeoff(0.228, 20), false, "slow vehicles remain on the ground");
+  assert.equal(takeoff(0.228, -30), false, "reverse never triggers a jump");
+  assert.equal(takeoff(0.225, 65, 0.05), false);
+  assert.equal(takeoff(0.227, 65, 0.05), true,
+    "high speed anticipates more than a single frame of travel");
+});
+
 test("jump touchdown is detected even at low frame rates", () => {
   let jump = { height: 0.01, velocity: physics.JUMP_TAKEOFF_SPEED };
   let landingCount = 0;
