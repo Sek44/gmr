@@ -15,8 +15,8 @@ const GcvHud = (() => {
     const deltaLabel = document.getElementById("lap-delta");
     const deltaValue = document.getElementById("lap-delta-value");
     const splitLabel = document.getElementById("lap-split-label");
-    const bestsTitle = document.querySelector(".gcv-bests-title");
-    if (!closed) bestsTitle.textContent = "Meilleurs parcours";
+    const bestsTitle = document.querySelector?.(".gcv-bests-title");
+    if (!closed && bestsTitle) bestsTitle.textContent = "Meilleurs parcours";
     const bestLabels = [1, 2, 3].map((rank) =>
       document.getElementById("best-lap-" + rank));
     const freeModeButton = document.getElementById("free-mode-button");
