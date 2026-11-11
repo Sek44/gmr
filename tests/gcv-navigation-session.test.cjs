@@ -222,7 +222,7 @@ test("older session revisions are canceled without touching record stores", () =
 test("navigation and session modules are valid globals loaded before the GCV entry", () => {
   const dir = path.join(__dirname, "../games/gcv");
   const html = fs.readFileSync(path.join(dir, "index.html"), "utf8")
-    .replace(/\?v=20261111f/g, "");
+    .replace(/\?v=20261111g/g, "");
   const entry = html.indexOf('src="./game.js"');
   const flowScript = html.indexOf('src="./flow.js"');
   const nav = html.indexOf('src="./navigation.js"');
