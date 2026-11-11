@@ -51,6 +51,8 @@ function fixture(closed = true, withMotoRider = false) {
   const motoRider = withMotoRider ? {
     body: { position: new Vector(0, 1.32, 0.22), rotation: { x: 0, y: 0, z: 0 } },
     helmet: { rotation: { x: 0, y: 0, z: 0 } },
+    arms: Array.from({ length: 2 }, () =>
+      ({ rotation: { x: 0, y: 0, z: 0 } })),
     baseY: 1.32,
   } : null;
   const view = Rendering.create({ THREE, window, stage, sceneHost, scene, car,
@@ -192,13 +194,17 @@ test("Milo reacts subtly to cornering, acceleration and braking", () => {
 
   draw(sample(10, 0));
   draw(sample(11, 0.08));
-  const { body, helmet } = motoRider;
-  assert.ok(body.rotation.z < -0.005 && body.rotation.z > -0.11,
+  const { body, helmet, arms } = motoRider;
+  assert.ok(body.rotation.z < -0.04 && body.rotation.z > -0.29,
     "hips counter the turn with a small, bounded lean");
   assert.ok(car.rotation.z < 0, "motorcycle itself still leans");
   assert.ok(helmet.rotation.z > 0 && helmet.rotation.z <= 0.10,
     "the helmet counterbalances the bike and body");
-  assert.ok(helmet.rotation.y < 0, "the head looks slightly into the corner");
+  assert.ok(helmet.rotation.y < -0.04, "the head visibly looks into the corner");
+  assert.ok(Math.abs(body.position.x) > 0.04,
+    "the torso shifts enough to be visible from the chase camera");
+  assert.ok(arms[0].rotation.x * arms[1].rotation.x < 0,
+    "the two arms react in opposite directions to steering");
   assert.ok(body.rotation.x > 0,
     "acceleration pulls the torso slightly back from the handlebars");
 
@@ -225,8 +231,10 @@ test("Milo absorbs touchdown once and settles, without affecting other cars", ()
   assert.ok(body.position.y < aboveGround,
     "the rider compresses briefly on touchdown");
   for (let i = 0; i < 40; i++) draw(0);
-  assert.ok(Math.abs(body.position.y - baseY) < 0.002);
-  assert.ok(Math.abs(body.rotation.x) < 0.002);
+  assert.ok(Math.abs(body.position.y - baseY) < 0.05,
+    "small road vibration remains possible at speed");
+  assert.ok(body.rotation.x < 0 && body.rotation.x > -0.08,
+    "the pilot returns to a slight high-speed crouch");
 
   draw(0, 0);
   view.updatePlayer({ driver: driver(0), fall: { x: 0, y: -1, z: 0, elapsed: 0.2 },
@@ -237,6 +245,44 @@ test("Milo absorbs touchdown once and settles, without affecting other cars", ()
   assert.equal(body.rotation.z, 0);
   assert.equal(body.position.y, baseY);
   assert.equal(helmet.rotation.y, 0);
+  assert.ok(motoRider.arms.every((arm) =>
+    arm.rotation.x === 0 && arm.rotation.z === 0));
   draw(0);
   assert.equal(body.position.y, baseY, "the hidden moto pilot is not animated");
+});
+
+test("steering input makes Milo move immediately and visibly even at low speed", () => {
+  const { view, motoRider } = fixture(true, true);
+  view.setVehicle("moto");
+  const driver = { x: 0, z: 0, yaw: 0, speed: 6 };
+  const render = (steerInput) => view.updatePlayer({
+    driver, fall: null, dt: 0.05, steerInput, brakePressed: false,
+  });
+  for (let i = 0; i < 8; i++) render(1);
+  assert.ok(motoRider.body.position.x > 0.05);
+  assert.ok(motoRider.body.rotation.z > 0.07);
+  assert.ok(motoRider.helmet.rotation.y > 0.04);
+  const firstArm = motoRider.arms[0].rotation.x;
+  const secondArm = motoRider.arms[1].rotation.x;
+  assert.ok(Math.abs(firstArm - secondArm) > 0.10);
+  for (let i = 0; i < 16; i++) render(-1);
+  assert.ok(motoRider.body.position.x < -0.05,
+    "pilot visibly crosses to the other side");
+  assert.ok(motoRider.helmet.rotation.y < -0.04);
+  for (let i = 0; i < 25; i++) render(0);
+  assert.ok(Math.abs(motoRider.body.position.x) < 0.003,
+    "the pilot smoothly returns to center");
+});
+
+test("the moto chase camera frames the rider closer", () => {
+  const { view, camera } = fixture();
+  view.setVehicle("moto");
+  view.updatePlayer({
+    driver: { x: 0, z: 0, yaw: 0, speed: 0 },
+    fall: null, dt: 0, brakePressed: false,
+  });
+  view.setView(true);
+  view.updateCamera(0);
+  assert.ok(camera.position.z < 8, "the rider is larger in the chase view");
+  assert.ok(camera.position.y < 4, "camera stays above the motorcycle");
 });
