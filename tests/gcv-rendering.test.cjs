@@ -166,8 +166,9 @@ test("cockpit intro enters only in the final third and hides the helmet late", (
   assert.deepEqual(visibility, [true]);
   view.updateCamera(Rendering.GRID_INTRO_DURATION / 6);
   assert.equal(view.gridIntroActive, false);
-  assert.deepEqual([camera.position.x, camera.position.y, camera.position.z],
-    [0, 2.36, 0.29]);
+  assert.equal(camera.position.x, 0);
+  assert.ok(Math.abs(camera.position.y - 2.36) < 1e-9);
+  assert.equal(camera.position.z, 0.29);
   assert.deepEqual(visibility, [true, false, false]);
   view.updateCamera(0.016);
   assert.equal(camera.position.z, 0.29, "handoff must not jump into the cockpit");
