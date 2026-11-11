@@ -175,6 +175,10 @@ const GcvSession = (() => {
     return {
       bind, changed, tickAutosave, snapshot, restore,
       startRace, chooseFree, restartNearFinish,
+      stop() {
+        binding?.stop({ discard: true });
+        binding = null;
+      },
     };
   }
   return { create };
