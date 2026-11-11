@@ -40,7 +40,7 @@
   const Session = window.GcvSession;
   const Flow = window.GcvFlow;
   // Bump this revision after incompatible GCV updates. Old sessions are canceled.
-  const SAVE_REVISION = 10;
+  const SAVE_REVISION = 11;
 
   function announce(message) {
     notice.textContent = message;
@@ -71,12 +71,14 @@
       startIndex, finishIndex, startCenter, finishCenter, startSide, startYaw,
       islands, closed, heightAt,
     } = World3D.create({ THREE, TrackLayout, Barriers, Scenery });
-    const { car, wheelPivots, brakeLights, rearBrakeGlows, opponentMeshes, setCameraMode } =
-      Vehicles.create({ THREE, scene, Race, trackLength, document });
+    const {
+      car, wheelPivots, extraWheelPivots, brakeLights, rearBrakeGlows,
+      opponentMeshes, setCameraMode, setVehicle,
+    } = Vehicles.create({ THREE, scene, Race, trackLength, document });
 
     const rendering = Rendering.create({
       THREE, window, stage, sceneHost, scene, car, wheelPivots,
-      brakeLights, rearBrakeGlows, opponentMeshes, curve,
+      brakeLights, rearBrakeGlows, opponentMeshes, extraWheelPivots, curve,
       startIndex, SAMPLE_COUNT, trackLength, closed, heightAt,
     });
     const visualEffects = VisualEffects.create({ THREE, scene, car });
@@ -95,6 +97,9 @@
       speed: 0, roadY: initial.y, jumpY: 0,
     };
     let cameraMode = "outside";
+    let vehicleId = Vehicles.normalize(new URL(window.location.href).searchParams.get("vehicle"));
+    setVehicle(vehicleId);
+    rendering.setVehicle(vehicleId);
     function startOffset(index) {
       let samples = index - startIndex;
       if (closed) {
@@ -226,6 +231,8 @@
       refreshCameraButton();
       refreshChrono();
       rendering.setView(cameraMode === "outside");
+      setVehicle(vehicleId);
+      rendering.setVehicle(vehicleId);
       updateCar(0);
       rendering.updateCamera(0);
       drawMap();
@@ -235,6 +242,7 @@
     const sessionState = {
       get driver() { return driver; }, set driver(v) { driver = v; },
       get cameraMode() { return cameraMode; }, set cameraMode(v) { cameraMode = v; },
+      get vehicleId() { return vehicleId; }, set vehicleId(v) { vehicleId = Vehicles.normalize(v); },
       get lapTracker() { return lapTracker; }, set lapTracker(v) { lapTracker = v; },
       get lapTimer() { return lapTimer; }, set lapTimer(v) { lapTimer = v; },
       get raceState() { return raceState; }, set raceState(v) { raceState = v; },
@@ -262,6 +270,30 @@
       renderSession, setLapCount: (laps) => hud.setLapCount(laps), announce,
       resume: navigation.resume,
     });
+    function chooseVehicle(id, updateUrl = false) {
+      vehicleId = Vehicles.normalize(id);
+      setVehicle(vehicleId);
+      rendering.setVehicle(vehicleId);
+      document.querySelectorAll("[data-gcv-vehicle]").forEach((button) => {
+        const selected = button.dataset.gcvVehicle === vehicleId;
+        button.classList.toggle("is-selected", selected);
+        button.setAttribute("aria-pressed", String(selected));
+      });
+      if (updateUrl) {
+        // The URL keeps the selected crew when switching circuits/reloading.
+        const url = new URL(window.location.href);
+        if (vehicleId === Vehicles.DEFAULT_ID) url.searchParams.delete("vehicle");
+        else url.searchParams.set("vehicle", vehicleId);
+        window.history.replaceState(null, "", url.href);
+        session?.changed();
+      }
+    }
+    document.querySelectorAll("[data-gcv-vehicle]").forEach((button) => {
+      button.addEventListener("click", () => {
+        if (vehicleId !== button.dataset.gcvVehicle)
+          chooseVehicle(button.dataset.gcvVehicle, true);
+      });
+    });
     document.querySelectorAll("[data-gcv-track]").forEach((button) => {
       const active = button.dataset.gcvTrack === TrackLayout.ID;
       button.classList.toggle("is-selected", active);
@@ -274,7 +306,7 @@
         if (button.dataset.gcvTrack === "classic") url.searchParams.delete("track");
         else url.searchParams.set("track", button.dataset.gcvTrack);
         // A new page URL forces an updated HTML document on older tablets.
-        url.searchParams.set("rev", "20261111c");
+        url.searchParams.set("rev", "20261111d");
         window.location.assign(url.href);
       });
     });
@@ -293,6 +325,7 @@
     });
 
     session.bind();
+    chooseVehicle(vehicleId);
     syncRaceCars();
     syncRaceHud();
     navigation.sync(); // Always open on home, including after restoration.
@@ -349,6 +382,14 @@
             z: driver.z + sign * side.z * Barriers.CAR_RADIUS,
             nx: sign * side.x, nz: sign * side.z,
           };
+          nearest = closestRoad(driver.x, driver.z, lapTracker.index);
+        }
+        const endCap = Barriers.resolveEndCaps(driver, nearest.index,
+          positions, directions, sides, barriers);
+        if (endCap.collided) {
+          driver.x = endCap.x;
+          driver.z = endCap.z;
+          driver.speed = endCap.speed;
           nearest = closestRoad(driver.x, driver.z, lapTracker.index);
         }
         if (nearest.distanceSquared > OUTER_HALF_WIDTH * OUTER_HALF_WIDTH) {
@@ -423,23 +464,28 @@
             jumpVelocity -= Physics.GRAVITY * dt;
             if (driver.jumpY === 0) jumpVelocity = 0;
           }
-          // Inside the coloured rails, the winding channel gently guides the
-          // kart through its zigzags without replacing the player's controls.
+          // Distinct automatic slalom: four smooth left/right oscillations,
+          // stronger than merely following the spline's normal bends.
           if (TrackLayout.RAINBOW && driver.speed > 8 &&
               nearest.index / SAMPLE_COUNT >= TrackLayout.RAINBOW[0] &&
               nearest.index / SAMPLE_COUNT <= TrackLayout.RAINBOW[1]) {
+            const section = TrackLayout.RAINBOW;
+            const fraction = (nearest.index / SAMPLE_COUNT - section[0]) /
+              (section[1] - section[0]);
+            const zigzag = TrackLayout.zigzagAt(fraction);
             const tangent = directions[nearest.index];
-            const guidedYaw = Math.atan2(-tangent.x, -tangent.z);
+            const side = sides[nearest.index], center = positions[nearest.index];
+            const slope = zigzag.slope / (trackLength * (section[1] - section[0]));
+            const guidedYaw = Math.atan2(
+              -(tangent.x + side.x * slope), -(tangent.z + side.z * slope));
             const error = Math.atan2(Math.sin(guidedYaw - driver.yaw),
               Math.cos(guidedYaw - driver.yaw));
-            driver.yaw += Math.max(-0.65, Math.min(0.65, error)) *
-              Math.min(1, dt * 2.8);
-            const side = sides[nearest.index], center = positions[nearest.index];
+            driver.yaw += error * (1 - Math.exp(-7 * dt));
             const lateral = (driver.x - center.x) * side.x +
               (driver.z - center.z) * side.z;
-            const correction = Math.min(1, dt * 1.45);
-            driver.x -= side.x * lateral * correction;
-            driver.z -= side.z * lateral * correction;
+            const correction = (zigzag.offset - lateral) * (1 - Math.exp(-5.8 * dt));
+            driver.x += side.x * correction;
+            driver.z += side.z * correction;
           }
         }
       }
