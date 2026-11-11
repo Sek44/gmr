@@ -215,8 +215,8 @@ test("older session revisions are canceled without touching record stores", () =
   assert.equal(flow.hasSession, false);
   const cat = fs.readFileSync(path.join(__dirname, "../games/catalog.js"), "utf8");
   const game = fs.readFileSync(path.join(__dirname, "../games/gcv/game.js"), "utf8");
-  assert.match(cat, /saveRevision:\s*9/);
-  assert.match(game, /SAVE_REVISION = 9/);
+  assert.match(cat, /saveRevision:\s*10/);
+  assert.match(game, /SAVE_REVISION = 10/);
 });
 
 test("navigation and session modules are valid globals loaded before the GCV entry", () => {

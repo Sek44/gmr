@@ -5,7 +5,7 @@
 const GcvRendering = (() => {
   function create({ THREE, window, stage, sceneHost, scene, car, wheelPivots,
     brakeLights, rearBrakeGlows, opponentMeshes, curve, startIndex,
-    SAMPLE_COUNT, trackLength }) {
+    SAMPLE_COUNT, trackLength, closed = true }) {
     const renderer = new THREE.WebGLRenderer({
       antialias: true, alpha: false, powerPreference: "high-performance",
     });
@@ -41,11 +41,12 @@ const GcvRendering = (() => {
         mesh.visible = Boolean(ai);
         if (!ai) continue;
         // Use arc length, including on the final long straight.
-        const t = (((startIndex / SAMPLE_COUNT + ai.progress / trackLength) % 1) + 1) % 1;
+        const rawT = startIndex / SAMPLE_COUNT + ai.progress / trackLength;
+        const t = closed ? ((rawT % 1) + 1) % 1 : Math.max(0, Math.min(1, rawT));
         const center = curve.getPointAt(t);
         const forward = curve.getTangentAt(t).normalize();
         const sideX = -forward.z, sideZ = forward.x;
-        mesh.position.set(center.x + sideX * ai.lateral, 0.14,
+        mesh.position.set(center.x + sideX * ai.lateral, center.y + 0.14,
           center.z + sideZ * ai.lateral);
         mesh.rotation.y = Math.atan2(-forward.x, -forward.z);
       }
@@ -57,8 +58,9 @@ const GcvRendering = (() => {
         // The nose tips down while falling, independently of steering.
         car.rotation.set(Math.min(0.68, fall.elapsed * 0.42), driver.yaw, 0, "YXZ");
       } else {
-        car.position.set(driver.x, 0.14, driver.z);
-        car.rotation.set(0, driver.yaw, 0, "YXZ");
+        car.position.set(driver.x, 0.14 + (driver.roadY || 0) + (driver.jumpY || 0), driver.z);
+        car.rotation.set((driver.jumpY || 0) > 0 ? -0.045 : 0,
+          driver.yaw, 0, "YXZ");
       }
       for (const wheel of wheelPivots) wheel.rotation.x -= driver.speed * dt / 0.46;
       car.updateMatrixWorld(true); // Needed before particles use car.localToWorld().

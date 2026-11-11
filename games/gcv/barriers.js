@@ -203,6 +203,25 @@ const GcvBarriers = (() => {
     };
   }
 
+  // Point-to-point rails have real endpoints and cannot be treated as a loop.
+  function createOpen(positions, length, outerHalfWidth, normals) {
+    const offset = outerHalfWidth - RAIL_OFFSET_INWARD;
+    function rail(sign) {
+      const points = positions.map((p, i) => ({
+        x: p.x + normals[i].x * sign * offset,
+        z: p.z + normals[i].z * sign * offset,
+      }));
+      return { points, skippedSamples: new Uint8Array(points.length),
+        offsets: points.map(() => offset),
+        limits: points.map(() => offset - CAR_RADIUS) };
+    }
+    return {
+      closed: false, protectedSamples: new Uint8Array(positions.length).fill(1),
+      lengthMeters: length, railOffset: offset, carLimit: offset - CAR_RADIUS,
+      rails: { left: rail(1), right: rail(-1) },
+    };
+  }
+
   function resolve(previous, proposed, index, center, side, barriers, dt = 1 / 60) {
     if (!barriers.protectedSamples[index]) {
       return { ...proposed, collided: false };
@@ -242,8 +261,8 @@ const GcvBarriers = (() => {
     if (rail && rail.points.length >= 3 &&
         !(rail.skippedSamples && rail.skippedSamples[index])) {
       const points = rail.points, n = points.length;
-      const before = points[(index + n - 1) % n];
-      const after = points[(index + 1) % n];
+      const before = points[barriers.closed === false ? Math.max(0, index - 1) : (index + n - 1) % n];
+      const after = points[barriers.closed === false ? Math.min(n - 1, index + 1) : (index + 1) % n];
       const tx = after.x - before.x, tz = after.z - before.z;
       const length = Math.hypot(tx, tz);
       if (length > 1e-8) {
@@ -279,7 +298,7 @@ const GcvBarriers = (() => {
   return Object.freeze({
     CAR_RADIUS, RAIL_OFFSET_INWARD, INNER_RADIUS_FRACTION, ROAD_EDGE_MARGIN,
     MAX_CONTACT_SPEED,
-    normalAt, curvatureAt, railIntersections, create, resolve,
+    normalAt, curvatureAt, railIntersections, create, createOpen, resolve,
   });
 })();
 if (typeof window !== "undefined") window.GcvBarriers = GcvBarriers;

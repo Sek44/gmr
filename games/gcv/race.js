@@ -53,7 +53,7 @@ const GcvRace = (() => {
     return fast + (slow - fast) * fraction;
   }
 
-  function create(trackLength, random = Math.random, initialMotion = null) {
+  function create(trackLength, random = Math.random, initialMotion = null, laps = LAPS) {
     if (!Number.isFinite(trackLength) || trackLength <= 0) {
       throw new Error("Invalid track length");
     }
@@ -64,7 +64,9 @@ const GcvRace = (() => {
       if (slot === PLAYER_SLOT) continue;
       const grid = gridSlot(slot);
       const rank = opponents.length;
-      const targetLapSeconds = lapTarget(rank, random);
+      const targetLapSeconds = laps === 1
+        ? 27 + rank * 1.4 + Math.max(0, Math.min(1, random())) * 1.2
+        : lapTarget(rank, random);
       opponents.push({
         id: slot, progress: -grid.distance, lateral: grid.lateral,
         // Speed is fixed at launch but randomized between races. Its target
@@ -78,7 +80,7 @@ const GcvRace = (() => {
     return {
       phase: "staging", gridWait: GRID_WAIT_SECONDS,
       countdown: COUNTDOWN_SECONDS, elapsed: 0,
-      trackLength, laps: LAPS, paceVersion: PACE_VERSION,
+      trackLength, laps, paceVersion: PACE_VERSION,
       playerProgress: playerMotion.progress, playerMotion,
       opponents, finishPosition: null, raceTime: null,
       playerLapTimes: [],
@@ -128,7 +130,7 @@ const GcvRace = (() => {
   }
 
   function currentLap(race) {
-    return Math.min(LAPS, race.playerMotion.laps + 1);
+    return Math.min(race.laps, race.playerMotion.laps + 1);
   }
 
   // Integrate motion from rest with a limited starting acceleration, then
@@ -168,7 +170,7 @@ const GcvRace = (() => {
         Math.max(0, -remaining), 0);
     }
 
-    const finishDistance = LAPS * race.trackLength;
+    const finishDistance = race.laps * race.trackLength;
     const allFinished = race.opponents.every((ai) =>
       Number.isFinite(ai.finishTime));
     if (race.phase === "finished" && allFinished) return race;
@@ -201,12 +203,12 @@ const GcvRace = (() => {
     const lapTimes = race.playerLapTimes.slice();
     for (const event of motion.events) {
       if (event.type !== "lap" || event.lap !== lapTimes.length + 1 ||
-          lapTimes.length >= LAPS) continue;
+          lapTimes.length >= race.laps) continue;
       const crossingTime = race.elapsed + dt * event.fraction;
       const previousTime = lapTimes.reduce((a, b) => a + b, 0);
       lapTimes.push(Math.max(0, crossingTime - previousTime));
     }
-    const hasFinished = lapTimes.length === LAPS;
+    const hasFinished = lapTimes.length === race.laps;
     const playerMotion = hasFinished
       ? { ...motion.state, progress: finishDistance } : motion.state;
     const updated = {
@@ -225,8 +227,8 @@ const GcvRace = (() => {
   }
 
   // Sessions from prior game revisions are intentionally not migrated.
-  function restore(saved, trackLength) {
-    if (!saved || saved.laps !== LAPS || saved.paceVersion !== PACE_VERSION ||
+  function restore(saved, trackLength, laps = LAPS) {
+    if (!saved || saved.laps !== laps || saved.paceVersion !== PACE_VERSION ||
         saved.distanceModel !== "unified-motion-v1" ||
         !Number.isFinite(trackLength) ||
         Math.abs(saved.trackLength - trackLength) > 0.01 ||
@@ -237,7 +239,7 @@ const GcvRace = (() => {
         Math.abs(saved.playerMotion.progress - saved.playerProgress) > 0.001 ||
         saved.playerMotion.laps !== saved.playerLapTimes?.length ||
         !Array.isArray(saved.playerLapTimes) ||
-        saved.playerLapTimes.length > LAPS ||
+        saved.playerLapTimes.length > laps ||
         saved.playerLapTimes.some((ms) => !Number.isFinite(ms) || ms < 0) ||
         !Array.isArray(saved.opponents) || saved.opponents.length !== AI_COUNT ||
         saved.opponents.some((ai) => !Number.isFinite(ai.progress) ||

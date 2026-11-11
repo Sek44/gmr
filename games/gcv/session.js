@@ -7,7 +7,7 @@ const GcvSession = (() => {
     trackLength, SAMPLE_COUNT, OUTER_HALF_WIDTH, Physics, TrackProgress,
     LapTimes, Race, progressSamples, startOffset, closestRoad, snapBack,
     clearControls, clearLapHold, resetResultsCooldown, renderSession,
-    setLapCount, announce, resume }) {
+    setLapCount, announce, resume, raceLaps = Race.LAPS }) {
     let binding = null;
     let autosaveElapsed = 0;
     const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -52,11 +52,12 @@ const GcvSession = (() => {
         return false;
       }
       const valid = ["x", "z", "yaw", "speed"].every((key) => Number.isFinite(saved[key]));
-      if (valid && Math.abs(saved.x) < 220 && Math.abs(saved.z) < 220) {
+      if (valid) {
         state.driver = {
           x: saved.x, z: saved.z, yaw: saved.yaw,
           speed: clamp(saved.speed, -Physics.REVERSE_MAX_SPEED, Physics.MAX_SPEED),
           reverseHold: clamp(Number(saved.reverseHold) || 0, 0, Physics.REVERSE_DELAY),
+          roadY: 0, jumpY: 0,
         };
         const near = closestRoad(state.driver.x, state.driver.z);
         if (near.distanceSquared > OUTER_HALF_WIDTH * OUTER_HALF_WIDTH) {
@@ -64,6 +65,8 @@ const GcvSession = (() => {
         }
       }
       const nearestIndex = closestRoad(state.driver.x, state.driver.z).index;
+      state.driver.roadY = positions[nearestIndex].y;
+      state.driver.jumpY = 0;
       state.lapTracker = TrackProgress.createMotion(
         trackLength, startOffset(nearestIndex), nearestIndex, saved.motion);
       state.lapTimer = LapTimes.restore(saved.lapTimer, SAMPLE_COUNT,
@@ -71,7 +74,7 @@ const GcvSession = (() => {
       setLapCount(state.lapTracker.laps);
       state.cameraMode = saved.camera === "outside" ? "outside" : "inside";
       const restoredRace = saved.mode === "race"
-        ? Race.restore(saved.race, trackLength) : null;
+        ? Race.restore(saved.race, trackLength, raceLaps) : null;
       flow.restore(restoredRace ? "race" : "free", restoredRace?.phase);
       state.raceState = restoredRace;
       if (restoredRace) state.lapTracker = restoredRace.playerMotion;
@@ -92,12 +95,13 @@ const GcvSession = (() => {
         .addScaledVector(directions[startIndex], -grid.distance)
         .addScaledVector(startSide, grid.lateral);
       const current = closestRoad(start.x, start.z).index;
-      state.driver = { x: start.x, z: start.z, yaw: startYaw, speed: 0, reverseHold: 0 };
+      state.driver = { x: start.x, z: start.z, yaw: startYaw, speed: 0, reverseHold: 0,
+        roadY: positions[current].y, jumpY: 0 };
       flow.land();
       state.fall = null;
       state.respawnIndex = current;
       state.lapTracker = TrackProgress.createMotion(trackLength, -grid.distance, current);
-      state.raceState = Race.create(trackLength, Math.random, state.lapTracker);
+      state.raceState = Race.create(trackLength, Math.random, state.lapTracker, raceLaps);
       state.lapTimer = LapTimes.initial(SAMPLE_COUNT, progressSamples(state.lapTracker.progress));
       announce("");
       renderSession();
@@ -133,6 +137,7 @@ const GcvSession = (() => {
       state.driver = {
         x: beforeLine.x, z: beforeLine.z, yaw: startYaw,
         speed: 0, reverseHold: 0,
+        roadY: positions[index].y, jumpY: 0,
       };
       flow.land();
       state.fall = null;

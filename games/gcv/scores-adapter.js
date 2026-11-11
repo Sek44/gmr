@@ -10,13 +10,14 @@
 
   function renderGcvLaps(container) {
     if (!window.GcvLapTimes || !window.GcvTrackLayout) return;
-    const records = window.GcvLapTimes.createStore(window.GcvTrackLayout).top();
+    for (const track of [window.GcvTrackLayout, window.GcvTrackLayout.SPRINT]) {
+    const records = window.GcvLapTimes.createStore(track).top();
     const section = node("section", "gcv-lap-results");
-    section.append(node("h3", "", "Grande Course Voiture · 3 meilleurs tours"));
+    section.append(node("h3", "", "Super Kart · " + track.NAME + " · 3 meilleurs temps"));
     if (!records.length) {
       section.append(node("p", "muted", "Aucun tour chronométré sur ce circuit."));
       container.append(section);
-      return;
+      continue;
     }
     const scroll = node("div", "table-scroll");
     const table = node("table", "history-table");
@@ -45,6 +46,7 @@
     scroll.append(table);
     section.append(scroll);
     container.append(section);
+    }
   }
 
   window.GameScores.registerRenderer("gcv", renderGcvLaps);

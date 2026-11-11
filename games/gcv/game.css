@@ -377,3 +377,32 @@
   .gcv-action.is-fullscreen .gcv-icon-expand { display: none; }
   .gcv-action.is-fullscreen .gcv-icon-collapse { display: block; }
 }
+
+
+/* Circuit chooser on the in-game menu */
+.gcv-track-chooser {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin: 0.8rem 0 1rem;
+}
+.gcv-track-choice {
+  min-width: 0;
+  padding: 0.8rem 0.45rem;
+  font-weight: 750;
+  text-align: center;
+  border: 2px solid rgba(255, 255, 255, 0.24);
+}
+.gcv-track-choice.is-selected {
+  border-color: #f5d279;
+  box-shadow: inset 0 0 0 1px rgba(245, 210, 121, 0.4);
+}
+@media (max-width: 380px) {
+  .gcv-track-chooser { gap: 0.4rem; }
+  .gcv-track-choice { padding-inline: 0.25rem; font-size: 0.85rem; }
+}
+
+@media (max-height: 480px) and (orientation: landscape) {
+  .gcv-track-chooser { margin: 2px 0 3px; gap: 5px; }
+  .gcv-track-choice { min-height: 28px; padding: 3px 8px; font-size: 0.8rem; }
+}

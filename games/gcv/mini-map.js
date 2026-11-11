@@ -3,7 +3,8 @@
 // Satellite-style track background (cached) and live player/opponent markers.
 const GcvMiniMap = (() => {
   function create({ document, canvas: mapCanvas, positions, sides, SAMPLE_COUNT,
-    ROAD_HALF_WIDTH, OUTER_HALF_WIDTH, islands, LapTimes, startIndex, startCenter, startSide }) {
+    ROAD_HALF_WIDTH, OUTER_HALF_WIDTH, islands, LapTimes, startIndex, startCenter, startSide,
+    finishIndex = startIndex, closed = true }) {
     const map = mapCanvas.getContext("2d");
     const bounds = positions.slice(0, SAMPLE_COUNT).reduce((acc, p) => ({
       minX: Math.min(acc.minX, p.x), maxX: Math.max(acc.maxX, p.x),
@@ -51,7 +52,7 @@ const GcvMiniMap = (() => {
           if (index === 0) satellite.moveTo(x, y);
           else satellite.lineTo(x, y);
         });
-        satellite.closePath();
+        if (closed) satellite.closePath();
         satellite.lineCap = "round";
         satellite.lineJoin = "round";
         satellite.strokeStyle = color;
@@ -73,7 +74,9 @@ const GcvMiniMap = (() => {
 
       // Three visual sector checkpoints correspond exactly to the timer.
       LapTimes.SPLIT_FRACTIONS.forEach((fraction, index) => {
-        const splitIndex = (startIndex + Math.round(SAMPLE_COUNT * fraction)) % SAMPLE_COUNT;
+        const splitIndex = closed
+          ? (startIndex + Math.round(SAMPLE_COUNT * fraction)) % SAMPLE_COUNT
+          : Math.min(SAMPLE_COUNT, startIndex + Math.round((finishIndex - startIndex) * fraction));
         const [sx, sy] = toMap(positions[splitIndex].x, positions[splitIndex].z);
         islandCircle(sx, sy, 7, "#15354d");
         islandCircle(sx, sy, 5, "#f8d690");
@@ -86,10 +89,12 @@ const GcvMiniMap = (() => {
 
       // Finish line marker: a short contrasting crossing and flag, separate
       // from roadway lane markings.
-      const [fx, fy] = toMap(startCenter.x, startCenter.z);
+      const lineCenter = positions[finishIndex];
+      const lineSide = sides[finishIndex];
+      const [fx, fy] = toMap(lineCenter.x, lineCenter.z);
       satellite.save();
       satellite.translate(fx, fy);
-      satellite.rotate(Math.atan2(startSide.z, startSide.x));
+      satellite.rotate(Math.atan2(lineSide.z, lineSide.x));
       satellite.fillStyle = "#332b28";
       satellite.fillRect(-ROAD_HALF_WIDTH * mapScale, -2, ROAD_HALF_WIDTH * 2 * mapScale, 4);
       satellite.fillStyle = "#ebd2a0";
@@ -104,6 +109,10 @@ const GcvMiniMap = (() => {
       satellite.font = "bold 17px system-ui";
       satellite.strokeText("⚑", fx + 9, fy - 10);
       satellite.fillText("⚑", fx + 9, fy - 10);
+      if (!closed) {
+        const [sx, sy] = toMap(startCenter.x, startCenter.z);
+        islandCircle(sx, sy, 5, "#ecf8f4");
+      }
     }
 
     function draw(player, opponents, opponentMeshes) {

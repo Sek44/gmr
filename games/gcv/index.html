@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#101b2c">
-  <meta name="description" content="GCV, prototype 3D de course automobile pour GMR.">
-  <title>Grande Course Voiture — GMR</title>
+  <meta name="description" content="Super Kart, jeu de course automobile 3D pour GMR.">
+  <title>Super Kart — GMR</title>
   <link rel="stylesheet" href="../../shared/site.css">
   <link rel="stylesheet" href="./game.css">
   <script defer src="../../shared/game-state.js"></script>
@@ -33,23 +33,29 @@
   <main class="page gcv-page">
     <nav class="page-header gcv-page-header" aria-label="Navigation">
       <a class="icon-button" href="../../" aria-label="Retour à l'accueil">←</a>
-      <h1>Grande Course Voiture</h1>
+      <h1>Super Kart</h1>
       <span class="gcv-number" aria-label="Voiture numéro 9">N° 9</span>
     </nav>
 
     <section class="gcv-stage" id="gcv-stage" aria-label="Jeu de conduite en 3D">
       <div class="gcv-scene" id="gcv-scene"></div>
 
-      <div class="gcv-home" id="gcv-home" aria-label="Accueil de Grande Course Voiture">
+      <div class="gcv-home" id="gcv-home" aria-label="Accueil de Super Kart">
         <div class="gcv-home-tools" role="group" aria-label="Actions du menu">
           <button type="button" id="menu-scores-button" class="gcv-action gcv-home-tool" aria-label="Voir les meilleurs temps"><svg class="gcv-action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8m-4-4v4M7 4h10v7a5 5 0 0 1-10 0V4Z"/><path d="M7 6H4v3a4 4 0 0 0 4 4m9-7h3v3a4 4 0 0 1-4 4"/></svg><span class="gcv-action-label">Scores</span></button>
           <button type="button" id="menu-fullscreen-button" class="gcv-action gcv-home-tool" aria-label="Passer en plein écran"><svg class="gcv-action-icon gcv-icon-expand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5m0 8v5h-5M8 21H3v-5"/></svg><svg class="gcv-action-icon gcv-icon-collapse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h5V3M21 8h-5V3M3 16h5v5m13-5h5v5"/></svg><span class="gcv-action-label">Plein écran</span></button>
         </div>
         <div class="gcv-home-panel">
-          <p class="gcv-home-eyebrow">GRANDE COURSE VOITURE</p>
-          <h2>Choisis ton mode</h2>
+          <p class="gcv-home-eyebrow">SUPER KART</p>
+          <h2>Choisis ton circuit et ton mode</h2>
           <p class="gcv-home-description">Prends le volant de la voiture n° 9 !</p>
           <button type="button" id="resume-button" class="gcv-home-button gcv-home-resume" hidden>Reprendre</button>
+          <div class="gcv-track-chooser" role="group" aria-label="Circuit">
+            <button type="button" class="gcv-home-button gcv-track-choice is-selected"
+              data-gcv-track="classic" aria-pressed="true">Circuit classique</button>
+            <button type="button" class="gcv-home-button gcv-track-choice"
+              data-gcv-track="rainbow" aria-pressed="false">Route Arc-en-ciel</button>
+          </div>
           <div class="gcv-mode-chooser" aria-label="Mode de jeu">
             <button type="button" id="free-mode-button" class="gcv-home-button gcv-mode-choice is-selected" aria-pressed="true">
               <strong>Essais libres</strong><span>Conduire et battre ses records</span>
@@ -141,7 +147,7 @@
     </section>
 
     <p class="gcv-help">Maintiens <strong>Accélérer</strong> et dirige avec le pouce gauche. Sur ordinateur : <strong>↑ / W</strong> accélérer, <strong>↓ / S</strong> freiner et <strong>← / →</strong> tourner. Maintiens le frein à l'arrêt pour enclencher la marche arrière. La progression est enregistrée sur cet appareil.</p>
-    <p class="gcv-help gcv-prototype">Le menu du jeu permet de choisir <strong>Essais libres</strong> ou <strong>Course</strong> (10 voitures, trois tours), et reste accessible en plein écran. Les scores s'ouvrent sans interrompre le mode plein écran.</p>
+    <p class="gcv-help gcv-prototype">Le menu permet de choisir le <strong>circuit classique</strong> (trois tours) ou la <strong>Route Arc-en-ciel</strong> (départ et arrivée distincts), en <strong>essais libres</strong> ou en <strong>course</strong> à dix voitures, et reste accessible en plein écran. Les scores s'ouvrent sans interrompre le mode plein écran.</p>
   </main>
 </body>
 </html>

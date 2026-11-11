@@ -56,6 +56,31 @@ const GcvTrackProgress = (() => {
       (after.z - before.z) * forward.z) / length;
   }
 
+  // Open tracks have no modulo seam: never confuse the end of the route with
+  // its beginning while resolving hairpins or falling off the road.
+  function nearestOpenSample(positions, sampleCount, x, z,
+      hintIndex = null, halfSpan = 12, corridorHalfWidth = Infinity) {
+    if (!Number.isFinite(x) || !Number.isFinite(z) || sampleCount < 2)
+      return { index: 0, distanceSquared: Infinity };
+    function distance(i) {
+      return (x - positions[i].x) ** 2 + (z - positions[i].z) ** 2;
+    }
+    if (Number.isInteger(hintIndex) && hintIndex >= 0 && hintIndex <= sampleCount) {
+      let index = hintIndex, d = distance(index);
+      for (let i = Math.max(0, hintIndex - halfSpan);
+        i <= Math.min(sampleCount, hintIndex + halfSpan); i++) {
+        if (distance(i) < d) { index = i; d = distance(i); }
+      }
+      if (d <= corridorHalfWidth ** 2) return { index, distanceSquared: d };
+    }
+    let index = 0, d = Infinity;
+    for (let i = 0; i <= sampleCount; i++) {
+      const value = distance(i);
+      if (value < d) { index = i; d = value; }
+    }
+    return { index, distanceSquared: d };
+  }
+
   function relocate(state, nearestIndex) {
     // Respawn is not extra travel around the circuit.
     return { ...state, index: nearestIndex };
@@ -149,6 +174,41 @@ const GcvTrackProgress = (() => {
     };
   }
 
+  // The open route has distinct start and finish gates. Its single completion
+  // still uses the same signed travel + real geometric crossing authority.
+  function moveOpen(state, routeLength, signedDistance = 0,
+      startFraction = null, finishFraction = null, nextIndex = null,
+      sampleCount = null) {
+    let index = state.index;
+    let distance = Number.isFinite(signedDistance) ? signedDistance : 0;
+    if (Number.isInteger(nextIndex) && nextIndex >= 0) {
+      if (Number.isInteger(index) && Math.abs(nextIndex - index) > 12)
+        distance = 0;
+      else index = nextIndex;
+    }
+    let progress = state.progress + distance;
+    let started = state.started, laps = state.laps;
+    const events = [];
+    const crossing = (fraction) => Number.isFinite(fraction) &&
+      fraction >= 0 && fraction <= 1;
+    if (!started && crossing(startFraction) && distance > 0) {
+      started = true;
+      progress = Math.max(0, distance * (1 - startFraction));
+      events.push({ type: "start", fraction: startFraction, progress: 0 });
+    }
+    if (started && !laps && crossing(finishFraction) &&
+        distance > 0 && progress >= routeLength * MIN_LAP_FRACTION) {
+      laps = 1;
+      events.push({ type: "lap", lap: 1, fraction: finishFraction,
+        progress: routeLength });
+    }
+    if (started) progress = Math.max(0, Math.min(progress,
+      laps ? routeLength : routeLength - 0.001));
+    return { state: { index, progress, laps, started,
+      lastFinishProgress: started ? 0 : null }, events,
+      sectorProgress: progress };
+  }
+
   // Detect a true forward crossing of the VISIBLE line in world coordinates.
   // Sample indices alone may jump or skip the line at high speed, which used to
   // leave the stopwatch inactive despite the car passing the finish tiles.
@@ -170,8 +230,8 @@ const GcvTrackProgress = (() => {
     return Math.abs(sideways) <= halfWidth ? fraction : null;
   }
 
-  return Object.freeze({ nearestSample, alongTrackTravel, relocate,
-    createMotion, restoreMotion, move, finishCrossing, MIN_LAP_FRACTION });
+  return Object.freeze({ nearestSample, nearestOpenSample, alongTrackTravel, relocate,
+    createMotion, restoreMotion, move, moveOpen, finishCrossing, MIN_LAP_FRACTION });
 })();
 
 if (typeof window !== "undefined") window.GcvTrackProgress = GcvTrackProgress;

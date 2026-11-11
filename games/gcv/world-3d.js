@@ -8,9 +8,15 @@ const GcvWorld3D = (() => {
     const GRAVEL_WIDTH = TrackLayout.SHOULDER_WIDTH;
     const OUTER_HALF_WIDTH = ROAD_HALF_WIDTH + GRAVEL_WIDTH;
     const SAMPLE_COUNT = TrackLayout.SAMPLE_COUNT;
+    const closed = TrackLayout.CLOSED !== false;
+    const rainbow = TrackLayout.RAINBOW || null;
+    function heightAt(t) {
+      return (TrackLayout.HUMPS || []).reduce((height, fraction) =>
+        height + 2.4 * Math.exp(-Math.pow((t - fraction) / 0.012, 2)), 0);
+    }
     const CURVE_POINTS = TrackLayout.WAYPOINTS.map(([x, z]) =>
       new THREE.Vector3(x, 0, z));
-    const curve = new THREE.CatmullRomCurve3(CURVE_POINTS, true, "catmullrom", 0.55);
+    const curve = new THREE.CatmullRomCurve3(CURVE_POINTS, closed, "catmullrom", 0.55);
     const trackLength = curve.getLength();
     const positions = [];
     const directions = [];
@@ -19,6 +25,7 @@ const GcvWorld3D = (() => {
     for (let i = 0; i <= SAMPLE_COUNT; i++) {
       const t = i / SAMPLE_COUNT;
       const center = curve.getPointAt(t);
+      center.y = heightAt(t);
       const tangent = curve.getTangentAt(t).normalize();
       positions.push(center);
       directions.push(tangent);
@@ -48,7 +55,7 @@ const GcvWorld3D = (() => {
       for (let i = 0; i <= SAMPLE_COUNT; i++) {
         const p = positions[i], n = sides[i];
         for (const sign of [-1, 1]) {
-          vertices.push(p.x + n.x * (offset + sign * halfWidth), height,
+          vertices.push(p.x + n.x * (offset + sign * halfWidth), p.y + height,
             p.z + n.z * (offset + sign * halfWidth));
         }
       }
@@ -68,27 +75,60 @@ const GcvWorld3D = (() => {
     strip(0, OUTER_HALF_WIDTH, 0.02, shoulderMaterial);
     strip(0, ROAD_HALF_WIDTH, 0.07, roadMaterial);
 
+    // Rainbow rails: a clearly visible run of parallel coloured driving
+    // strips, bending with the centerline through the zigzag section.
+    if (rainbow) {
+      const colors = [0xf05c78, 0xfca33a, 0xf4df4e, 0x7fd56d,
+        0x37b6d5, 0x5e74df, 0xc879da];
+      const first = Math.round(rainbow[0] * SAMPLE_COUNT);
+      const last = Math.round(rainbow[1] * SAMPLE_COUNT);
+      for (let band = 0; band < colors.length; band++) {
+        const vertices = [], indices = [];
+        const bandWidth = ROAD_HALF_WIDTH * 2 / colors.length;
+        for (let i = first; i <= last; i++) {
+          const center = positions[i], side = sides[i];
+          for (const edge of [0, 1]) {
+            const lateral = -ROAD_HALF_WIDTH + (band + edge) * bandWidth;
+            vertices.push(center.x + side.x * lateral, center.y + 0.125,
+              center.z + side.z * lateral);
+          }
+        }
+        for (let i = 0; i < last - first; i++) {
+          const v = i * 2;
+          indices.push(v, v + 1, v + 2, v + 2, v + 1, v + 3);
+        }
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
+        geometry.setIndex(indices);
+        geometry.computeVertexNormals();
+        scene.add(new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({
+          color: colors[band], side: THREE.DoubleSide,
+        })));
+      }
+    }
+
     // Continuous guardrails on BOTH sides along the entire closed circuit.
     // The same full-loop collision mask and limit drive their render geometry.
-    const barriers = Barriers.create(
-      positions.slice(0, SAMPLE_COUNT), trackLength, OUTER_HALF_WIDTH,
-      sides.slice(0, SAMPLE_COUNT), ROAD_HALF_WIDTH);
+    const barriers = closed
+      ? Barriers.create(positions.slice(0, SAMPLE_COUNT), trackLength,
+        OUTER_HALF_WIDTH, sides.slice(0, SAMPLE_COUNT), ROAD_HALF_WIDTH)
+      : Barriers.createOpen(positions, trackLength, OUTER_HALF_WIDTH, sides);
     const railVertices = [], railIndices = [];
-    function railQuad(a, b, low, high) {
+    function railQuad(a, b, low, high, y1 = 0, y2 = 0) {
       // Skip degenerate quads created where a hairpin loop was joined.
       if ((a.x - b.x) ** 2 + (a.z - b.z) ** 2 < 1e-8) return;
       const v = railVertices.length / 3;
-      railVertices.push(a.x, low, a.z, b.x, low, b.z,
-        a.x, high, a.z, b.x, high, b.z);
+      railVertices.push(a.x, y1 + low, a.z, b.x, y2 + low, b.z,
+        a.x, y1 + high, a.z, b.x, y2 + high, b.z);
       railIndices.push(v, v + 1, v + 2, v + 1, v + 3, v + 2);
     }
     for (let i = 0; i < SAMPLE_COUNT; i++) {
-      const next = (i + 1) % SAMPLE_COUNT;
+      const next = closed ? (i + 1) % SAMPLE_COUNT : i + 1;
       for (const side of [-1, 1]) {
         const rail = side > 0 ? barriers.rails.left : barriers.rails.right;
         const a = rail.points[i], b = rail.points[next];
-        railQuad(a, b, 0.66, 0.91);
-        railQuad(a, b, 1.24, 1.45);
+        railQuad(a, b, 0.66, 0.91, positions[i].y, positions[next].y);
+        railQuad(a, b, 1.24, 1.45, positions[i].y, positions[next].y);
       }
     }
     const railGeometry = new THREE.BufferGeometry();
@@ -117,7 +157,7 @@ const GcvWorld3D = (() => {
         const rail = side > 0 ? barriers.rails.left : barriers.rails.right;
         if (rail.skippedSamples[i]) continue;
         const point = rail.points[i];
-        postTransform.position.set(point.x, 0.73, point.z);
+        postTransform.position.set(point.x, positions[i].y + 0.73, point.z);
         postTransform.rotation.y = Math.atan2(
           -directions[i].x, -directions[i].z);
         postTransform.updateMatrix();
@@ -140,8 +180,8 @@ const GcvWorld3D = (() => {
       const rx = p.x + normal.x * OUTER_HALF_WIDTH;
       const rz = p.z + normal.z * OUTER_HALF_WIDTH;
       solidVertices.push(
-        lx, 0.02, lz, lx, TRACK_BOTTOM, lz,
-        rx, 0.02, rz, rx, TRACK_BOTTOM, rz
+        lx, p.y + 0.02, lz, lx, TRACK_BOTTOM, lz,
+        rx, p.y + 0.02, rz, rx, TRACK_BOTTOM, rz
       );
     }
     for (let i = 0; i < SAMPLE_COUNT; i++) {
@@ -177,7 +217,7 @@ const GcvWorld3D = (() => {
           const proportion = ((i * 13 + stone * 43) % 97) / 97;
           const offset = side * (ROAD_HALF_WIDTH + 0.22 + proportion * (GRAVEL_WIDTH - 0.44));
           const center = positions[i], normal = sides[i];
-          pebble.position.set(center.x + normal.x * offset, 0.11,
+          pebble.position.set(center.x + normal.x * offset, center.y + 0.11,
             center.z + normal.z * offset);
           pebble.scale.set(0.5 + proportion * 0.6, 0.25, 0.7);
           pebble.rotation.set(0, proportion * Math.PI, 0);
@@ -204,7 +244,7 @@ const GcvWorld3D = (() => {
       const p = positions[i], normal = sides[i];
       const n = ((i * 61) % 97) / 97;
       const offset = (n * 2 - 1) * (ROAD_HALF_WIDTH - 1.5);
-      patch.position.set(p.x + normal.x * offset, 0.096,
+      patch.position.set(p.x + normal.x * offset, p.y + 0.096,
         p.z + normal.z * offset);
       patch.rotation.set(-Math.PI / 2, 0, i * 0.31);
       patch.scale.set(0.5 + n * 1.7, 1.2 + (i % 7) * 0.31, 1);
@@ -247,14 +287,14 @@ const GcvWorld3D = (() => {
       const x = center.x + normal.x * offset;
       const z = center.z + normal.z * offset;
       const yaw = i * 0.71;
-      puddleTransform.position.set(x, 0.086, z);
+      puddleTransform.position.set(x, center.y + 0.086, z);
       puddleTransform.rotation.set(-Math.PI / 2, 0, yaw);
       puddleTransform.scale.set(radius, radius * (0.55 + variation * 0.25), 1);
       puddleTransform.updateMatrix();
       puddleWater.setMatrixAt(i, puddleTransform.matrix);
       // A narrow, pale reflected strip makes the standing water legible,
       // even in the low-poly lighting of the rest of the circuit.
-      puddleTransform.position.set(x, 0.088, z);
+      puddleTransform.position.set(x, center.y + 0.088, z);
       puddleTransform.scale.set(radius * 0.59, radius * 0.17, 1);
       puddleTransform.updateMatrix();
       puddleReflection.setMatrixAt(i, puddleTransform.matrix);
@@ -264,24 +304,37 @@ const GcvWorld3D = (() => {
     scene.add(puddleWater, puddleReflection);
 
     // Checkered line across a straight section of the circuit.
-    const startIndex = TrackLayout.nearestIndex(positions, TrackLayout.FINISH);
+    const startIndex = TrackLayout.nearestIndex(positions,
+      TrackLayout.START || TrackLayout.FINISH);
+    const finishIndex = TrackLayout.nearestIndex(positions, TrackLayout.FINISH);
     const startCenter = positions[startIndex], startSide = sides[startIndex];
+    const finishCenter = positions[finishIndex];
     const startYaw = Math.atan2(-directions[startIndex].x, -directions[startIndex].z);
-    // The finish marking is made of dark and pale earth tiles, not paint.
-    const black = new THREE.MeshStandardMaterial({ color: 0x523b2e, roughness: 1 });
-    const white = new THREE.MeshStandardMaterial({ color: 0xc2a783, roughness: 1 });
-    for (let row = 0; row < 2; row++) {
-      for (let col = 0; col < 12; col++) {
-        const longitudinal = directions[startIndex].clone().multiplyScalar((row - 0.5) * 1.35);
-        const across = startSide.clone().multiplyScalar((col - 5.5) * 1.47);
-        const tile = new THREE.Mesh(new THREE.BoxGeometry(1.47, 0.02, 1.35),
-          (row + col) % 2 ? black : white);
-        tile.position.copy(startCenter).add(longitudinal).add(across);
-        tile.position.y = 0.10;
-        tile.rotation.y = startYaw;
-        scene.add(tile);
+    // The open sprint has a pale start line and a checkered finish line.
+    function markLine(index, checkered) {
+      const center = positions[index], side = sides[index];
+      const yaw = Math.atan2(-directions[index].x, -directions[index].z);
+      const black = new THREE.MeshStandardMaterial({
+        color: checkered ? 0x322b35 : 0xd9e0ed, roughness: 1,
+      });
+      const white = new THREE.MeshStandardMaterial({
+        color: checkered ? 0xf5ede6 : 0xf9d966, roughness: 1,
+      });
+      for (let row = 0; row < 2; row++) {
+        for (let col = 0; col < 12; col++) {
+          const longitudinal = directions[index].clone().multiplyScalar((row - .5) * 1.35);
+          const across = side.clone().multiplyScalar((col - 5.5) * 1.47);
+          const tile = new THREE.Mesh(new THREE.BoxGeometry(1.47, 0.02, 1.35),
+            (row + col) % 2 ? black : white);
+          tile.position.copy(center).add(longitudinal).add(across);
+          tile.position.y = center.y + .14;
+          tile.rotation.y = yaw;
+          scene.add(tile);
+        }
       }
     }
+    markLine(startIndex, closed);
+    if (!closed) markLine(finishIndex, true);
 
     // Huge sea under the raised dirt course. It extends beyond the camera's
     // visibility so its rectangular edge cannot appear on the horizon.
@@ -328,7 +381,8 @@ const GcvWorld3D = (() => {
     return {
       scene, ROAD_HALF_WIDTH, OUTER_HALF_WIDTH, SAMPLE_COUNT, curve,
       trackLength, positions, directions, sides, barriers,
-      startIndex, startCenter, startSide, startYaw, islands,
+      startIndex, finishIndex, startCenter, finishCenter, startSide, startYaw, islands,
+      closed, heightAt,
     };
   }
 

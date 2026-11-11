@@ -14,6 +14,8 @@ const GcvLapTimes = (() => {
       samples: layout.SAMPLE_COUNT,
       roadHalfWidth: layout.ROAD_HALF_WIDTH,
       shoulderWidth: layout.SHOULDER_WIDTH,
+      ...(layout.CLOSED === false ? { closed: false, start: layout.START,
+        rainbow: layout.RAINBOW, humps: layout.HUMPS } : {}),
     });
   }
 
@@ -65,20 +67,21 @@ const GcvLapTimes = (() => {
 
   function createStore(layout, storage = typeof localStorage === "undefined" ? null : localStorage) {
     const key = circuitKey(layout);
+    const storageKey = layout.ID === "rainbow" ? STORAGE_KEY + ":rainbow" : STORAGE_KEY;
     let records = [];
     if (storage) {
       try {
-        const data = JSON.parse(storage.getItem(STORAGE_KEY));
+        const data = JSON.parse(storage.getItem(storageKey));
         if (data && sameCircuitRoute(data.circuit, key) &&
             Array.isArray(data.records)) {
           records = data.records.filter(validRecord).slice()
             .sort((a, b) => a.ms - b.ms).slice(0, 3);
           if (data.circuit !== key) {
-            storage.setItem(STORAGE_KEY, JSON.stringify({ circuit: key, records }));
+            storage.setItem(storageKey, JSON.stringify({ circuit: key, records }));
           }
         } else {
           // A change to the circuit centerline or finish invalidates records.
-          storage.setItem(STORAGE_KEY, JSON.stringify({ circuit: key, records: [] }));
+          storage.setItem(storageKey, JSON.stringify({ circuit: key, records: [] }));
         }
       } catch {
         records = [];
@@ -95,7 +98,7 @@ const GcvLapTimes = (() => {
       records = [...records, candidate].sort((a, b) => a.ms - b.ms).slice(0, 3);
       if (storage) {
         try {
-          storage.setItem(STORAGE_KEY, JSON.stringify({ circuit: key, records }));
+          storage.setItem(storageKey, JSON.stringify({ circuit: key, records }));
         } catch { /* Record remains available until reload. */ }
       }
       return true;
@@ -174,6 +177,16 @@ const GcvLapTimes = (() => {
     };
   }
 
+  // Distinct finish gate on an open route; do not silently begin a new lap.
+  function completeRoute(state, fraction, dtMs) {
+    if (!state.running || !Number.isFinite(fraction) ||
+        fraction < 0 || fraction > 1) return { state, events: [] };
+    const ms = Math.max(0, state.elapsedMs - dtMs * (1 - fraction));
+    const events = state.splits.length === 3 && ms > state.splits[2]
+      ? [{ type: "lap", ms, splits: state.splits.slice() }] : [];
+    return { state: { ...state, running: false, elapsedMs: ms, finished: true }, events };
+  }
+
   // Physical start/finish events are validated by GcvTrackProgress.
   // Longitudinal travel here triggers only intermediate sector checkpoints.
   function advance(state, previousProgress, nextProgress, dtMs, sampleCount, best = null) {
@@ -203,7 +216,7 @@ const GcvLapTimes = (() => {
 
   return Object.freeze({ STORAGE_KEY, SPLIT_FRACTIONS, circuitKey,
     sameCircuitRoute, createStore, format, formatDelta, qualifyingRank, initial, restore, advance,
-    elapse, crossFinish });
+    elapse, crossFinish, completeRoute });
 })();
 if (typeof window !== "undefined") window.GcvLapTimes = GcvLapTimes;
 if (typeof module !== "undefined" && module.exports) module.exports = GcvLapTimes;

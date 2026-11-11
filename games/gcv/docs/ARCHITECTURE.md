@@ -1,4 +1,4 @@
-# GCV — Architecture actuelle
+# Super Kart (GCV) — Architecture actuelle
 
 Documentation technique du code situé dans `games/gcv/`. Les règles observables du jeu sont dans [SPECIFICATIONS.md](SPECIFICATIONS.md) ; les améliorations à instruire dans [BACKLOG.md](BACKLOG.md).
 
@@ -16,16 +16,16 @@ Il n'existe ni serveur de jeu, ni build, ni moteur physique externe. Les autres 
 
 | Module | Responsabilité actuelle |
 | --- | --- |
-| `track-layout.js` | Constantes du tracé, largeur, accotements, départ/arrivée et échantillonnage |
-| `world-3d.js` | Construction Three.js du circuit, de la scène et du décor ; fournit points, tangentes et normales partagés |
+| `track-layout.js` | Registre des tracés fermé/ouvert, sélection par identifiant, départ et arrivée, bosses et passage coloré |
+| `world-3d.js` | Géométrie ouverte/fermée, bosses profilées, sept rubans colorés, lignes, scène/décor, points et tangentes partagés |
 | `scenery.js` | Placement et paramètres du décor statique |
 | `barriers.js` | Géométrie/limites des rails, résolution de contact, glissement, frottement et réalignement du cap |
 | `vehicles.js` | Maillages 3D du joueur, cockpit et neuf concurrents ; marquages de numéros du joueur (n° 9) et des IA issus de `race.js`, avec une texture Canvas par voiture et des décalcomanies positionnées selon leur géométrie |
 | `physics.js` | Accélération, frein, direction, marche arrière, chute et émission théorique de boue |
-| `track-progress.js` | **Autorité unique** de progression physique et de validation des franchissements de ligne |
-| `lap-times.js` | Temps, trois secteurs, deltas et stockage des trois records personnels |
+| `track-progress.js` | **Autorité unique** pour les tours fermés (`move`) et les traversées ouvertes (`moveOpen`), sans bouclage artificiel des échantillons |
+| `lap-times.js` | Temps et trois secteurs, terminaison de trajet ouvert, stockage distinct des records de chaque circuit |
 | `scores-adapter.js` | Rendu des records de tours dans la page Scores générale, enregistré auprès de `GameScores` sans dépendance GCV dans le service partagé |
-| `race.js` | Grille, phases de départ, trajectoires/vitesses des IA, arrivée et classement |
+| `race.js` | Grille, phases, IA, classement ; trois tours du circuit fermé ou une traversée du parcours ouvert |
 | `flow.js` | État de l'écran, activité courante et chute, avec transitions contrôlées |
 | `session.js` | Entrée dans les modes, reprise, redémarrage, snapshots et autosauvegarde |
 | `navigation.js` | Menu, scores en iframe, commandes plein écran et pause liée à la navigation |
@@ -33,7 +33,7 @@ Il n'existe ni serveur de jeu, ni build, ni moteur physique externe. Les autres 
 | `rendering.js` | WebGL, caméras, transformations et animations visuelles des véhicules |
 | `visual-effects.js` | Particules dynamiques de boue et étincelles de friction |
 | `hud.js` | Indicateurs de conduite, chrono, classements et panneau d'arrivée |
-| `mini-map.js` | Fond de carte précalculé et marqueurs dynamiques du joueur et des concurrents |
+| `mini-map.js` | Carte ouverte/fermée, départ et arrivée distincts, secteurs et marqueurs dynamiques |
 
 ## 3. Flux de simulation
 
@@ -59,7 +59,7 @@ L'unification de cette iframe spécifique avec `shared/score-view.js` reste ouve
 
 - **Session jetable** : `shared/game-state.js` enregistre `gmr:v1:state:gcv`. Le snapshot inclut notamment caméra, véhicule, état de progression, chrono, course/IA et essais éventuellement conservés. `session.js` sauvegarde lors des changements significatifs, environ toutes les 1,5 s de simulation, et sur les événements de fermeture/masquage gérés par `GameState`.
 - **Compatibilité des sessions** : `SAVE_REVISION` dans `game.js` et `saveRevision` dans `games/catalog.js` doivent évoluer **ensemble** en cas de rupture ; une ancienne session peut alors être rejetée, puis le menu reste le point d'entrée.
-- **Records personnels** : `lap-times.js` enregistre les trois meilleurs temps et secteurs sous `gmr:v1:gcv:lap-records:v2`, indépendamment des sessions. Une clé/empreinte du tracé conditionne leur validité ; les ajustements de largeur des accotements peuvent rester compatibles.
+- **Records personnels** : `lap-times.js` enregistre les trois meilleurs temps classiques dans `gmr:v1:gcv:lap-records:v2`, et ceux du parcours Arc-en-ciel dans `gmr:v1:gcv:lap-records:v2:rainbow`, indépendamment des sessions. Une clé/empreinte du tracé conditionne leur validité ; les ajustements de largeur des accotements peuvent rester compatibles.
 - **Historique général** : `shared/scores.js` gère séparément `gmr:v1:scores`. L'affichage des records de tours relève de `scores-adapter.js`, déclaré via `scoreScripts` dans `games/catalog.js` et chargé par `shared/scores-page.js` après le service partagé. Le classement d'une course GCV n'est pas actuellement enregistré comme score générique.
 
 Une modification de session ne doit jamais effacer automatiquement les records de tours compatibles ou l'historique général.
@@ -69,3 +69,5 @@ Une modification de session ne doit jamais effacer automatiquement les records d
 Les tests Node `tests/gcv-*.test.cjs` couvrent notamment la physique, les barrières, le monde 3D, les états de navigation/session, la course et la progression unifiée. La commande globale est `node --test tests/*.test.cjs`.
 
 Le rendu WebGL réel, le plein écran, le multi-touch et les présentations mobiles restent à valider en navigateur ; une automatisation intégrée est prévue dans le backlog. Trois.js est chargé depuis un CDN au démarrage : le fonctionnement hors connexion au premier chargement n'est pas garanti.
+
+Le parcours est sélectionné via `?track=rainbow` (absence = classique), avec rechargement de la scène et annulation possible des anciennes sessions. `world-3d.js` livre les indices de départ/arrivée au moteur ; `game.js` calcule la longueur entre les deux portes pour la progression/IA tout en conservant la longueur intégrale de spline pour le rendu. Le saut est un écart vertical temporaire qui ne produit aucun événement de course.

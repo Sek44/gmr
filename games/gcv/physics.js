@@ -68,7 +68,8 @@ const GcvPhysics = (() => {
   function startFall(state) {
     const speed = Number(state.speed) || 0; // Preserve signed momentum while reversing.
     return {
-      x: state.x, z: state.z, y: CAR_HEIGHT,
+      x: state.x, z: state.z, y: CAR_HEIGHT + (state.roadY || 0),
+      startY: CAR_HEIGHT + (state.roadY || 0),
       vx: -Math.sin(state.yaw) * speed,
       vz: -Math.cos(state.yaw) * speed,
       initialVy: INITIAL_FALL_VELOCITY,
@@ -84,7 +85,8 @@ const GcvPhysics = (() => {
     return {
       x: fall.x + fall.vx * step,
       z: fall.z + fall.vz * step,
-      y: CAR_HEIGHT + fall.initialVy * elapsed - GRAVITY * elapsed * elapsed / 2,
+      y: (fall.startY || CAR_HEIGHT) + fall.initialVy * elapsed - GRAVITY * elapsed * elapsed / 2,
+      startY: fall.startY,
       vx: fall.vx * damping,
       vz: fall.vz * damping,
       vy: fall.initialVy - GRAVITY * elapsed,

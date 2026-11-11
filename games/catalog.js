@@ -4,15 +4,15 @@ window.GmrCatalog = Object.freeze({
   games: Object.freeze([
     Object.freeze({
       id: "gcv",
-      saveRevision: 9,
+      saveRevision: 10,
       // Loaded in order by the shared Scores page only, never by other games.
       scoreScripts: Object.freeze([
         "./games/gcv/track-layout.js",
         "./games/gcv/lap-times.js",
         "./games/gcv/scores-adapter.js",
       ]),
-      title: "Grande Course Voiture",
-      description: "Pilote la voiture n° 9 sur un circuit 3D. 3 tours contre 9 concurrents, ou essais libres.",
+      title: "Super Kart",
+      description: "Pilote la voiture n° 9 sur deux circuits 3D : trois tours ou sprint Arc-en-ciel, contre neuf concurrents.",
       icon: "🏎",
     }),
   ]),

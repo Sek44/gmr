@@ -2,7 +2,8 @@
 
 // Visual dashboard for free driving and races. The simulation owns all state.
 const GcvHud = (() => {
-  function create({ document, LapTimes, Race }) {
+  function create({ document, LapTimes, Race, layout = { CLOSED: true } }) {
+    const closed = layout.CLOSED !== false;
     const speedLabel = document.getElementById("speed-value");
     const gearLabel = document.getElementById("gear-value");
     const lapLabel = document.getElementById("lap-value");
@@ -14,6 +15,8 @@ const GcvHud = (() => {
     const deltaLabel = document.getElementById("lap-delta");
     const deltaValue = document.getElementById("lap-delta-value");
     const splitLabel = document.getElementById("lap-split-label");
+    const bestsTitle = document.querySelector(".gcv-bests-title");
+    if (!closed) bestsTitle.textContent = "Meilleurs parcours";
     const bestLabels = [1, 2, 3].map((rank) =>
       document.getElementById("best-lap-" + rank));
     const freeModeButton = document.getElementById("free-mode-button");
@@ -40,8 +43,10 @@ const GcvHud = (() => {
       chronoBox.classList.toggle("is-lap-hold", Boolean(lapHold));
       chronoLabel.textContent = lapHold
         ? LapTimes.format(lapHold.ms)
-        : lapTimer.running ? LapTimes.format(lapTimer.elapsedMs) : "—";
-      chronoTitle.textContent = lapHold ? "TOUR TERMINÉ" : "TOUR EN COURS";
+        : lapTimer.running || lapTimer.finished ? LapTimes.format(lapTimer.elapsedMs) : "—";
+      chronoTitle.textContent = lapHold
+        ? (closed ? "TOUR TERMINÉ" : "PARCOURS TERMINÉ")
+        : (closed ? "TOUR EN COURS" : "PARCOURS EN COURS");
       chronoRank.textContent = lapHold?.rank
         ? ["", "1er meilleur temps", "2e meilleur temps", "3e meilleur temps"][lapHold.rank]
         : "";
@@ -97,15 +102,19 @@ const GcvHud = (() => {
       raceModeButton.setAttribute("aria-pressed", String(racing));
       racePositionBox.hidden = !racing;
       sessionModeLabel.textContent = racing ? "Course · 10 voitures" : "Essais libres · N° 9";
-      lapCountLabel.firstChild.textContent = racing ? "Tours en course : " : "Tours chronométrés : ";
+      lapCountLabel.firstChild.textContent = closed
+        ? (racing ? "Tours en course : " : "Tours chronométrés : ")
+        : "Parcours terminés : ";
       restartButton.textContent = racing ? "↻ Rejouer" : "↻ Départ";
       if (!racing) {
         raceOverlay.hidden = true;
         return false;
       }
       racePositionValue.textContent = String(Race.position(raceState)) + "ᵉ";
-      raceLapLabel.textContent = raceState.phase === "finished"
-        ? Race.LAPS + " tours terminés" : "Tour " + Race.currentLap(raceState) + "/" + Race.LAPS;
+      raceLapLabel.textContent = !closed
+        ? (raceState.phase === "finished" ? "Parcours terminé" : "Départ → Arrivée")
+        : raceState.phase === "finished"
+          ? Race.LAPS + " tours terminés" : "Tour " + Race.currentLap(raceState) + "/" + Race.LAPS;
       // Display validated physical lap crossings, not rounded estimated
       // distance (which can lag the finish when the samples jitter).
       lapLabel.textContent = String(lapCount);

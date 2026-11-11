@@ -24,7 +24,9 @@
   const TrackProgress = window.GcvTrackProgress;
   const Scenery = window.GcvScenery;
   const World3D = window.GcvWorld3D;
-  const TrackLayout = window.GcvTrackLayout;
+  const Tracks = window.GcvTrackLayout;
+  const selectedTrackId = new URL(window.location.href).searchParams.get("track");
+  const TrackLayout = Tracks.select(selectedTrackId);
   const Barriers = window.GcvBarriers;
   const LapTimes = window.GcvLapTimes;
   const Race = window.GcvRace;
@@ -38,7 +40,7 @@
   const Session = window.GcvSession;
   const Flow = window.GcvFlow;
   // Bump this revision after incompatible GCV updates. Old sessions are canceled.
-  const SAVE_REVISION = 9;
+  const SAVE_REVISION = 10;
 
   function announce(message) {
     notice.textContent = message;
@@ -59,7 +61,8 @@
     const {
       scene, ROAD_HALF_WIDTH, OUTER_HALF_WIDTH, SAMPLE_COUNT, curve,
       trackLength, positions, directions, sides, barriers,
-      startIndex, startCenter, startSide, startYaw, islands,
+      startIndex, finishIndex, startCenter, finishCenter, startSide, startYaw,
+      islands, closed,
     } = World3D.create({ THREE, TrackLayout, Barriers, Scenery });
     const { car, wheelPivots, brakeLights, rearBrakeGlows, opponentMeshes, setCameraMode } =
       Vehicles.create({ THREE, scene, Race, trackLength, document });
@@ -67,10 +70,14 @@
     const rendering = Rendering.create({
       THREE, window, stage, sceneHost, scene, car, wheelPivots,
       brakeLights, rearBrakeGlows, opponentMeshes, curve,
-      startIndex, SAMPLE_COUNT, trackLength,
+      startIndex, SAMPLE_COUNT, trackLength, closed,
     });
     const visualEffects = VisualEffects.create({ THREE, scene, car });
-    const hud = Hud.create({ document, LapTimes, Race });
+    const hud = Hud.create({ document, LapTimes, Race, layout: TrackLayout });
+    const routeLength = closed ? trackLength :
+      (finishIndex - startIndex) * trackLength / SAMPLE_COUNT;
+    const timingSamples = closed ? SAMPLE_COUNT :
+      Math.round(routeLength * SAMPLE_COUNT / trackLength);
 
     // Start on a straight section, facing the road in its normal forward direction.
     const initialIndex = TrackLayout.nearestIndex(positions, TrackLayout.SPAWN);
@@ -78,26 +85,30 @@
     let driver = {
       x: initial.x, z: initial.z,
       yaw: Math.atan2(-directions[initialIndex].x, -directions[initialIndex].z),
-      speed: 0,
+      speed: 0, roadY: initial.y, jumpY: 0,
     };
     let cameraMode = "outside";
     function startOffset(index) {
-      let samples = (index - startIndex + SAMPLE_COUNT) % SAMPLE_COUNT;
-      if (samples > SAMPLE_COUNT / 2) samples -= SAMPLE_COUNT;
+      let samples = index - startIndex;
+      if (closed) {
+        samples = (samples + SAMPLE_COUNT) % SAMPLE_COUNT;
+        if (samples > SAMPLE_COUNT / 2) samples -= SAMPLE_COUNT;
+      }
       return samples * trackLength / SAMPLE_COUNT;
     }
     const progressSamples = (metres) => metres * SAMPLE_COUNT / trackLength;
     let lapTracker = TrackProgress.createMotion(
-      trackLength, startOffset(initialIndex), initialIndex);
+      routeLength, startOffset(initialIndex), initialIndex);
     const lapRecords = LapTimes.createStore(TrackLayout);
     const circuitKey = LapTimes.circuitKey(TrackLayout);
-    let lapTimer = LapTimes.initial(SAMPLE_COUNT, progressSamples(lapTracker.progress));
+    let lapTimer = LapTimes.initial(timingSamples, progressSamples(lapTracker.progress));
     const flow = Flow.create();
     let raceState = null;
     let freeSession = null;
     let lapHold = null; // {ms, rank, remainingSeconds}; top chrono only, for 2s.
     let resultRefreshCooldown = 0;
     let fall = null, respawnIndex = initialIndex;
+    let jumpVelocity = 0;
 
     function refreshBests() { hud.refreshBests(lapRecords.top()); }
     function bestPosition(ms) {
@@ -141,8 +152,8 @@
     function closestRoad(x, z, hintIndex = null) {
       // Prefer nearby samples while still in the same road corridor. A tight
       // hairpin may be closer to a DIFFERENT section of this closed circuit.
-      return TrackProgress.nearestSample(positions, SAMPLE_COUNT, x, z,
-        hintIndex, 12, OUTER_HALF_WIDTH);
+      return (closed ? TrackProgress.nearestSample : TrackProgress.nearestOpenSample)(
+        positions, SAMPLE_COUNT, x, z, hintIndex, 12, OUTER_HALF_WIDTH);
     }
 
     function snapBack(index) {
@@ -151,6 +162,9 @@
       driver.z = center.z;
       driver.yaw = Math.atan2(-directions[index].x, -directions[index].z);
       driver.speed = 0;
+      driver.roadY = center.y;
+      driver.jumpY = 0;
+      jumpVelocity = 0;
       driver.reverseHold = 0;
       flow.land();
       fall = null;
@@ -189,7 +203,7 @@
     const miniMap = MiniMap.create({
       document, canvas: document.getElementById("mini-map"),
       positions, sides, SAMPLE_COUNT, ROAD_HALF_WIDTH, OUTER_HALF_WIDTH,
-      islands, LapTimes, startIndex, startCenter, startSide,
+      islands, LapTimes, startIndex, startCenter, startSide, finishIndex, closed,
     });
     function drawMap() {
       miniMap.draw(
@@ -233,13 +247,30 @@
     session = Session.create({
       window, state: sessionState, flow, revision: SAVE_REVISION,
       circuitKey, layoutVersion: TrackLayout.VERSION, positions, directions,
-      startIndex, startCenter, startSide, startYaw, trackLength,
-      SAMPLE_COUNT, OUTER_HALF_WIDTH, Physics, TrackProgress, LapTimes, Race,
+      startIndex, startCenter, startSide, startYaw, trackLength: routeLength,
+      SAMPLE_COUNT: timingSamples, OUTER_HALF_WIDTH, Physics, TrackProgress, LapTimes, Race,
+      raceLaps: closed ? Race.LAPS : 1,
       progressSamples, startOffset, closestRoad, snapBack, clearControls,
       clearLapHold, resetResultsCooldown: () => { resultRefreshCooldown = 0; },
       renderSession, setLapCount: (laps) => hud.setLapCount(laps), announce,
       resume: navigation.resume,
     });
+    document.querySelectorAll("[data-gcv-track]").forEach((button) => {
+      const active = button.dataset.gcvTrack === TrackLayout.ID;
+      button.classList.toggle("is-selected", active);
+      button.setAttribute("aria-pressed", String(active));
+      button.addEventListener("click", () => {
+        if (active) return;
+        // Old running sessions may be discarded, records are stored separately.
+        window.GameState.create("gcv").clear();
+        const url = new URL(window.location.href);
+        if (button.dataset.gcvTrack === "classic") url.searchParams.delete("track");
+        else url.searchParams.set("track", button.dataset.gcvTrack);
+        window.location.assign(url.href);
+      });
+    });
+    const raceModeCaption = raceModeButton.querySelector("strong");
+    raceModeCaption.textContent = closed ? "Course · 3 tours" : "Course · parcours unique";
     freeModeButton.addEventListener("click", session.chooseFree);
     raceModeButton.addEventListener("click", session.startRace);
     replayButton.addEventListener("click", session.startRace);
@@ -323,24 +354,31 @@
           // the live classification. Road samples only locate the tangent.
           const travel = TrackProgress.alongTrackTravel(
             previousPosition, driver, directions[nearest.index]);
-          const crossing = TrackProgress.finishCrossing(
+          const startCrossing = TrackProgress.finishCrossing(
             previousPosition, driver, startCenter, directions[startIndex],
-            OUTER_HALF_WIDTH);
+            ROAD_HALF_WIDTH);
+          const finishCrossing = closed ? startCrossing :
+            TrackProgress.finishCrossing(previousPosition, driver,
+              finishCenter, directions[finishIndex], ROAD_HALF_WIDTH);
           const progressBefore = lapTracker.progress;
-          const motion = TrackProgress.move(
-            lapTracker, trackLength, travel, crossing, nearest.index, SAMPLE_COUNT);
+          const motion = closed
+            ? TrackProgress.move(lapTracker, routeLength, travel, finishCrossing,
+              nearest.index, SAMPLE_COUNT)
+            : TrackProgress.moveOpen(lapTracker, routeLength, travel,
+              startCrossing, finishCrossing, nearest.index, SAMPLE_COUNT);
           lapTracker = motion.state;
           if (flow.mode === "race") raceMotion = motion;
           // Sector timing uses signed travel, not the artificial distance
           // alignment performed at a validated finish line.
           const timing = LapTimes.advance(lapTimer,
             progressSamples(progressBefore), progressSamples(motion.sectorProgress),
-            fallDt * 1000, SAMPLE_COUNT, lapRecords.best());
+            fallDt * 1000, timingSamples, lapRecords.best());
           lapTimer = timing.state;
           for (const event of motion.events) {
-            const finish = LapTimes.crossFinish(
-              lapTimer, event.fraction, fallDt * 1000, SAMPLE_COUNT,
-              progressSamples(event.progress));
+            const finish = !closed && event.type === "lap"
+              ? LapTimes.completeRoute(lapTimer, event.fraction, fallDt * 1000)
+              : LapTimes.crossFinish(lapTimer, event.fraction,
+                fallDt * 1000, timingSamples, progressSamples(event.progress));
             lapTimer = finish.state;
             timing.events.push(...finish.events);
             session?.changed();
@@ -357,6 +395,39 @@
             }
           }
           hud.setLapCount(lapTracker.laps);
+          // A small jump after the crest of each raised bump. The car remains
+          // controllable and lands smoothly on the height-profiled surface.
+          const previousRoadY = driver.roadY || 0;
+          driver.roadY = positions[nearest.index].y;
+          if (!closed && driver.speed > 24 && jumpVelocity === 0 &&
+              driver.jumpY === 0 && previousRoadY > 1.7 &&
+              driver.roadY < previousRoadY - 0.09) {
+            jumpVelocity = 4.5;
+            driver.jumpY = 0.01;
+          }
+          if (driver.jumpY > 0 || jumpVelocity > 0) {
+            driver.jumpY = Math.max(0, driver.jumpY + jumpVelocity * dt);
+            jumpVelocity -= Physics.GRAVITY * dt;
+            if (driver.jumpY === 0) jumpVelocity = 0;
+          }
+          // Inside the coloured rails, the winding channel gently guides the
+          // kart through its zigzags without replacing the player's controls.
+          if (TrackLayout.RAINBOW && driver.speed > 8 &&
+              nearest.index / SAMPLE_COUNT >= TrackLayout.RAINBOW[0] &&
+              nearest.index / SAMPLE_COUNT <= TrackLayout.RAINBOW[1]) {
+            const tangent = directions[nearest.index];
+            const guidedYaw = Math.atan2(-tangent.x, -tangent.z);
+            const error = Math.atan2(Math.sin(guidedYaw - driver.yaw),
+              Math.cos(guidedYaw - driver.yaw));
+            driver.yaw += Math.max(-0.65, Math.min(0.65, error)) *
+              Math.min(1, dt * 2.8);
+            const side = sides[nearest.index], center = positions[nearest.index];
+            const lateral = (driver.x - center.x) * side.x +
+              (driver.z - center.z) * side.z;
+            const correction = Math.min(1, dt * 1.45);
+            driver.x -= side.x * lateral * correction;
+            driver.z -= side.z * lateral * correction;
+          }
         }
       }
 

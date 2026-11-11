@@ -17,6 +17,30 @@ const GcvTrackLayout = (() => {
   const FINISH = Object.freeze({ x: 78, z: -10 });
   const SPAWN = Object.freeze({ x: 78, z: -43 });
 
+  // Second route: an open point-to-point sprint. Coordinates are scaled
+  // to give approximately 1.6 km of driving at the existing car speeds.
+  const SPRINT_POINTS = Object.freeze([
+    [0, 100], [0, 60], [0, 0], [0, -65], [28, -130],
+    [82, -185], [110, -240], [145, -295], [155, -365],
+    [123, -420], [70, -475], [10, -535], [-22, -590],
+    [-12, -650], [45, -710], [90, -770], [83, -830],
+    [36, -895], [-16, -950], [-70, -1015], [-99, -1075],
+    [-86, -1145], [-25, -1200], [45, -1260], [75, -1315],
+    [62, -1370], [0, -1430], [-40, -1490], [0, -1550],
+    [65, -1615], [95, -1680], [84, -1730],
+  ].map(([x,z]) => Object.freeze([x * 0.75, z * 0.75])));
+  const SPRINT = Object.freeze({
+    ID: "rainbow", NAME: "Route Arc-en-ciel", VERSION: 1,
+    CLOSED: false, SAMPLE_COUNT: 1200, ROAD_HALF_WIDTH,
+    SHOULDER_WIDTH, WAYPOINTS: SPRINT_POINTS,
+    START: SPRINT_POINTS[2], FINISH: SPRINT_POINTS[SPRINT_POINTS.length - 2],
+    SPAWN: SPRINT_POINTS[0],
+    // This marked stretch contains the winding multicoloured guidance rails.
+    RAINBOW: Object.freeze([0.51, 0.68]),
+    HUMPS: Object.freeze([0.23, 0.39, 0.81]),
+  });
+  function select(id) { return id === SPRINT.ID ? SPRINT : GcvTrackLayout; }
+
   function nearestIndex(positions, reference) {
     let bestIndex = 0;
     let bestSquared = Infinity;
@@ -38,7 +62,9 @@ const GcvTrackLayout = (() => {
   }
 
   return Object.freeze({ VERSION, SAMPLE_COUNT, ROAD_HALF_WIDTH, SHOULDER_WIDTH,
-    WAYPOINTS, FINISH, SPAWN,
+    WAYPOINTS, FINISH, SPAWN, ID: "classic", NAME: "Circuit classique", CLOSED: true,
+    CIRCUITS: Object.freeze([{ id: "classic", name: "Circuit classique" },
+      { id: SPRINT.ID, name: SPRINT.NAME }]), SPRINT, select,
     nearestIndex, perimeter });
 })();
 if (typeof window !== "undefined") window.GcvTrackLayout = GcvTrackLayout;
