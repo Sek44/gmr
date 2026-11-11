@@ -10,7 +10,7 @@ const GmrPlayTime = (() => {
   }
   function createStore(storage, now = () => new Date()) {
     const failure = (date) => ({
-      date, points: 0, minutes: 0, elapsedMs: 0, remainingMs: 0,
+      date, points: 0, minutes: 0, seconds: 0, elapsedMs: 0, remainingMs: 0,
       allowed: false, error: true,
     });
     function read() {
@@ -18,18 +18,23 @@ const GmrPlayTime = (() => {
       try {
         // An absent or expired credit grants no minutes.
         const rawCredit = storage.getItem(CREDIT_KEY);
-        let points = 0, minutes = 0;
+        let points = 0, minutes = 0, seconds = 0;
         if (rawCredit !== null) {
           const credit = JSON.parse(rawCredit);
           if (!credit || credit.version !== 1 ||
               !/^\d{4}-\d{2}-\d{2}$/.test(credit.date) ||
               !Number.isSafeInteger(credit.points) || credit.points < 0 ||
               !Number.isSafeInteger(credit.minutes) || credit.minutes < 0 ||
-              credit.minutes > Math.floor(Number.MAX_SAFE_INTEGER / 60000))
+              credit.minutes > Math.floor(Number.MAX_SAFE_INTEGER / 60000) ||
+              (credit.seconds !== undefined &&
+                (!Number.isSafeInteger(credit.seconds) || credit.seconds < 0 ||
+                  credit.seconds > Math.floor(Number.MAX_SAFE_INTEGER / 1000) ||
+                  credit.minutes !== Math.floor(credit.seconds / 60))))
             return failure(date);
           if (credit.date === date) {
             points = credit.points;
             minutes = credit.minutes;
+            seconds = credit.seconds === undefined ? minutes * 60 : credit.seconds;
           }
         }
         const rawUsage = storage.getItem(USAGE_KEY);
@@ -47,8 +52,8 @@ const GmrPlayTime = (() => {
           // Reset GMR's counter on the local date boundary.
           storage.setItem(USAGE_KEY, JSON.stringify({ version: VERSION, date, elapsedMs: 0 }));
         }
-        const remainingMs = Math.max(0, minutes * 60000 - elapsedMs);
-        return { date, points, minutes, elapsedMs, remainingMs,
+        const remainingMs = Math.max(0, seconds * 1000 - elapsedMs);
+        return { date, points, minutes, seconds, elapsedMs, remainingMs,
           allowed: remainingMs > 0, error: false };
       } catch {
         // Corrupt/unsupported records are preserved; fail closed.
@@ -74,6 +79,10 @@ const GmrPlayTime = (() => {
     const seconds = (ceil ? Math.ceil : Math.floor)(ms / 1000);
     return Math.floor(seconds / 60) + ":" + String(seconds % 60).padStart(2, "0");
   }
+  function formatCredit(seconds) {
+    return Math.floor(seconds / 60) + " min" +
+      (seconds % 60 ? " " + (seconds % 60) + " s" : "");
+  }
   function mountSummary(element) {
     if (!element) return;
     const store = createStore({
@@ -85,7 +94,7 @@ const GmrPlayTime = (() => {
       element.textContent = state.error
         ? "Compteur de jeu indisponible (stockage local inaccessible ou incompatible)."
         : state.points + " exercice" + (state.points === 1 ? "" : "s") +
-          " · " + state.minutes + " min autorisées" +
+          " · " + formatCredit(state.seconds) + " autorisées" +
           " · " + format(state.elapsedMs) + " utilisées" +
           " · " + format(state.remainingMs, true) + " restantes";
     }
@@ -150,15 +159,15 @@ const GmrPlayTime = (() => {
       status.textContent = state.error
         ? "Temps de jeu indisponible"
         : "Jeu : " + format(state.remainingMs, true) + " restant" +
-          " / " + state.minutes + " min · " + format(state.elapsedMs) + " joué";
+          " / " + formatCredit(state.seconds) + " · " + format(state.elapsedMs) + " joué";
       lock.hidden = state.allowed;
       title.textContent = state.error ? "Temps de jeu indisponible" : "Temps de jeu terminé";
       message.textContent = state.error
         ? "Impossible de vérifier le crédit de jeu. Vérifie les données du navigateur."
-        : state.minutes === 0
+        : state.seconds === 0
           ? "Aucune minute disponible aujourd’hui. Termine des exercices pour en gagner."
-          : "Tu as utilisé tes " + state.minutes +
-            " minutes de jeu aujourd’hui. Termine des exercices pour en gagner davantage.";
+          : "Tu as utilisé tes " + formatCredit(state.seconds) +
+            " de jeu aujourd’hui. Termine des exercices pour en gagner davantage.";
       return state;
     }
     function tick() {

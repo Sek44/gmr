@@ -60,3 +60,34 @@ test("storage failure never grants unverified play", () => {
   assert.equal(store.read().allowed, false);
   assert.equal(store.spend(5000).error, true);
 });
+
+test("second-precision credits keep fractional minutes throughout GMR", () => {
+  const { map, store, credit } = fixture();
+  credit(2);
+  const data = JSON.parse(map.get(PlayTime.CREDIT_KEY));
+  data.seconds = 165;
+  map.set(PlayTime.CREDIT_KEY, JSON.stringify(data));
+  assert.equal(store.read().minutes, 2);
+  assert.equal(store.read().seconds, 165);
+  assert.equal(store.read().remainingMs, 165000);
+  assert.equal(store.spend(120500).remainingMs, 44500);
+  assert.equal(store.spend(44500).allowed, false);
+  assert.equal(store.read().elapsedMs, 165000);
+});
+test("credits below a minute are playable and malformed seconds fail closed", () => {
+  const { map, store, credit } = fixture();
+  credit(0);
+  const data = JSON.parse(map.get(PlayTime.CREDIT_KEY));
+  data.seconds = 45;
+  map.set(PlayTime.CREDIT_KEY, JSON.stringify(data));
+  assert.equal(store.read().remainingMs, 45000);
+  assert.equal(store.read().allowed, true);
+  data.minutes = 1;
+  map.set(PlayTime.CREDIT_KEY, JSON.stringify(data));
+  assert.equal(store.read().error, true);
+  assert.equal(store.read().allowed, false);
+  data.minutes = 0;
+  data.seconds = -1;
+  map.set(PlayTime.CREDIT_KEY, JSON.stringify(data));
+  assert.equal(store.read().error, true);
+});
