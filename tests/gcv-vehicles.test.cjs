@@ -245,9 +245,14 @@ test("sport motorcycle has a crouched rider, full-face helmet and visible fairin
   assert.ok(bike, "the active low-poly motorcycle has a detailed silhouette");
   assert.ok(bike.children.some((node) => node.material?.color === 0x17b5e5),
     "bright sport fairing");
-  const helmet = bike.children.find((node) => node.children?.some((part) =>
-    part.material?.color === 0xffd239));
-  assert.ok(helmet, "independent full-face helmet with visor");
+  const { body, helmet, baseY } = models.motoRider;
+  assert.ok(bike.children.includes(body), "the motorcycle rider has a separate hip joint");
+  assert.equal(baseY, 1.32);
+  assert.ok(body.children.length > 0, "torso, legs and head move with the hip");
+  assert.ok(helmet.children.some((part) => part.material?.color === 0xffd239),
+    "the full-face helmet remains independently articulated");
+  assert.ok(body.children.some((child) => child.children.includes(helmet)),
+    "the helmet is attached to the moving pilot, not the frame");
   models.setCameraMode(false);
   assert.equal(helmet.visible, false, "inside camera must not see the helmet");
   models.setCameraMode(true);
