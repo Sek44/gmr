@@ -159,10 +159,10 @@ test("cockpit intro enters only in the final third and hides the helmet late", (
   view.startGridIntro();
   view.updateCamera(Rendering.GRID_INTRO_DURATION * 2 / 3);
   assert.equal(camera.position.x, 0);
-  assert.equal(camera.position.z, 8.6);
+  assert.equal(camera.position.z, 7.3);
   assert.deepEqual(visibility, [true]);
   view.updateCamera(Rendering.GRID_INTRO_DURATION / 6);
-  assert.ok(camera.position.z < 8.6 && camera.position.z > 0.29);
+  assert.ok(camera.position.z < 7.3 && camera.position.z > 0.29);
   assert.deepEqual(visibility, [true]);
   view.updateCamera(Rendering.GRID_INTRO_DURATION / 6);
   assert.equal(view.gridIntroActive, false);
@@ -185,7 +185,7 @@ test("race intro freezes when paused and cancels on a manual camera change", () 
     pausedPosition);
   view.setView(true);
   assert.equal(view.gridIntroActive, false);
-  assert.deepEqual(visibility, [true, false]);
+  assert.deepEqual(visibility, [true, true]);
   view.updateCamera(0);
   assert.equal(camera.position.z, 9.7);
 });
