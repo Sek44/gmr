@@ -105,7 +105,10 @@ const GcvHud = (() => {
       lapCountLabel.firstChild.textContent = closed
         ? (racing ? "Tours en course : " : "Tours chronométrés : ")
         : "Parcours terminés : ";
-      restartButton.textContent = racing ? "↻ Rejouer" : "↻ Départ";
+      // Do not replace the SVG icon with text when the game mode changes.
+      const restartDescription = racing ? "Rejouer la course" : "Repartir dix mètres avant la ligne d’arrivée";
+      restartButton.setAttribute("aria-label", restartDescription);
+      restartButton.title = restartDescription;
       if (!racing) {
         raceOverlay.hidden = true;
         return false;
