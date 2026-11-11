@@ -3,6 +3,11 @@
 // Keyboard, analog pointer steering and multi-touch pedals.
 const GcvControls = (() => {
   function create({ window, document, stage, pad, knob, gasButton, brakeButton }) {
+    const listeners = [];
+    function listen(target, type, handler) {
+      target.addEventListener(type, handler);
+      listeners.push([target, type, handler]);
+    }
     const keys = new Set();
     let steerPointer = null, touchSteer = 0;
     const gasPointers = new Set(), brakePointers = new Set();
@@ -24,14 +29,14 @@ const GcvControls = (() => {
       if (Math.abs(touchSteer) < 0.08) touchSteer = 0;
       refreshPad();
     }
-    pad.addEventListener("pointerdown", (event) => {
+    listen(pad, "pointerdown", (event) => {
       if (steerPointer !== null || (event.pointerType === "mouse" && event.button !== 0)) return;
       event.preventDefault();
       steerPointer = event.pointerId;
       pad.setPointerCapture(event.pointerId);
       updateSteering(event);
     });
-    pad.addEventListener("pointermove", (event) => {
+    listen(pad, "pointermove", (event) => {
       if (event.pointerId === steerPointer) updateSteering(event);
     });
     function finishSteer(event) {
@@ -41,12 +46,12 @@ const GcvControls = (() => {
       refreshPad();
     }
     for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) {
-      pad.addEventListener(type, finishSteer);
+      listen(pad, type, finishSteer);
     }
 
     function bindPedal(button, pointerSet) {
       function sync() { button.classList.toggle("is-active", pointerSet.size !== 0); }
-      button.addEventListener("pointerdown", (event) => {
+      listen(button, "pointerdown", (event) => {
         if (event.pointerType === "mouse" && event.button !== 0) return;
         event.preventDefault();
         pointerSet.add(event.pointerId);
@@ -58,14 +63,14 @@ const GcvControls = (() => {
         sync();
       }
       for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) {
-        button.addEventListener(type, release);
+        listen(button, type, release);
       }
     }
     bindPedal(gasButton, gasPointers);
     bindPedal(brakeButton, brakePointers);
 
     const drivingKeys = new Set(["arrowleft", "arrowright", "arrowup", "arrowdown", "a", "d", "w", "s"]);
-    window.addEventListener("keydown", (event) => {
+    listen(window, "keydown", (event) => {
       if (event.altKey || event.ctrlKey || event.metaKey) return;
       const key = event.key.toLowerCase();
       if (!drivingKeys.has(key)) return;
@@ -73,7 +78,7 @@ const GcvControls = (() => {
       keys.add(key);
       refreshPad();
     });
-    window.addEventListener("keyup", (event) => {
+    listen(window, "keyup", (event) => {
       const key = event.key.toLowerCase();
       if (!drivingKeys.has(key)) return;
       keys.delete(key);
@@ -89,12 +94,12 @@ const GcvControls = (() => {
       brakeButton.classList.remove("is-active");
       refreshPad();
     }
-    window.addEventListener("blur", clearControls);
-    document.addEventListener("visibilitychange", () => {
+    listen(window, "blur", clearControls);
+    listen(document, "visibilitychange", () => {
       if (document.hidden) clearControls();
     });
     // Prevent a context menu from appearing after long touches.
-    stage.addEventListener("contextmenu", (event) => event.preventDefault());
+    listen(stage, "contextmenu", (event) => event.preventDefault());
     return {
       read() {
         return {
@@ -107,6 +112,11 @@ const GcvControls = (() => {
         return brakePointers.size > 0 || keys.has("arrowdown") || keys.has("s");
       },
       clear: clearControls,
+      dispose() {
+        clearControls();
+        for (const [target, type, handler] of listeners)
+          target.removeEventListener(type, handler);
+      },
     };
   }
 
