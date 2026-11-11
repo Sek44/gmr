@@ -218,6 +218,7 @@
     // Only the active group is rendered; no additional scenes or renderers.
     const originalParts = [...car.children];
     const models = new Map();
+    let motoRider = null; // Rider-only rig: no moving motorcycle fairing or wheels.
     const extraWheelPivots = [];
     const helmetHeads = [];
     const numberMaterial = playerNumberMaterial;
@@ -372,22 +373,31 @@
         }
         tube(group, [-0.61, 1.53, -0.98],
           [0.61, 1.53, -0.98], 0.065, wheelSilver);
+        // Rider-only joint at the hips. The counter-offset keeps every limb
+        // in the original position at rest; only these two Groups move.
+        const riderBody = new THREE.Group();
+        riderBody.position.set(0, 1.32, 0.22);
+        const riderParts = new THREE.Group();
+        riderParts.position.set(0, -1.32, -0.22);
+        riderBody.add(riderParts);
+        group.add(riderBody);
+        motoRider = { body: riderBody, helmet: null, baseY: 1.32 };
         // Hands naturally grip the bars; bent arms and knees show the pose.
         const suit = paint(0x105dc6);
-        rounded(group, suit, 0, 1.80, 0.10, 0.46, 0.43, 0.33);
-        box(group, 0.55, 0.10, 0.37, sunYellow, 0, 1.91, 0.33);
+        rounded(riderParts, suit, 0, 1.80, 0.10, 0.46, 0.43, 0.33);
+        box(riderParts, 0.55, 0.10, 0.37, sunYellow, 0, 1.91, 0.33);
         for (const side of [-1, 1]) {
-          rounded(group, sunYellow, side * 0.43, 1.88, 0.02,
+          rounded(riderParts, sunYellow, side * 0.43, 1.88, 0.02,
             0.21, 0.19, 0.26);
-          tube(group, [side * 0.43, 1.80, -0.04],
+          tube(riderParts, [side * 0.43, 1.80, -0.04],
             [side * 0.49, 1.53, -0.96], 0.135, suit);
-          rounded(group, gloves, side * 0.49, 1.51, -0.96,
+          rounded(riderParts, gloves, side * 0.49, 1.51, -0.96,
             0.15, 0.12, 0.15);
-          tube(group, [side * 0.30, 1.53, 0.42],
+          tube(riderParts, [side * 0.30, 1.53, 0.42],
             [side * 0.43, 1.00, 0.76], 0.16, suit);
-          tube(group, [side * 0.43, 1.00, 0.76],
+          tube(riderParts, [side * 0.43, 1.00, 0.76],
             [side * 0.57, 0.80, 0.35], 0.14, gloves);
-          box(group, 0.26, 0.16, 0.42, gloves,
+          box(riderParts, 0.26, 0.16, 0.42, gloves,
             side * 0.57, 0.73, 0.27);
         }
         const helmetGroup = new THREE.Group();
@@ -400,7 +410,8 @@
         const crest = box(helmetGroup, 0.18, 0.19, 0.62, cobalt,
           0, 0.35, 0.13);
         crest.rotation.x = -0.14;
-        group.add(helmetGroup);
+        riderParts.add(helmetGroup);
+        motoRider.helmet = helmetGroup;
         helmetHeads.push(helmetGroup);
 
         // #9 is legible from the front, rear and both sides.
@@ -534,7 +545,7 @@
 
     return {
       car, wheelPivots, extraWheelPivots, brakeLights, rearBrakeGlows,
-      opponentMeshes, setCameraMode, setVehicle,
+      opponentMeshes, motoRider, setCameraMode, setVehicle,
     };
   }
 

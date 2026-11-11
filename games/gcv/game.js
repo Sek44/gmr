@@ -73,12 +73,12 @@
     } = World3D.create({ THREE, TrackLayout, Barriers, Scenery });
     const {
       car, wheelPivots, extraWheelPivots, brakeLights, rearBrakeGlows,
-      opponentMeshes, setCameraMode, setVehicle,
+      opponentMeshes, motoRider, setCameraMode, setVehicle,
     } = Vehicles.create({ THREE, scene, Race, trackLength, document });
 
     const rendering = Rendering.create({
       THREE, window, stage, sceneHost, scene, car, wheelPivots,
-      brakeLights, rearBrakeGlows, opponentMeshes, extraWheelPivots, curve,
+      brakeLights, rearBrakeGlows, opponentMeshes, extraWheelPivots, motoRider, curve,
       startIndex, SAMPLE_COUNT, trackLength, closed, heightAt,
     });
     const visualEffects = VisualEffects.create({ THREE, scene, car });
@@ -311,7 +311,7 @@
         if (button.dataset.gcvTrack === "classic") url.searchParams.delete("track");
         else url.searchParams.set("track", button.dataset.gcvTrack);
         // A new page URL forces an updated HTML document on older tablets.
-        url.searchParams.set("rev", "20261111e");
+        url.searchParams.set("rev", "20261111f");
         window.location.assign(url.href);
       });
     });
