@@ -7,7 +7,7 @@
   <meta name="description" content="Super Kart, jeu de course automobile 3D pour GMR.">
   <title>Super Kart — GMR</title>
   <link rel="stylesheet" href="../../shared/site.css">
-  <link rel="stylesheet" href="./game.css?v=20261111k">
+  <link rel="stylesheet" href="./game.css?v=20261111l">
   <script defer src="../../shared/game-state.js"></script>
   <script defer src="../../shared/play-time.js?v=20261111-seconds2"></script>
   <script defer src="./physics.js?v=20261111k"></script>
@@ -138,18 +138,19 @@
           <p id="race-results-status" aria-live="polite"></p>
         </div>
         <div class="gcv-race-overlay-actions" id="race-overlay-actions" hidden>
-          <button type="button" id="race-replay-button">Rejouer</button>
+          <button type="button" id="race-replay-button" aria-label="Rejouer la course" title="Rejouer la course"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11a9 9 0 1 1 2.5 6.3M3 4v7h7"/></svg></button>
           <button type="button" id="race-free-button">Essais libres</button>
         </div>
       </div>
 
       <div class="gcv-controls" aria-label="Commandes de conduite">
         <div class="gcv-steering-wrap">
-          <span class="gcv-control-caption">DIRECTION</span>
           <div id="steer-pad" class="gcv-steer-pad" role="slider" tabindex="0" aria-label="Direction" aria-valuemin="-100" aria-valuemax="100" aria-valuenow="0" aria-valuetext="Tout droit">
-            <span class="gcv-steer-side">◀</span>
-            <div class="gcv-steer-track"><span class="gcv-steer-knob" id="steer-knob"></span></div>
-            <span class="gcv-steer-side">▶</span>
+            <div class="gcv-steer-visual" aria-hidden="true">
+              <span class="gcv-steer-side">◀</span>
+              <div class="gcv-steer-track"><span class="gcv-steer-knob" id="steer-knob"></span></div>
+              <span class="gcv-steer-side">▶</span>
+            </div>
           </div>
         </div>
         <div class="gcv-pedals">
