@@ -10,7 +10,8 @@ const VisualEffects = require("../games/gcv/visual-effects.js");
 const gameDirectory = path.join(__dirname, "../games/gcv");
 
 test("visual effects are loaded before the game entry point", () => {
-  const html = fs.readFileSync(path.join(gameDirectory, "index.html"), "utf8");
+  const html = fs.readFileSync(path.join(gameDirectory, "index.html"), "utf8")
+    .replace(/\?v=20261111c/g, "");
   const world = html.indexOf('<script defer src="./world-3d.js"></script>');
   const effects = html.indexOf('<script defer src="./visual-effects.js"></script>');
   const game = html.indexOf('<script type="module" src="./game.js"></script>');
