@@ -12,7 +12,7 @@ const gameDirectory = path.join(__dirname, "../games/gcv");
 
 test("GCV loads its vehicle module before the game entry point", () => {
   const html = fs.readFileSync(path.join(gameDirectory, "index.html"), "utf8")
-    .replace(/\?v=20261111c/g, "");
+    .replace(/\?v=20261111d/g, "");
   const race = html.indexOf('<script defer src="./race.js"></script>');
   const vehicles = html.indexOf('<script defer src="./vehicles.js"></script>');
   const game = html.indexOf('<script type="module" src="./game.js"></script>');
@@ -203,4 +203,30 @@ test("camera button uses the exported vehicle API, not undefined scene groups", 
   const game = fs.readFileSync(path.join(gameDirectory, "game.js"), "utf8");
   assert.match(game, /setCameraMode\(outside\)/);
   assert.doesNotMatch(game, /\b(?:cabin|dashboard)\.visible\b/);
+});
+
+test("all five vehicle/pilot pairs can be selected without creating a new scene", () => {
+  assert.deepEqual(Vehicles.CHOICES.map((choice) => choice.id),
+    ["classic", "moto", "kart", "buggy", "comet"]);
+  assert.equal(Vehicles.normalize("unknown"), "classic");
+  const draw = {
+    fillRect() {}, fillText() {}, beginPath() {}, arc() {},
+    stroke() {}, moveTo() {}, lineTo() {},
+  };
+  const document = {
+    createElement: () => ({ getContext: () => draw }),
+  };
+  const scene = new SceneNode();
+  const models = Vehicles.create({ THREE, scene, Race, trackLength: 1500, document });
+  assert.equal(scene.children.length, 10);
+  assert.equal(models.extraWheelPivots.length, 14);
+  for (const id of Vehicles.CHOICES.map((choice) => choice.id)) {
+    assert.equal(models.setVehicle(id), id);
+    const activeModels = models.car.children.filter((child) =>
+      child.visible && child.children && child.children.some((part) => part.geometry));
+    assert.ok(activeModels.length >= 1, `a visible vehicle exists for ${id}`);
+    models.setCameraMode(false);
+    models.setCameraMode(true);
+  }
+  assert.equal(models.setVehicle("unknown"), "classic");
 });
