@@ -4,7 +4,7 @@
 // The driving simulation, lap timing and requestAnimationFrame loop stay in game.js.
 const GcvRendering = (() => {
   function create({ THREE, window, stage, sceneHost, scene, car, wheelPivots,
-    brakeLights, rearBrakeGlows, opponentMeshes, curve, startIndex,
+    brakeLights, rearBrakeGlows, opponentMeshes, extraWheelPivots = [], curve, startIndex,
     SAMPLE_COUNT, trackLength, closed = true, heightAt = () => 0 }) {
     // Limit framebuffer allocations for the longer open route. On older
     // tablet GPUs, MSAA at 1.7x pixel ratio can exhaust WebGL memory during
@@ -73,11 +73,28 @@ const GcvRendering = (() => {
           driver.yaw, 0, "YXZ");
       }
       for (const wheel of wheelPivots) wheel.rotation.x -= driver.speed * dt / 0.46;
+      for (const wheel of extraWheelPivots) wheel.rotation.x -= driver.speed * dt / 0.49;
       car.updateMatrixWorld(true); // Needed before particles use car.localToWorld().
       brakeLights.emissiveIntensity = brakePressed ? 3.8 : 0.15;
       for (const glow of rearBrakeGlows) glow.intensity = brakePressed ? 3.5 : 0;
     }
 
+    // Place the cockpit camera above the selected pilot's seat or helmet,
+    // keeping the road unobstructed for each vehicle silhouette.
+    function setVehicle(id) {
+      const cockpits = {
+        classic: [-0.42, 1.51, 0.34],
+        moto: [0, 2.22, 0.29],
+        kart: [0, 1.94, 0.55],
+        buggy: [0, 2.02, 0.38],
+        comet: [0, 2.02, 0.38],
+      };
+      const [x, y, z] = cockpits[id] || cockpits.classic;
+      insidePosition.set(x, y, z);
+      insideTarget.set(x, y - 0.12, -14);
+      outsidePosition.set(0, id === "moto" ? 4.0 : 4.5, id === "moto" ? 8.6 : 9.7);
+      initializedCamera = false;
+    }
     function setView(outside) {
       outsideView = Boolean(outside);
       initializedCamera = false;
@@ -100,7 +117,7 @@ const GcvRendering = (() => {
     }
 
     function render() { renderer.render(scene, camera); }
-    return { syncOpponents, updatePlayer, setView, updateCamera, render };
+    return { syncOpponents, updatePlayer, setView, setVehicle, updateCamera, render };
   }
 
   return { create };

@@ -3,6 +3,16 @@
 // GCV 3D vehicle geometry. Simulation and AI movements stay in game.js.
 // Explicit inputs keep this module independent of the game session state.
 (function (root) {
+  const DEFAULT_ID = "classic";
+  const CHOICES = Object.freeze([
+    Object.freeze({ id: "classic", name: "Voiture n° 9", pilot: "Pilote classique" }),
+    Object.freeze({ id: "moto", name: "Moto Turbo", pilot: "Milo le motard" }),
+    Object.freeze({ id: "kart", name: "Kart Citron", pilot: "Luna la pilote" }),
+    Object.freeze({ id: "buggy", name: "Buggy Dragon", pilot: "Bongo l'aventurier" }),
+    Object.freeze({ id: "comet", name: "Comète Violette", pilot: "Nova l'astronaute" }),
+  ]);
+  const normalize = (id) => CHOICES.some((choice) => choice.id === id) ? id : DEFAULT_ID;
+
   function create({ THREE, scene, Race, trackLength, document: canvasDocument }) {
     const car = new THREE.Group();
     const colored = new THREE.MeshStandardMaterial({ color: 0xe52b40, metalness: 0.3, roughness: 0.36 });
@@ -203,6 +213,173 @@
       1.040, 0.77, 0, 0, Math.PI / 2); // Right door
     scene.add(car);
 
+    // The original car remains a complete, selectable model. The four other
+    // low-poly vehicle/pilot pairs share its world transform and driving rules.
+    // Only the active group is rendered; no additional scenes or renderers.
+    const originalParts = [...car.children];
+    const models = new Map();
+    const extraWheelPivots = [];
+    const helmetHeads = [];
+    const numberMaterial = playerNumberMaterial;
+    const modelDark = new THREE.MeshStandardMaterial({ color: 0x19212d, roughness: 0.82 });
+    const wheelSilver = new THREE.MeshStandardMaterial({ color: 0xb6cbd0, metalness: 0.35, roughness: 0.42 });
+    const skin = new THREE.MeshStandardMaterial({ color: 0xf6bb88, roughness: 0.9 });
+
+    function paint(color) {
+      return new THREE.MeshStandardMaterial({ color, roughness: 0.5, metalness: 0.14 });
+    }
+    function addWheel(group, x, z, radius = 0.46, width = 0.30) {
+      const pivot = new THREE.Group();
+      pivot.position.set(x, radius, z);
+      const tyre = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, width, 10), modelDark);
+      tyre.rotation.z = Math.PI / 2;
+      pivot.add(tyre);
+      const rim = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.50,
+        radius * 0.50, width + 0.025, 8), wheelSilver);
+      rim.rotation.z = Math.PI / 2;
+      pivot.add(rim);
+      group.add(pivot);
+      extraWheelPivots.push(pivot);
+    }
+    function addPilot(group, { z = 0.35, y = 1.28, jacket = 0x3db9dc,
+      helmet = 0xffd34e, eyes = false, ears = false, antenna = false, lean = 0 }) {
+      const clothing = paint(jacket), helmetPaint = paint(helmet);
+      const torso = box(group, 0.76, 0.72, 0.47, clothing, 0, y, z);
+      torso.rotation.x = lean;
+      for (const side of [-1, 1]) {
+        const arm = box(group, 0.20, 0.57, 0.23, clothing, side * 0.48,
+          y - 0.11, z - 0.20);
+        arm.rotation.x = -0.36;
+        box(group, 0.26, 0.38, 0.47, modelDark,
+          side * 0.32, y - 0.53, z + 0.20);
+        box(group, 0.22, 0.16, 0.22, skin, side * 0.48,
+          y - 0.39, z - 0.29);
+      }
+      const head = new THREE.Group();
+      head.position.set(0, y + 0.62, z - 0.08);
+      const headGeometry = THREE.SphereGeometry
+        ? new THREE.SphereGeometry(0.37, 10, 8)
+        : new THREE.BoxGeometry(0.70, 0.70, 0.70);
+      head.add(new THREE.Mesh(headGeometry, helmetPaint));
+      box(head, 0.51, 0.18, 0.09, paint(0x25354d), 0, -0.02, -0.33);
+      if (eyes) {
+        const eyeMaterial = paint(0xffffff);
+        for (const side of [-1, 1]) {
+          box(head, 0.10, 0.10, 0.05, eyeMaterial, side * 0.13, 0.03, -0.39);
+        }
+      }
+      if (ears) {
+        for (const side of [-1, 1]) {
+          const ear = box(head, 0.19, 0.37, 0.24, helmetPaint,
+            side * 0.29, 0.36, 0.03);
+          ear.rotation.z = side * -0.30;
+        }
+      }
+      if (antenna) {
+        box(head, 0.08, 0.33, 0.08, wheelSilver, 0, 0.45, 0.05);
+        box(head, 0.20, 0.17, 0.20, paint(0xffe78c), 0, 0.64, 0.05);
+      }
+      group.add(head);
+      helmetHeads.push(head);
+    }
+
+    function buildModel(id) {
+      const group = new THREE.Group();
+      const blue = paint(0x2c99df), yellow = paint(0xf8c943);
+      const green = paint(0x57c66a), purple = paint(0xa06ce1);
+      const red = paint(0xeb5b64);
+      if (id === "moto") {
+        // Narrow motorcycle, two unmistakable large wheels, rider leaning forward.
+        box(group, 0.58, 0.43, 2.36, blue, 0, 0.86, 0.02);
+        box(group, 0.68, 0.32, 1.10, yellow, 0, 1.02, -0.38);
+        box(group, 0.60, 0.16, 0.73, modelDark, 0, 1.18, 0.49);
+        box(group, 1.25, 0.12, 0.12, wheelSilver, 0, 1.54, -1.05);
+        box(group, 0.18, 0.75, 0.16, wheelSilver, 0, 0.88, -1.16);
+        addWheel(group, 0, -1.35, 0.59, 0.28);
+        addWheel(group, 0, 1.24, 0.59, 0.28);
+        addPilot(group, { z: 0.29, y: 1.64, jacket: 0x2588d7,
+          helmet: 0xffd253, lean: -0.27 });
+        addNumberDecal(group, numberMaterial, 0.48, 0.34, 0, 1.27, -0.39, -Math.PI / 2);
+        addNumberDecal(group, numberMaterial, 0.45, 0.32, 0, 0.94, 1.15);
+      } else if (id === "kart") {
+        box(group, 2.18, 0.28, 2.85, yellow, 0, 0.57, 0);
+        box(group, 1.72, 0.39, 0.96, green, 0, 0.79, -0.87);
+        box(group, 2.40, 0.23, 0.28, modelDark, 0, 0.54, -1.42);
+        box(group, 1.10, 0.25, 0.87, modelDark, 0, 0.87, 0.53);
+        box(group, 0.84, 0.14, 0.12, wheelSilver, 0, 1.28, -0.22);
+        for (const x of [-1.08, 1.08]) {
+          addWheel(group, x, -1.04, 0.43);
+          addWheel(group, x, 1.03, 0.43);
+        }
+        addPilot(group, { z: 0.49, y: 1.28, jacket: 0x56b960, helmet: 0xffe276, eyes: true });
+        addNumberDecal(group, numberMaterial, 0.88, 0.43, 0, 1.015, -0.91, -Math.PI / 2);
+        for (const sign of [-1, 1]) {
+          addNumberDecal(group, numberMaterial, 0.63, 0.30, sign * 1.10, 0.68, 0.10,
+            0, sign * Math.PI / 2);
+        }
+      } else if (id === "buggy") {
+        // Friendly fantasy off-road racer; no franchise character or copied design.
+        box(group, 2.32, 0.45, 3.22, green, 0, 0.75, 0);
+        box(group, 1.85, 0.33, 1.06, yellow, 0, 1.08, -0.82);
+        box(group, 2.55, 0.23, 0.27, modelDark, 0, 0.60, -1.57);
+        box(group, 1.60, 0.16, 0.79, modelDark, 0, 0.99, 0.44);
+        for (const sign of [-1, 1]) {
+          addWheel(group, sign * 1.22, -1.11, 0.57, 0.41);
+          addWheel(group, sign * 1.22, 1.15, 0.57, 0.41);
+          box(group, 0.11, 0.74, 0.14, wheelSilver, sign * 0.78, 1.61, 0.62);
+        }
+        box(group, 1.63, 0.10, 0.16, wheelSilver, 0, 1.98, 0.62);
+        addPilot(group, { z: 0.32, y: 1.36, jacket: 0xef7e45,
+          helmet: 0x46ba78, ears: true });
+        addNumberDecal(group, numberMaterial, 0.91, 0.43, 0, 1.261, -0.92, -Math.PI / 2);
+        for (const sign of [-1, 1])
+          addNumberDecal(group, numberMaterial, 0.77, 0.39,
+            sign * 1.17, 0.83, 0.12, 0, sign * Math.PI / 2);
+      } else if (id === "comet") {
+        box(group, 1.93, 0.36, 3.73, purple, 0, 0.67, 0);
+        box(group, 1.48, 0.27, 1.40, red, 0, 0.89, -0.98);
+        box(group, 2.55, 0.08, 0.55, purple, 0, 0.71, 1.34);
+        box(group, 1.20, 0.25, 0.95, modelDark, 0, 1.02, 0.33);
+        box(group, 1.33, 0.13, 0.15, wheelSilver, 0, 1.43, -0.19);
+        for (const sign of [-1, 1]) {
+          addWheel(group, sign * 0.96, -1.13, 0.41);
+          addWheel(group, sign * 1.02, 1.14, 0.49);
+          const fin = box(group, 0.31, 0.56, 0.72, red,
+            sign * 0.78, 0.97, 1.31);
+          fin.rotation.z = sign * -0.26;
+        }
+        addPilot(group, { z: 0.32, y: 1.36, jacket: 0x7766db,
+          helmet: 0xf5a9e0, antenna: true });
+        addNumberDecal(group, numberMaterial, 0.85, 0.41, 0, 1.055, -1.04, -Math.PI / 2);
+        for (const sign of [-1, 1])
+          addNumberDecal(group, numberMaterial, 0.62, 0.33,
+            sign * 1.01, 0.73, 0.16, 0, sign * Math.PI / 2);
+      }
+      group.visible = false;
+      car.add(group);
+      models.set(id, group);
+    }
+    for (const choice of CHOICES) {
+      if (choice.id !== DEFAULT_ID) buildModel(choice.id);
+    }
+    let activeVehicle = DEFAULT_ID;
+    let cameraOutside = true;
+    function setCameraMode(outside) {
+      cameraOutside = Boolean(outside);
+      cabin.visible = activeVehicle === DEFAULT_ID;
+      dashboard.visible = activeVehicle === DEFAULT_ID && !cameraOutside;
+      // The inside camera must not sit inside a helmet.
+      for (const head of helmetHeads) head.visible = cameraOutside;
+    }
+    function setVehicle(id) {
+      activeVehicle = normalize(id);
+      const isClassic = activeVehicle === DEFAULT_ID;
+      for (const part of originalParts) part.visible = isClassic;
+      for (const [modelId, model] of models) model.visible = modelId === activeVehicle;
+      setCameraMode(cameraOutside);
+      return activeVehicle;
+    }
+
     // Nine lightweight opponent cars. They use the same circuit as the player,
     // but a simple slow path follower rather than expensive vehicle physics.
     const opponentMeshes = new Map();
@@ -246,15 +423,13 @@
       opponentMeshes.set(gridSlot, group);
     }
 
-    // Camera-specific visibility belongs to the model, not to game.js.
-    function setCameraMode(outside) {
-      cabin.visible = true; // Keep the roof and pillars in both camera modes.
-      dashboard.visible = !outside;
-    }
-    return { car, wheelPivots, brakeLights, rearBrakeGlows, opponentMeshes, setCameraMode };
+    return {
+      car, wheelPivots, extraWheelPivots, brakeLights, rearBrakeGlows,
+      opponentMeshes, setCameraMode, setVehicle,
+    };
   }
 
-  const api = Object.freeze({ create });
+  const api = Object.freeze({ create, CHOICES, DEFAULT_ID, normalize });
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   if (root) root.GcvVehicles = api;
 })(typeof window !== "undefined" ? window : globalThis);

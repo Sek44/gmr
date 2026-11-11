@@ -295,10 +295,38 @@ const GcvBarriers = (() => {
     return result;
   }
 
+  // Physical end walls on point-to-point routes. Use endpoint tangents
+  // rather than a fictitious closing segment; never connect the two ends.
+  function resolveEndCaps(proposed, nearestIndex, positions, directions, sides,
+                          barriers) {
+    if (barriers.closed !== false) return { ...proposed, collided: false };
+    const last = positions.length - 1;
+    for (const [index, sign] of [[0, 1], [last, -1]]) {
+      if (Math.abs(nearestIndex - index) > 18) continue;
+      const center = positions[index], tangent = directions[index],
+        side = sides[index];
+      const dx = proposed.x - center.x, dz = proposed.z - center.z;
+      const lateral = dx * side.x + dz * side.z;
+      if (Math.abs(lateral) > barriers.railOffset + CAR_RADIUS) continue;
+      const along = (dx * tangent.x + dz * tangent.z) * sign;
+      const clearance = CAR_RADIUS + 0.3;
+      if (along >= clearance) continue;
+      const penetration = clearance - along;
+      return {
+        ...proposed,
+        x: proposed.x + tangent.x * sign * penetration,
+        z: proposed.z + tangent.z * sign * penetration,
+        speed: 0,
+        collided: true,
+      };
+    }
+    return { ...proposed, collided: false };
+  }
+
   return Object.freeze({
     CAR_RADIUS, RAIL_OFFSET_INWARD, INNER_RADIUS_FRACTION, ROAD_EDGE_MARGIN,
     MAX_CONTACT_SPEED,
-    normalAt, curvatureAt, railIntersections, create, createOpen, resolve,
+    normalAt, curvatureAt, railIntersections, create, createOpen, resolve, resolveEndCaps,
   });
 })();
 if (typeof window !== "undefined") window.GcvBarriers = GcvBarriers;

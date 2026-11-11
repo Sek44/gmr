@@ -19,8 +19,8 @@ Il n'existe ni serveur de jeu, ni build, ni moteur physique externe. Les autres 
 | `track-layout.js` | Registre des tracés fermé/ouvert, sélection par identifiant, départ et arrivée, bosses et passage coloré |
 | `world-3d.js` | Géométrie ouverte/fermée, bosses profilées, sept rubans colorés, lignes, scène/décor, points et tangentes partagés |
 | `scenery.js` | Placement et paramètres du décor statique |
-| `barriers.js` | Géométrie/limites des rails, résolution de contact, glissement, frottement et réalignement du cap |
-| `vehicles.js` | Maillages 3D du joueur, cockpit et neuf concurrents ; marquages de numéros du joueur (n° 9) et des IA issus de `race.js`, avec une texture Canvas par voiture et des décalcomanies positionnées selon leur géométrie |
+| `barriers.js` | Collision latérale de précision contre les rails, glissement/frottement/réalignement du cap et arrêt contre les deux barrières de fermeture de la route ouverte |
+| `vehicles.js` | Modèle de voiture historique, quatre couples pilote/véhicule low-poly originaux sélectionnables et neuf voitures IA ; textures de numéros partagées et visibilité exclusive du modèle actif ; API `CHOICES`, `normalize`, `setVehicle`, `setCameraMode` |
 | `physics.js` | Accélération, frein, direction, marche arrière, chute et émission théorique de boue |
 | `track-progress.js` | **Autorité unique** pour les tours fermés (`move`) et les traversées ouvertes (`moveOpen`), sans bouclage artificiel des échantillons |
 | `lap-times.js` | Temps et trois secteurs, terminaison de trajet ouvert, stockage distinct des records de chaque circuit |
@@ -30,7 +30,7 @@ Il n'existe ni serveur de jeu, ni build, ni moteur physique externe. Les autres 
 | `session.js` | Entrée dans les modes, reprise, redémarrage, snapshots et autosauvegarde |
 | `navigation.js` | Menu, scores en iframe, commandes plein écran et pause liée à la navigation |
 | `controls.js` | Clavier, direction tactile, pédales multitouch et remise à zéro des commandes |
-| `rendering.js` | WebGL, caméras, transformations et animations visuelles des véhicules |
+| `rendering.js` | WebGL, caméras adaptées au véhicule choisi, transformations et animations des roues |
 | `visual-effects.js` | Particules dynamiques de boue et étincelles de friction |
 | `hud.js` | Indicateurs de conduite, chrono, classements et panneau d'arrivée |
 | `mini-map.js` | Carte ouverte/fermée, départ et arrivée distincts, secteurs et marqueurs dynamiques |
@@ -57,7 +57,7 @@ L'unification de cette iframe spécifique avec `shared/score-view.js` reste ouve
 
 ## 5. Persistance
 
-- **Session jetable** : `shared/game-state.js` enregistre `gmr:v1:state:gcv`. Le snapshot inclut notamment caméra, véhicule, état de progression, chrono, course/IA et essais éventuellement conservés. `session.js` sauvegarde lors des changements significatifs, environ toutes les 1,5 s de simulation, et sur les événements de fermeture/masquage gérés par `GameState`.
+- **Session jetable** : `shared/game-state.js` enregistre `gmr:v1:state:gcv`. Le snapshot inclut notamment caméra, **identifiant de la paire véhicule-pilote**, état de progression, chrono, course/IA et essais éventuellement conservés. `session.js` sauvegarde lors des changements significatifs, environ toutes les 1,5 s de simulation, et sur les événements de fermeture/masquage gérés par `GameState`.
 - **Compatibilité des sessions** : `SAVE_REVISION` dans `game.js` et `saveRevision` dans `games/catalog.js` doivent évoluer **ensemble** en cas de rupture ; une ancienne session peut alors être rejetée, puis le menu reste le point d'entrée.
 - **Records personnels** : `lap-times.js` enregistre les trois meilleurs temps classiques dans `gmr:v1:gcv:lap-records:v2`, et ceux du parcours Arc-en-ciel dans `gmr:v1:gcv:lap-records:v2:rainbow`, indépendamment des sessions. Une clé/empreinte du tracé conditionne leur validité ; les ajustements de largeur des accotements peuvent rester compatibles.
 - **Historique général** : `shared/scores.js` gère séparément `gmr:v1:scores`. L'affichage des records de tours relève de `scores-adapter.js`, déclaré via `scoreScripts` dans `games/catalog.js` et chargé par `shared/scores-page.js` après le service partagé. Le classement d'une course GCV n'est pas actuellement enregistré comme score générique.
@@ -73,3 +73,5 @@ Le rendu WebGL réel, le plein écran, le multi-touch et les présentations mobi
 Pour les GPU modestes, le parcours ouvert utilise un échantillonnage à 720 segments, des décorations plus légères, un framebuffer plafonné à 750 000 pixels et un rendu sans MSAA. Le circuit classique conserve son niveau de qualité précédent. Les ressources JS/CSS du jeu portent un identifiant de version dans leur URL pour éviter les mélanges de modules mis en cache.
 
 Le parcours est sélectionné via `?track=rainbow` (absence = classique), avec rechargement de la scène et annulation possible des anciennes sessions. `world-3d.js` livre les indices de départ/arrivée au moteur ; `game.js` calcule la longueur entre les deux portes pour la progression/IA tout en conservant la longueur intégrale de spline pour le rendu. Le saut est un écart vertical temporaire qui ne produit aucun événement de course.
+
+Les barrières de la route ouverte ne constituent jamais une boucle de collision : le maillage des côtés est échantillonné moins finement que les collisions, les deux capuchons transversaux sont dessinés par `world-3d.js` aux extrémités réelles et `barriers.js` bloque les franchissements. L'assistance de zigzag exploite une fonction continue et déterministe `SPRINT.zigzagAt` dans `track-layout.js`.
