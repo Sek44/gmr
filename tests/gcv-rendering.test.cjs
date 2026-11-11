@@ -20,6 +20,22 @@ class WebGLRenderer {
   setSize(...size) { this.size = size; }
   render(scene, camera) { this.lastRender = { scene, camera }; }
 }
+class Mesh {
+  constructor(geometry, material) {
+    this.geometry = geometry;
+    this.material = material;
+    this.position = new Vector();
+    this.rotation = { set(x, y, z, order) {
+      Object.assign(this, { x, y, z, order });
+    } };
+    this.scale = new Vector(1, 1, 1);
+    this.visible = true;
+  }
+}
+class MeshBasicMaterial {
+  constructor(properties) { Object.assign(this, properties); }
+  clone() { return new MeshBasicMaterial({ ...this }); }
+}
 class PerspectiveCamera {
   constructor(fov, aspect, near, far) { Object.assign(this, { fov, aspect, near, far });
     this.position = new Vector(); latestCamera = this; }
@@ -29,10 +45,16 @@ class PerspectiveCamera {
 
 function fixture(closed = true, withMotoRider = false) {
   const window = { devicePixelRatio: 3, listeners: {},
+    document: { createElement() {
+      return { getContext() {
+        return { createRadialGradient() { return { addColorStop() {} }; },
+          fillRect() {} };
+      } };
+    } },
     addEventListener(name, cb) { this.listeners[name] = cb; } };
   const stage = { clientWidth: 800, clientHeight: 400 };
   const sceneHost = { append(canvas) { this.canvas = canvas; } };
-  const scene = {};
+  const scene = { objects: [], add(mesh) { this.objects.push(mesh); } };
   const car = {
     position: new Vector(), rotation: { x: 0, y: 0,
       set(x, y, z, order) { Object.assign(this, { x, y, z, order }); } },
@@ -47,7 +69,10 @@ function fixture(closed = true, withMotoRider = false) {
   const opponentMeshes = new Map([[1, ai]]);
   const curve = { getPointAt(t) { return new Vector(t * 100, 0, 20); },
     getTangentAt() { return new Vector(1, 0, 0); } };
-  const THREE = { WebGLRenderer, PerspectiveCamera, Vector3: Vector, SRGBColorSpace: "srgb" };
+  const THREE = { WebGLRenderer, PerspectiveCamera, Vector3: Vector,
+    Mesh, MeshBasicMaterial, PlaneGeometry: class {},
+    CanvasTexture: class { constructor(canvas) { this.canvas = canvas; } },
+    LinearFilter: "linear", DoubleSide: "double", SRGBColorSpace: "srgb" };
   const motoRider = withMotoRider ? {
     body: { position: new Vector(0, 1.32, 0.22), rotation: { x: 0, y: 0, z: 0 } },
     helmet: { rotation: { x: 0, y: 0, z: 0 } },
@@ -102,6 +127,44 @@ test("player movement, falling, wheel spin and brake lights are visual only", ()
   assert.equal(car.position.y, -2);
   assert.equal(car.rotation.x, 0.42);
   assert.equal(brakeLights.emissiveIntensity, 0.15);
+});
+
+test("soft shadows follow the road, not jump height, and fit the vehicle", () => {
+  const { view, scene, car } = fixture();
+  const [playerShadow, opponentShadow] = scene.objects;
+  const driver = { x: 4, z: 7, yaw: 0.8, speed: 22, roadY: 2, jumpY: 0 };
+  view.setVehicle("moto");
+  view.updatePlayer({ driver, fall: null, dt: 0, brakePressed: false });
+  assert.equal(playerShadow.visible, true);
+  assert.deepEqual([playerShadow.position.x, playerShadow.position.y,
+    playerShadow.position.z], [4, 2 + Rendering.SHADOW_GROUND_OFFSET, 7]);
+  assert.equal(playerShadow.rotation.order, "YXZ");
+  assert.equal(playerShadow.rotation.y, driver.yaw);
+  assert.equal(playerShadow.scale.x, Rendering.SHADOW_FOOTPRINTS.moto[0]);
+  assert.equal(playerShadow.scale.y, Rendering.SHADOW_FOOTPRINTS.moto[1]);
+  const restingOpacity = playerShadow.material.opacity;
+  driver.jumpY = 1.1;
+  view.updatePlayer({ driver, fall: null, dt: 0, brakePressed: false,
+    jumpVelocity: 4 });
+  assert.equal(car.position.y, 3.24);
+  assert.equal(playerShadow.position.y, 2 + Rendering.SHADOW_GROUND_OFFSET,
+    "the shadow stays on the elevated road during takeoff");
+  assert.ok(playerShadow.material.opacity < restingOpacity);
+  assert.ok(playerShadow.scale.x < Rendering.SHADOW_FOOTPRINTS.moto[0]);
+  view.setVehicle("kart");
+  driver.jumpY = 0;
+  view.updatePlayer({ driver, fall: null, dt: 0, brakePressed: false });
+  assert.equal(playerShadow.scale.x, Rendering.SHADOW_FOOTPRINTS.kart[0]);
+  assert.equal(playerShadow.material.opacity, restingOpacity);
+  view.updatePlayer({ driver, fall: { x: 4, y: -1, z: 7, elapsed: 0.3 },
+    dt: 0, brakePressed: false });
+  assert.equal(playerShadow.visible, false, "no shadow hangs over a hole");
+  view.syncOpponents([{ id: 1, progress: 250, lateral: 3 }]);
+  assert.equal(opponentShadow.visible, true);
+  assert.deepEqual([opponentShadow.position.x, opponentShadow.position.y,
+    opponentShadow.position.z], [25, Rendering.SHADOW_GROUND_OFFSET, 23]);
+  view.syncOpponents(null);
+  assert.equal(opponentShadow.visible, false, "hidden AI have no shadow");
 });
 
 test("camera has rigid cockpit view and outside view follows smoothly", () => {

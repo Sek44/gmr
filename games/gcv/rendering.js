@@ -7,6 +7,21 @@ const GcvRendering = (() => {
   // staging plus 3 s countdown). No extra delay is added to the race.
   const GRID_INTRO_DURATION = 3.8;
   const GRID_REAR_FRACTION = 2 / 3;
+  // Footprint widths and lengths (metres) follow the five player silhouettes.
+  const SHADOW_FOOTPRINTS = Object.freeze({
+    classic: [3.3, 5.1],
+    moto: [1.7, 4.6],
+    kart: [3.0, 4.1],
+    buggy: [3.5, 4.7],
+    comet: [3.0, 5.0],
+  });
+  const SHADOW_GROUND_OFFSET = 0.16; // Above the 0.125 m rainbow ribbons.
+  const SHADOW_OPACITY = 0.78;
+  function shadowFlightAppearance(height) {
+    const lift = Math.max(0, Math.min(1, (Number(height) || 0) / 1.5));
+    return { opacity: SHADOW_OPACITY * (1 - 0.3 * lift),
+      scale: 1 - 0.08 * lift };
+  }
   const smoothStep = (value) => {
     const t = Math.max(0, Math.min(1, value));
     return t * t * (3 - 2 * t);
@@ -58,6 +73,52 @@ const GcvRendering = (() => {
     let wasJumping = false;
     let landingCompression = 0;
     const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+
+    // One tiny radial alpha texture, one plane geometry and two materials for
+    // all ten shadows. The meshes belong to the scene, NOT to the car groups:
+    // jumping and pitching never lift or rotate the ground projection.
+    const shadowCanvas = window.document.createElement("canvas");
+    shadowCanvas.width = shadowCanvas.height = 64;
+    const shadowContext = shadowCanvas.getContext("2d");
+    const gradient = shadowContext.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gradient.addColorStop(0, "rgba(0, 0, 0, 0.55)");
+    gradient.addColorStop(0.4, "rgba(0, 0, 0, 0.42)");
+    gradient.addColorStop(0.72, "rgba(0, 0, 0, 0.14)");
+    gradient.addColorStop(1, "rgba(0, 0, 0, 0)");
+    shadowContext.fillStyle = gradient;
+    shadowContext.fillRect(0, 0, 64, 64);
+    const shadowTexture = new THREE.CanvasTexture(shadowCanvas);
+    shadowTexture.generateMipmaps = false;
+    shadowTexture.minFilter = THREE.LinearFilter;
+    shadowTexture.magFilter = THREE.LinearFilter;
+    const shadowGeometry = new THREE.PlaneGeometry(1, 1);
+    const opponentShadowMaterial = new THREE.MeshBasicMaterial({
+      color: 0x10141a, map: shadowTexture, transparent: true,
+      opacity: SHADOW_OPACITY, depthWrite: false, side: THREE.DoubleSide,
+    });
+    const playerShadowMaterial = opponentShadowMaterial.clone();
+    function makeShadow(material, footprint) {
+      const mesh = new THREE.Mesh(shadowGeometry, material);
+      mesh.rotation.set(-Math.PI / 2, 0, 0, "YXZ");
+      mesh.scale.set(footprint[0], footprint[1], 1);
+      scene.add(mesh);
+      return mesh;
+    }
+    function placeShadow(mesh, x, groundY, z, yaw, footprint, size = 1) {
+      mesh.position.set(x, groundY + SHADOW_GROUND_OFFSET, z);
+      // YXZ applies yaw around world Y while leaving the plane horizontal.
+      mesh.rotation.set(-Math.PI / 2, yaw, 0, "YXZ");
+      mesh.scale.set(footprint[0] * size, footprint[1] * size, 1);
+    }
+    const playerShadow = makeShadow(playerShadowMaterial,
+      SHADOW_FOOTPRINTS.classic);
+    const opponentShadows = new Map();
+    for (const [id] of opponentMeshes) {
+      const shadow = makeShadow(opponentShadowMaterial,
+        SHADOW_FOOTPRINTS.classic);
+      shadow.visible = false;
+      opponentShadows.set(id, shadow);
+    }
 
     let riderMotionTime = 0;
     // Explicitly visible arcade-style rider motion: the bike banks while Milo
@@ -163,6 +224,8 @@ const GcvRendering = (() => {
       for (const [id, mesh] of opponentMeshes) {
         const ai = opponents?.find((entry) => entry.id === id);
         mesh.visible = Boolean(ai);
+        const shadow = opponentShadows.get(id);
+        if (shadow) shadow.visible = Boolean(ai);
         if (!ai) continue;
         // Use arc length, including on the final long straight.
         const rawT = startIndex / SAMPLE_COUNT + ai.progress / trackLength;
@@ -173,6 +236,8 @@ const GcvRendering = (() => {
         mesh.position.set(center.x + sideX * ai.lateral,
           heightAt(t) + 0.14, center.z + sideZ * ai.lateral);
         mesh.rotation.y = Math.atan2(-forward.x, -forward.z);
+        if (shadow) placeShadow(shadow, mesh.position.x, heightAt(t),
+          mesh.position.z, mesh.rotation.y, SHADOW_FOOTPRINTS.classic);
       }
     }
 
@@ -186,6 +251,15 @@ const GcvRendering = (() => {
       const acceleration = dt > 0 && previousSpeed !== null && !fall
         ? clamp((driver.speed - previousSpeed) / dt, -55, 35) : 0;
       previousSpeed = fall ? null : driver.speed;
+      playerShadow.visible = !fall;
+      if (!fall) {
+        const footprint = SHADOW_FOOTPRINTS[selectedVehicle] ||
+          SHADOW_FOOTPRINTS.classic;
+        const flight = shadowFlightAppearance(driver.jumpY);
+        playerShadowMaterial.opacity = flight.opacity;
+        placeShadow(playerShadow, driver.x, driver.roadY || 0, driver.z,
+          driver.yaw, footprint, flight.scale);
+      }
       const targetLean = selectedVehicle === "moto" && !fall
         ? Math.max(-0.19, Math.min(0.19, rate * 0.18)) : 0;
       motoLean += (targetLean - motoLean) * (1 - Math.exp(-12 * Math.max(0, dt)));
@@ -329,7 +403,8 @@ const GcvRendering = (() => {
     };
   }
 
-  return { create, GRID_INTRO_DURATION, introFractions };
+  return { create, GRID_INTRO_DURATION, introFractions,
+    SHADOW_FOOTPRINTS, SHADOW_GROUND_OFFSET, shadowFlightAppearance };
 })();
 
 if (typeof window !== "undefined") window.GcvRendering = GcvRendering;
