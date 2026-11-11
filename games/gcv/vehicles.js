@@ -314,65 +314,225 @@
       const green = paint(0x57c66a), purple = paint(0xa06ce1);
       const red = paint(0xeb5b64);
       if (id === "moto") {
-        // Milo's sport motorcycle: big open wheels, streamlined fairing,
-        // visible suspension, twin exhausts and a properly crouched racer.
-        const electric = paint(0x17b5e5);
-        const cobalt = paint(0x164aaf);
-        const sunYellow = paint(0xffd239);
-        const white = paint(0xe8f7ff);
-        const gloves = paint(0x11283c);
+        // Milo's red supersport: a light, original 3D silhouette inspired by
+        // road-racing motorcycles. All detail is procedural, with no texture
+        // downloads, glTF decoding, or extra WebGL contexts on older tablets.
+        const racingRed = new THREE.MeshStandardMaterial({
+          color: 0xd9112f, metalness: 0.31, roughness: 0.32, side: THREE.DoubleSide,
+        });
+        const shadowRed = new THREE.MeshStandardMaterial({
+          color: 0x960d27, metalness: 0.23, roughness: 0.41, side: THREE.DoubleSide,
+        });
+        const highlightRed = paint(0xf32a42);
+        const white = new THREE.MeshStandardMaterial({
+          color: 0xf1f2f5, metalness: 0.07, roughness: 0.49, side: THREE.DoubleSide,
+        });
+        const graphite = new THREE.MeshStandardMaterial({
+          color: 0x20242c, roughness: 0.81, side: THREE.DoubleSide,
+        });
+        const rubber = new THREE.MeshStandardMaterial({ color: 0x0d1118, roughness: 1 });
+        const brakeMetal = new THREE.MeshStandardMaterial({
+          color: 0x8c929b, metalness: 0.7, roughness: 0.45,
+        });
+        const gloves = paint(0x151d29);
         const visor = new THREE.MeshStandardMaterial({
-          color: 0x112b48, roughness: 0.14, metalness: 0.38,
+          color: 0x122235, roughness: 0.14, metalness: 0.40,
         });
         const headlamp = new THREE.MeshStandardMaterial({
-          color: 0xa7f7ff, emissive: 0x54ccef, emissiveIntensity: 0.75,
+          color: 0xe1f4ff, emissive: 0x81c6ed, emissiveIntensity: 0.44,
         });
         const rearLamp = new THREE.MeshStandardMaterial({
-          color: 0xf43f53, emissive: 0xea2b44, emissiveIntensity: 0.5,
+          color: 0xea3547, emissive: 0xde1937, emissiveIntensity: 0.55,
         });
         const windscreen = new THREE.MeshStandardMaterial({
-          color: 0x3a9bd3, roughness: 0.1, metalness: 0.15,
-          transparent: true, opacity: 0.78, side: THREE.DoubleSide,
+          color: 0x243746, roughness: 0.16, metalness: 0.16,
+          transparent: true, opacity: 0.68, depthWrite: false,
+          side: THREE.DoubleSide,
         });
 
-        addWheel(group, 0, -1.44, 0.60, 0.34);
-        addWheel(group, 0, 1.37, 0.61, 0.42);
-        // Open-frame chassis, curved fuel tank and sharp front nose.
-        box(group, 0.48, 0.23, 2.55, modelDark, 0, 0.79, 0.00);
-        box(group, 0.73, 0.44, 1.18, cobalt, 0, 0.98, -0.39);
-        rounded(group, electric, 0, 1.21, -0.38, 0.46, 0.31, 0.80);
-        box(group, 0.51, 0.12, 0.93, sunYellow, 0, 1.42, -0.45);
-        const beak = box(group, 0.55, 0.40, 0.66, electric, 0, 1.21, -1.11);
-        beak.rotation.x = 0.16;
-        box(group, 0.38, 0.20, 0.17, headlamp, 0, 1.20, -1.48);
-        box(group, 0.61, 0.40, 0.075, windscreen, 0, 1.63, -1.08);
-        const shield = box(group, 0.24, 0.53, 0.095, cobalt, 0, 1.56, -1.08);
-        shield.rotation.x = -0.24;
-        box(group, 0.79, 0.19, 0.90, modelDark, 0, 1.24, 0.54);
-        const tail = box(group, 0.61, 0.25, 0.87, electric, 0, 1.31, 1.03);
-        tail.rotation.x = -0.20;
-        box(group, 0.47, 0.10, 0.10, rearLamp, 0, 1.22, 1.54);
-        // Bold contrast panel and triangular side wings.
-        for (const side of [-1, 1]) {
-          const wing = box(group, 0.25, 0.38, 0.86, cobalt,
-            side * 0.41, 1.04, -0.62);
-          wing.rotation.z = side * 0.17;
-          box(group, 0.07, 0.14, 0.72, sunYellow,
-            side * 0.57, 1.15, -0.69);
-          tube(group, [side * 0.22, 1.23, -0.95],
-            [side * 0.17, 0.60, -1.44], 0.09, wheelSilver);
-          tube(group, [side * 0.22, 0.92, -0.12],
-            [side * 0.18, 0.57, 1.37], 0.06, wheelSilver);
-          // Visible twin pipes and orange tips, especially from behind.
-          const exhaust = box(group, 0.22, 0.23, 0.82, wheelSilver,
-            side * 0.52, 0.73, 0.96);
-          exhaust.rotation.x = -0.08;
-          box(group, 0.19, 0.19, 0.06, gloves, side * 0.52, 0.75, 1.39);
-          box(group, 0.11, 0.07, 0.38, wheelSilver,
-            side * 0.57, 0.72, 0.29);
+        // Eight-point cross-sections give fairings a curved, tapered outline
+        // instead of the rectangular blocks used by the other vehicles.
+        function sportShell(stations, material) {
+          const ring = ({ z, y0, y1, w }) => {
+            const h = y1 - y0;
+            return [
+              [-w * 0.68, y0, z], [-w, y0 + h * 0.22, z],
+              [-w * 0.94, y1 - h * 0.19, z], [-w * 0.62, y1, z],
+              [w * 0.62, y1, z], [w * 0.94, y1 - h * 0.19, z],
+              [w, y0 + h * 0.22, z], [w * 0.68, y0, z],
+            ];
+          };
+          const rings = stations.map(ring);
+          const vertices = [];
+          const triangle = (a, b, c) => vertices.push(...a, ...b, ...c);
+          for (let i = 0; i + 1 < rings.length; i++) {
+            for (let j = 0; j < 8; j++) {
+              const k = (j + 1) % 8;
+              triangle(rings[i][j], rings[i + 1][j], rings[i + 1][k]);
+              triangle(rings[i][j], rings[i + 1][k], rings[i][k]);
+            }
+          }
+          for (let j = 1; j < 7; j++) {
+            triangle(rings[0][0], rings[0][j], rings[0][j + 1]);
+            triangle(rings[rings.length - 1][0],
+              rings[rings.length - 1][j + 1], rings[rings.length - 1][j]);
+          }
+          const geometry = new THREE.BufferGeometry();
+          geometry.setAttribute("position",
+            new THREE.Float32BufferAttribute(vertices, 3));
+          geometry.computeVertexNormals();
+          group.add(new THREE.Mesh(geometry, material));
         }
-        tube(group, [-0.61, 1.53, -0.98],
-          [0.61, 1.53, -0.98], 0.065, wheelSilver);
+        function sportPanel(points, material) {
+          const vertices = [];
+          for (let i = 1; i + 1 < points.length; i++)
+            vertices.push(...points[0], ...points[i], ...points[i + 1]);
+          const geometry = new THREE.BufferGeometry();
+          geometry.setAttribute("position",
+            new THREE.Float32BufferAttribute(vertices, 3));
+          geometry.computeVertexNormals();
+          group.add(new THREE.Mesh(geometry, material));
+        }
+        function sportWheel(z, radius = 0.59) {
+          const pivot = new THREE.Group();
+          pivot.position.set(0, radius, z);
+          const tyre = new THREE.Mesh(
+            new THREE.TorusGeometry(radius - 0.105, 0.105, 7, 22), rubber);
+          tyre.rotation.y = Math.PI / 2;
+          pivot.add(tyre);
+          // Open alloy rims, five spokes, hub and a narrow brake ring.
+          for (const side of [-1, 1]) {
+            const rim = new THREE.Mesh(
+              new THREE.TorusGeometry(radius - 0.21, 0.042, 6, 20),
+              wheelSilver);
+            rim.rotation.y = Math.PI / 2;
+            rim.position.x = side * 0.095;
+            pivot.add(rim);
+            for (let i = 0; i < 5; i++) {
+              const angle = i * Math.PI * 2 / 5;
+              tube(pivot, [side * 0.095, Math.sin(angle) * 0.11,
+                Math.cos(angle) * 0.11],
+              [side * 0.095, Math.sin(angle) * (radius - 0.22),
+                Math.cos(angle) * (radius - 0.22)], 0.033, wheelSilver);
+            }
+          }
+          const hub = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.12, 0.12, 0.28, 10), brakeMetal);
+          hub.rotation.z = Math.PI / 2;
+          pivot.add(hub);
+          const brake = new THREE.Mesh(
+            new THREE.TorusGeometry(radius - 0.255, 0.042, 5, 16),
+            brakeMetal);
+          brake.rotation.y = Math.PI / 2;
+          brake.position.x = -0.145;
+          pivot.add(brake);
+          group.add(pivot);
+          extraWheelPivots.push(pivot);
+        }
+
+        sportWheel(-1.48);
+        sportWheel(1.35);
+        // A continuous red nose, low belly pan and swept rear tail.
+        sportShell([
+          { z: -1.67, y0: 1.10, y1: 1.39, w: 0.25 },
+          { z: -1.39, y0: 0.97, y1: 1.60, w: 0.40 },
+          { z: -0.95, y0: 0.81, y1: 1.57, w: 0.51 },
+          { z: -0.39, y0: 0.70, y1: 1.32, w: 0.53 },
+          { z: 0.18, y0: 0.72, y1: 1.03, w: 0.42 },
+        ], racingRed);
+        sportShell([
+          { z: -0.94, y0: 0.58, y1: 1.01, w: 0.42 },
+          { z: -0.34, y0: 0.40, y1: 1.05, w: 0.51 },
+          { z: 0.43, y0: 0.46, y1: 0.91, w: 0.39 },
+          { z: 0.74, y0: 0.53, y1: 0.66, w: 0.25 },
+        ], shadowRed);
+        // Fuel tank is prominent in side view and clear of the rider's arms.
+        rounded(group, racingRed, 0, 1.46, -0.25, 0.51, 0.35, 0.67);
+        rounded(group, highlightRed, 0, 1.60, -0.50, 0.38, 0.13, 0.34);
+        const fuelCap = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.13, 0.13, 0.026, 12), graphite);
+        fuelCap.position.set(0, 1.815, -0.25);
+        group.add(fuelCap);
+        const capCenter = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.073, 0.073, 0.030, 10), wheelSilver);
+        capCenter.position.set(0, 1.834, -0.25);
+        group.add(capCenter);
+        sportShell([
+          { z: 0.48, y0: 1.17, y1: 1.39, w: 0.39 },
+          { z: 1.03, y0: 1.34, y1: 1.58, w: 0.40 },
+          { z: 1.65, y0: 1.52, y1: 1.62, w: 0.23 },
+        ], racingRed);
+        rounded(group, graphite, 0, 1.42, 0.57, 0.43, 0.095, 0.57);
+        rounded(group, graphite, 0, 1.57, 1.17, 0.31, 0.075, 0.25);
+        box(group, 0.31, 0.095, 0.055, rearLamp, 0, 1.54, 1.66);
+        // Smoked screen leans back, bounded by two delicate metal stays.
+        sportPanel([
+          [-0.32, 1.53, -1.48], [0.32, 1.53, -1.48],
+          [0.25, 1.96, -1.04], [-0.25, 1.96, -1.04],
+        ], windscreen);
+        for (const side of [-1, 1]) {
+          tube(group, [side * 0.32, 1.53, -1.48],
+            [side * 0.25, 1.96, -1.04], 0.018, graphite);
+          const lamp = box(group, 0.22, 0.115, 0.036, headlamp,
+            side * 0.135, 1.26, -1.68);
+          lamp.rotation.z = side * 0.16;
+        }
+        // Front fender follows the upper tyre, rather than covering the rim.
+        sportShell([
+          { z: -1.92, y0: 1.04, y1: 1.12, w: 0.26 },
+          { z: -1.50, y0: 1.15, y1: 1.28, w: 0.31 },
+          { z: -1.21, y0: 1.04, y1: 1.13, w: 0.28 },
+        ], racingRed);
+
+        // Under-fairing engine, twin fork tubes, silver swingarm and one
+        // short silencer remain readable even in the low camera view.
+        rounded(group, graphite, 0, 0.76, 0.13, 0.38, 0.30, 0.40);
+        box(group, 0.48, 0.20, 2.30, graphite, 0, 0.86, 0.18);
+        for (const side of [-1, 1]) {
+          tube(group, [side * 0.27, 1.38, -1.05],
+            [side * 0.18, 0.59, -1.48], 0.071, wheelSilver);
+          tube(group, [side * 0.24, 1.03, -0.13],
+            [side * 0.31, 0.89, 0.52], 0.082, wheelSilver);
+          tube(group, [side * 0.31, 0.89, 0.52],
+            [side * 0.18, 0.59, 1.35], 0.075, wheelSilver);
+          tube(group, [side * 0.21, 0.87, 0.34],
+            [side * 0.18, 0.59, 1.35], 0.047, brakeMetal);
+          const engineCover = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.23, 0.23, 0.035, 12), brakeMetal);
+          engineCover.rotation.z = Math.PI / 2;
+          engineCover.position.set(side * 0.50, 0.79, 0.14);
+          group.add(engineCover);
+          // Two angular white race flashes flank the fairing's air intakes.
+          sportPanel([
+            [side * 0.56, 1.07, -0.89],
+            [side * 0.57, 1.15, -0.19],
+            [side * 0.55, 0.95, -0.19],
+            [side * 0.55, 0.89, -0.63],
+          ], white);
+          sportPanel([
+            [side * 0.575, 0.90, -0.53],
+            [side * 0.56, 0.76, -0.24],
+            [side * 0.57, 0.84, 0.08],
+            [side * 0.575, 1.01, -0.10],
+          ], graphite);
+          box(group, 0.09, 0.065, 0.32, wheelSilver,
+            side * 0.56, 0.85, 0.53);
+          // Rear side-panel accent makes the tapered tail recognizable.
+          sportPanel([
+            [side * 0.41, 1.48, 1.02], [side * 0.28, 1.60, 1.56],
+            [side * 0.35, 1.51, 1.41],
+          ], white);
+          tube(group, [side * 0.20, 1.53, -0.92],
+            [side * 0.54, 1.53, -0.98], 0.05, graphite);
+          box(group, 0.14, 0.09, 0.18, rubber,
+            side * 0.56, 1.53, -0.98);
+        }
+        const exhaust = box(group, 0.18, 0.20, 0.66, wheelSilver,
+          0.52, 0.77, 0.99);
+        exhaust.rotation.x = -0.12;
+        box(group, 0.16, 0.16, 0.035, graphite, 0.52, 0.79, 1.34);
+        tube(group, [-0.24, 0.62, 0.92],
+          [0.24, 0.62, 0.92], 0.045, brakeMetal);
         // Rider-only joint at the hips. The counter-offset keeps every limb
         // in the original position at rest; only these two Groups move.
         const riderBody = new THREE.Group();
@@ -383,9 +543,9 @@
         group.add(riderBody);
         motoRider = { body: riderBody, helmet: null, arms: [], baseY: 1.32 };
         // Hands naturally grip the bars; bent arms and knees show the pose.
-        const suit = paint(0x105dc6);
+        const suit = paint(0x222a35);
         rounded(riderParts, suit, 0, 1.80, 0.10, 0.46, 0.43, 0.33);
-        box(riderParts, 0.55, 0.10, 0.37, sunYellow, 0, 1.91, 0.33);
+        box(riderParts, 0.55, 0.10, 0.37, racingRed, 0, 1.91, 0.33);
         for (const side of [-1, 1]) {
           // Shoulder pivots let each arm follow the handlebars separately.
           // Nested counter-offset preserves the existing pose at rest.
@@ -396,7 +556,7 @@
           shoulder.add(arm);
           riderParts.add(shoulder);
           motoRider.arms.push(shoulder);
-          rounded(arm, sunYellow, side * 0.43, 1.88, 0.02,
+          rounded(arm, racingRed, side * 0.43, 1.88, 0.02,
             0.21, 0.19, 0.26);
           tube(arm, [side * 0.43, 1.80, -0.04],
             [side * 0.49, 1.53, -0.96], 0.135, suit);
@@ -412,12 +572,12 @@
         }
         const helmetGroup = new THREE.Group();
         helmetGroup.position.set(0, 2.30, -0.42);
-        rounded(helmetGroup, sunYellow, 0, 0, 0, 0.43, 0.42, 0.42);
+        rounded(helmetGroup, racingRed, 0, 0, 0, 0.43, 0.42, 0.42);
         rounded(helmetGroup, white, 0, 0.21, 0.01, 0.16, 0.21, 0.35);
         // Wide full-face visor, mouth guard and rear aerodynamic fin.
         rounded(helmetGroup, visor, 0, -0.025, -0.355, 0.36, 0.185, 0.13);
-        box(helmetGroup, 0.60, 0.20, 0.22, cobalt, 0, -0.24, -0.24);
-        const crest = box(helmetGroup, 0.18, 0.19, 0.62, cobalt,
+        box(helmetGroup, 0.60, 0.20, 0.22, graphite, 0, -0.24, -0.24);
+        const crest = box(helmetGroup, 0.18, 0.19, 0.62, white,
           0, 0.35, 0.13);
         crest.rotation.x = -0.14;
         riderParts.add(helmetGroup);
@@ -426,11 +586,11 @@
 
         // #9 is legible from the front, rear and both sides.
         addNumberDecal(group, numberMaterial, 0.47, 0.31,
-          0, 1.445, -0.44, -Math.PI / 2);
-        addNumberDecal(group, numberMaterial, 0.44, 0.32, 0, 1.40, 1.34);
+          0, 1.625, -1.13, -Math.PI / 2);
+        addNumberDecal(group, numberMaterial, 0.38, 0.25, 0, 1.59, 1.675);
         for (const side of [-1, 1])
           addNumberDecal(group, numberMaterial, 0.45, 0.31,
-            side * 0.565, 1.04, -0.50, 0, side * Math.PI / 2);
+            side * 0.602, 1.18, -0.58, 0, side * Math.PI / 2);
       } else if (id === "kart") {
         box(group, 2.18, 0.28, 2.85, yellow, 0, 0.57, 0);
         box(group, 1.72, 0.39, 0.96, green, 0, 0.79, -0.87);
