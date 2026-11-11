@@ -12,7 +12,7 @@ const root = path.join(__dirname, "../games/gcv");
 
 test("controls, HUD and map scripts load before the GCV entry point", () => {
   const html = fs.readFileSync(path.join(root, "index.html"), "utf8")
-    .replace(/\?v=20261111g/g, "");
+    .replace(/\?v=\d{8}[a-z]/g, "");
   const files = ["visual-effects.js", "controls.js", "hud.js", "mini-map.js", "game.js"];
   const positions = files.map((name) => html.indexOf('src="./' + name + '"'));
   assert.ok(positions.every((p) => p >= 0));
