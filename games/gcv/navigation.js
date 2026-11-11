@@ -5,6 +5,11 @@ const GcvNavigation = (() => {
   function create({ window, document, location, stage, homePanel, resumeButton,
     menuButton, scoresButton, menuScoresButton, scoresFrame, fullscreenButton,
     menuFullscreenButton, clearControls, flow, onResume, changed, announce }) {
+    const listeners = [];
+    function listen(target, type, handler) {
+      target.addEventListener(type, handler);
+      listeners.push([target, type, handler]);
+    }
     function sync() {
       homePanel.hidden = !flow.menuOpen;
       stage.classList.toggle("gcv-in-menu", flow.menuOpen);
@@ -76,22 +81,26 @@ const GcvNavigation = (() => {
       }
     }
 
-    resumeButton.addEventListener("click", resume);
-    menuButton.addEventListener("click", openMenu);
-    scoresButton.addEventListener("click", openScores);
-    menuScoresButton.addEventListener("click", openScores);
-    window.addEventListener("message", (event) => {
+    listen(resumeButton, "click", resume);
+    listen(menuButton, "click", openMenu);
+    listen(scoresButton, "click", openScores);
+    listen(menuScoresButton, "click", openScores);
+    listen(window, "message", (event) => {
       if (flow.scoresOpen && event.origin === location.origin &&
           event.source === scoresFrame.contentWindow &&
           event.data?.type === "gmr-scores-back") closeScores();
     });
-    fullscreenButton.addEventListener("click", toggleFullscreen);
-    menuFullscreenButton.addEventListener("click", toggleFullscreen);
-    document.addEventListener("fullscreenchange", refreshFullscreen);
+    listen(fullscreenButton, "click", toggleFullscreen);
+    listen(menuFullscreenButton, "click", toggleFullscreen);
+    listen(document, "fullscreenchange", refreshFullscreen);
     refreshFullscreen();
 
     return {
       sync, resume, openMenu, openScores, closeScores,
+      dispose() {
+        for (const [target, type, handler] of listeners)
+          target.removeEventListener(type, handler);
+      },
       get paused() { return flow.paused; },
       get menuOpen() { return flow.menuOpen; },
       get scoresOpen() { return flow.scoresOpen; },
