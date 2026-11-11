@@ -53,8 +53,15 @@
     const THREE = await import("https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js");
     start(THREE);
   } catch (error) {
-    console.error("GCV cannot start:", error);
-    announce("Impossible de charger le jeu 3D. Vérifie ta connexion et recharge la page.");
+    console.error("Super Kart cannot start:", error);
+    // Notices behind the home panel are deliberately hidden in menu mode.
+    // Display initialization errors IN the panel rather than leaving inert
+    // buttons with no explanation on phones and tablets.
+    const message = document.createElement("p");
+    message.className = "gcv-startup-error";
+    message.setAttribute("role", "alert");
+    message.textContent = "Impossible de démarrer le circuit. Recharge la page.";
+    homePanel.querySelector(".gcv-home-panel")?.append(message);
   }
 
   function start(THREE) {

@@ -29,12 +29,17 @@ const GcvTrackLayout = (() => {
     [62, -1370], [0, -1430], [-40, -1490], [0, -1550],
     [65, -1615], [95, -1680], [84, -1730],
   ].map(([x,z]) => Object.freeze([x * 0.75, z * 0.75])));
+  // Spawn and timing gates use the same { x, z } contract as the
+  // original track. Array waypoints are only for Catmull-Rom construction.
+  const pointAt = ([x, z]) => Object.freeze({ x, z });
   const SPRINT = Object.freeze({
     ID: "rainbow", NAME: "Route Arc-en-ciel", VERSION: 1,
     CLOSED: false, SAMPLE_COUNT: 1200, ROAD_HALF_WIDTH,
     SHOULDER_WIDTH, WAYPOINTS: SPRINT_POINTS,
-    START: SPRINT_POINTS[2], FINISH: SPRINT_POINTS[SPRINT_POINTS.length - 2],
-    SPAWN: SPRINT_POINTS[0],
+    START: pointAt(SPRINT_POINTS[2]),
+    FINISH: pointAt(SPRINT_POINTS[SPRINT_POINTS.length - 2]),
+    SPAWN: pointAt(SPRINT_POINTS[0]),
+    nearestIndex,
     // This marked stretch contains the winding multicoloured guidance rails.
     RAINBOW: Object.freeze([0.51, 0.68]),
     HUMPS: Object.freeze([0.23, 0.39, 0.81]),

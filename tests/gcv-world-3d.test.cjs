@@ -43,23 +43,32 @@ class Vector3 {
   normalize() { return this.multiplyScalar(1 / (Math.hypot(this.x, this.y, this.z) || 1)); }
 }
 class Curve {
-  constructor(points) { this.points = points; }
+  constructor(points, closed = true) { this.points = points; this.closed = closed; }
+  segment(t) {
+    const n = this.points.length;
+    const scaled = Math.max(0, Math.min(1, t)) * (this.closed ? n : n - 1);
+    const index = this.closed ? Math.floor(scaled) % n :
+      Math.min(n - 2, Math.floor(scaled));
+    return { index, fraction: scaled - (this.closed ? Math.floor(scaled) : index) };
+  }
   getPointAt(t) {
-    const n = this.points.length, position = t * n;
-    const i = Math.floor(position) % n, f = position - Math.floor(position);
-    const a = this.points[i], b = this.points[(i + 1) % n];
-    return new Vector3(a.x + (b.x - a.x) * f, 0, a.z + (b.z - a.z) * f);
+    const { index, fraction } = this.segment(t);
+    const a = this.points[index], b = this.points[(index + 1) % this.points.length];
+    return new Vector3(a.x + (b.x - a.x) * fraction, 0,
+      a.z + (b.z - a.z) * fraction);
   }
   getTangentAt(t) {
-    const n = this.points.length, i = Math.floor(t * n) % n;
-    const a = this.points[i], b = this.points[(i + 1) % n];
+    const { index } = this.segment(t);
+    const a = this.points[index], b = this.points[(index + 1) % this.points.length];
     return new Vector3(b.x - a.x, 0, b.z - a.z).normalize();
   }
   getLength() {
-    return this.points.reduce((sum, p, i) => {
-      const q = this.points[(i + 1) % this.points.length];
-      return sum + Math.hypot(q.x - p.x, q.z - p.z);
-    }, 0);
+    let length = 0;
+    for (let i = 0; i < this.points.length - (this.closed ? 0 : 1); i++) {
+      const a = this.points[i], b = this.points[(i + 1) % this.points.length];
+      length += Math.hypot(b.x - a.x, b.z - a.z);
+    }
+    return length;
   }
 }
 class Node {
@@ -137,4 +146,26 @@ test("static world shares its track samples with barriers and gameplay", () => {
   assert.ok(world.scene.children.some((node) => node instanceof InstancedMesh),
     "decor uses instancing");
   assert.ok(Array.isArray(world.islands));
+});
+
+test("rainbow world initializes with distinct, valid start and finish gates", () => {
+  const Barriers = require("../games/gcv/barriers.js");
+  const layout = TrackLayout.select("rainbow");
+  const world = World3D.create({ THREE, TrackLayout: layout, Barriers, Scenery });
+  assert.equal(world.closed, false);
+  assert.ok(world.startIndex > 0, "start must not collapse to sample zero");
+  assert.ok(world.finishIndex > world.startIndex,
+    "finish must follow start on the open route");
+  assert.ok(world.finishIndex < layout.SAMPLE_COUNT);
+  const routeLength = (world.finishIndex - world.startIndex) *
+    world.trackLength / layout.SAMPLE_COUNT;
+  assert.ok(routeLength > 500 && Number.isFinite(routeLength));
+  assert.equal(world.positions.length, layout.SAMPLE_COUNT + 1);
+  assert.equal(world.barriers.rails.left.points.length, layout.SAMPLE_COUNT + 1);
+  assert.ok(world.positions.some((point) => point.y > 1.5),
+    "raised humps must be present");
+  const rainbowColors = [0xf05c78, 0xfca33a, 0xf4df4e, 0x7fd56d,
+    0x37b6d5, 0x5e74df, 0xc879da];
+  assert.equal(world.scene.children.filter((node) =>
+    rainbowColors.includes(node.material?.color)).length, 7);
 });

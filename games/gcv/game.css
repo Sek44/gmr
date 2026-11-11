@@ -406,3 +406,16 @@
   .gcv-track-chooser { margin: 2px 0 3px; gap: 5px; }
   .gcv-track-choice { min-height: 28px; padding: 3px 8px; font-size: 0.8rem; }
 }
+
+/* Startup failures must remain visible above the home overlay. */
+.gcv-startup-error {
+  width: 100%;
+  margin: 0;
+  padding: 9px 12px;
+  border: 1px solid #f6c779;
+  border-radius: 9px;
+  color: #fff4da;
+  background: #74352c;
+  font-weight: 700;
+  text-align: center;
+}

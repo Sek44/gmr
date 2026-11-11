@@ -11,6 +11,11 @@ test("open route selects a distinct start and finish", () => {
   assert.equal(Layout.select("rainbow"), Layout.SPRINT);
   assert.equal(Layout.SPRINT.CLOSED, false);
   assert.notDeepEqual(Layout.SPRINT.START, Layout.SPRINT.FINISH);
+  for (const gate of [Layout.SPRINT.START, Layout.SPRINT.FINISH, Layout.SPRINT.SPAWN]) {
+    assert.ok(Number.isFinite(gate.x) && Number.isFinite(gate.z),
+      "every timing marker must use the {x,z} contract");
+  }
+  assert.equal(typeof Layout.SPRINT.nearestIndex, "function");
   assert.equal(Layout.SPRINT.HUMPS.length, 3);
   assert.ok(Layout.SPRINT.RAINBOW[1] > Layout.SPRINT.RAINBOW[0]);
 });
