@@ -195,3 +195,30 @@ test("fall begins descending immediately, without any initial floating arc", () 
   assert.ok(fall.y < -1.2, "descent is visible within 0.2 seconds");
   assert.ok(fall.remaining < physics.FALL_SECONDS);
 });
+
+test("short ramp jumps lift off sharply and land once within 0.65 seconds", () => {
+  let jump = { height: 0.01, velocity: physics.JUMP_TAKEOFF_SPEED };
+  let peak = 0, landed = 0, elapsed = 0;
+  for (let frame = 0; frame < 60; frame++) {
+    jump = physics.advanceJump(jump.height, jump.velocity, 1 / 60);
+    elapsed += 1 / 60;
+    peak = Math.max(peak, jump.height);
+    if (jump.landed) landed++;
+  }
+  assert.ok(peak > 0.9 && peak < 1.5, "noticeable but controlled lift");
+  assert.ok(elapsed >= 0.9 && landed === 1, "only one landing event");
+  assert.equal(jump.height, 0);
+  assert.equal(jump.velocity, 0);
+  assert.equal(physics.GRAVITY, 9.81, "off-road falls remain unchanged");
+  assert.ok(2 * physics.JUMP_TAKEOFF_SPEED / physics.JUMP_GRAVITY < 0.65);
+});
+
+test("jump touchdown is detected even at low frame rates", () => {
+  let jump = { height: 0.01, velocity: physics.JUMP_TAKEOFF_SPEED };
+  let landingCount = 0;
+  for (let i = 0; i < 20; i++) {
+    jump = physics.advanceJump(jump.height, jump.velocity, 0.05);
+    if (jump.landed) landingCount++;
+  }
+  assert.equal(landingCount, 1);
+});
