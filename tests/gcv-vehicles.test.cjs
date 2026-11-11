@@ -253,6 +253,11 @@ test("sport motorcycle has a crouched rider, full-face helmet and visible fairin
     "the full-face helmet remains independently articulated");
   assert.ok(body.children.some((child) => child.children.includes(helmet)),
     "the helmet is attached to the moving pilot, not the frame");
+  assert.equal(models.motoRider.arms.length, 2,
+    "both handlebars have separately articulated shoulder pivots");
+  assert.ok(models.motoRider.arms.every((arm) =>
+    arm.children.length === 1 && arm.children[0].children.length >= 3),
+  "the arms follow the new pivots without adding new mesh geometry");
   models.setCameraMode(false);
   assert.equal(helmet.visible, false, "inside camera must not see the helmet");
   models.setCameraMode(true);
