@@ -73,12 +73,12 @@
     } = World3D.create({ THREE, TrackLayout, Barriers, Scenery });
     const {
       car, wheelPivots, extraWheelPivots, brakeLights, rearBrakeGlows,
-      opponentMeshes, setCameraMode, setVehicle,
+      opponentMeshes, motoRider, setCameraMode, setVehicle,
     } = Vehicles.create({ THREE, scene, Race, trackLength, document });
 
     const rendering = Rendering.create({
       THREE, window, stage, sceneHost, scene, car, wheelPivots,
-      brakeLights, rearBrakeGlows, opponentMeshes, extraWheelPivots, curve,
+      brakeLights, rearBrakeGlows, opponentMeshes, extraWheelPivots, motoRider, curve,
       startIndex, SAMPLE_COUNT, trackLength, closed, heightAt,
     });
     const visualEffects = VisualEffects.create({ THREE, scene, car });
