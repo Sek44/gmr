@@ -340,6 +340,7 @@
       if (navigation.paused && dt > 0) return;
       const brakePressed = controls.isBraking();
       let mudSkidIntensity = 0;
+      let steeringAnimation = 0;
       let barrierSparkContact = null;
       let raceMotion = null;
       let recordedLapThisFrame = false;
@@ -357,6 +358,7 @@
         }
       } else if (mayDrive) {
         const { steer, accelerate, brake } = controls.read();
+        steeringAnimation = steer;
         // The dirt course now handles like the previous paved road, including
         // its safety shoulders. Only truly extreme steering emits particles.
         const previousPosition = { x: driver.x, z: driver.z };
@@ -523,7 +525,7 @@
 
       rendering.updatePlayer({
         driver, fall: flow.falling ? fall : null, dt, brakePressed,
-        jumpVelocity,
+        jumpVelocity, steerInput: steeringAnimation,
       });
       visualEffects.update(dt, driver, flow.falling ? 0 : mudSkidIntensity,
         flow.falling ? null : barrierSparkContact);
