@@ -133,7 +133,7 @@ test("rendering module is loaded before game.js and exposes a browser factory", 
   const vm = require("node:vm");
   const folder = path.join(__dirname, "../games/gcv");
   const html = fs.readFileSync(path.join(folder, "index.html"), "utf8")
-    .replace(/\?v=20261111d/g, "");
+    .replace(/\?v=20261111e/g, "");
   const renderingOffset = html.indexOf('src="./rendering.js"');
   const gameOffset = html.indexOf('src="./game.js"');
   assert.ok(renderingOffset >= 0 && gameOffset > renderingOffset);
