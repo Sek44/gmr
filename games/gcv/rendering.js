@@ -35,51 +35,72 @@ const GcvRendering = (() => {
     let landingCompression = 0;
     const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
-    // Only a handful of joint transforms per frame: no bones, new geometry,
-    // keyframes or render allocations. The rider's hip is the main joint;
-    // the helmet compensates slightly to keep the eyes aimed at the road.
-    function animateMotoRider(dt, driver, yawRate, acceleration, jumpVelocity, fall) {
+    let riderMotionTime = 0;
+    // Explicitly visible arcade-style rider motion: the bike banks while Milo
+    // shifts his weight, reaches with each arm and keeps his head looking into
+    // the corner. Four small pivot transforms, no extra geometry or draw calls.
+    function animateMotoRider(dt, driver, yawRate, steerInput, acceleration,
+      jumpVelocity, fall) {
       if (!motoRider || selectedVehicle !== "moto") return;
-      const { body, helmet, baseY } = motoRider;
+      const { body, helmet, arms = [], baseY } = motoRider;
       const step = Math.max(0, dt);
       const moving = !fall && Math.abs(driver.speed) > 0.5;
       const airborne = !fall && (driver.jumpY || 0) > 0;
-      if (wasJumping && !airborne && !fall) landingCompression = -0.10;
+      if (wasJumping && !airborne && !fall) landingCompression = -0.19;
       wasJumping = airborne;
-      // Short springy compression on touchdown, then quickly back to rest.
-      landingCompression *= Math.exp(-12 * step);
-      const turn = moving ? clamp(yawRate, -2.4, 2.4) : 0;
-      const bodyRoll = clamp(-turn * 0.055, -0.11, 0.11);
+      landingCompression *= Math.exp(-8 * step);
+      riderMotionTime += step;
+      // Steering anticipates the bend, while actual yaw keeps reacting in
+      // autonomous rainbow zigzags. Capped angles prevent rubbery motion.
+      const turn = !fall ? clamp(
+        (moving ? yawRate : 0) - steerInput * 0.75, -2.8, 2.8) : 0;
+      const speed = moving ? Math.abs(driver.speed) : 0;
+      const bodyRoll = clamp(-turn * 0.12, -0.29, 0.29);
       const bodyPitch = clamp(
-        (moving ? acceleration * 0.0027 : 0) +
-        (airborne ? jumpVelocity * 0.005 : 0), -0.14, 0.10);
-      const bodyBlend = 1 - Math.exp(-11 * step);
-      const headBlend = 1 - Math.exp(-7 * step);
-      // The torso shifts inside the lean of the motorcycle. Momentum nudges
-      // it backward on acceleration and toward the tank on hard braking.
+        (moving ? acceleration * 0.006 - Math.min(0.055, speed * 0.0015) : 0) +
+        (airborne ? jumpVelocity * 0.010 : 0), -0.24, 0.19);
+      const bodyBlend = 1 - Math.exp(-15 * step);
+      const headBlend = 1 - Math.exp(-11 * step);
+      // Up to 20 cm sideways is easy to read from the chase camera.
+      const targetSide = clamp(-turn * 0.09, -0.20, 0.20);
+      const bounce = moving && !airborne
+        ? Math.sin(riderMotionTime * 13) * Math.min(0.035, speed * 0.0013) : 0;
+      const targetY = baseY + landingCompression + bounce +
+        (airborne ? clamp(jumpVelocity * 0.009, -0.07, 0.07) : 0);
       body.rotation.z += (bodyRoll - body.rotation.z) * bodyBlend;
       body.rotation.x += (bodyPitch - body.rotation.x) * bodyBlend;
-      body.position.x += (clamp(-turn * 0.022, -0.045, 0.045) -
-        body.position.x) * bodyBlend;
-      const targetY = baseY + landingCompression +
-        (airborne ? clamp(jumpVelocity * 0.004, -0.024, 0.024) : 0);
+      body.position.x += (targetSide - body.position.x) * bodyBlend;
       body.position.y += (targetY - body.position.y) * bodyBlend;
-      // Delayed head counter-lean and a tiny look into the next turn.
-      const headRoll = clamp(-motoLean * 0.44 - body.rotation.z * 0.42,
+      // Head follows Milo's body but compensates for some of the bike's lean.
+      // Looking into the next corner is more obvious than counter-lean alone.
+      const headRoll = clamp(-motoLean * 0.20 - body.rotation.z * 0.24,
         -0.10, 0.10);
       helmet.rotation.z += (headRoll - helmet.rotation.z) * headBlend;
-      helmet.rotation.x += (-body.rotation.x * 0.55 - helmet.rotation.x) *
-        headBlend;
-      helmet.rotation.y += (clamp(-turn * 0.024, -0.055, 0.055) -
+      helmet.rotation.y += (clamp(-turn * 0.075, -0.18, 0.18) -
         helmet.rotation.y) * headBlend;
+      helmet.rotation.x += (clamp(-body.rotation.x * 0.5 +
+        bounce * 0.6, -0.12, 0.12) - helmet.rotation.x) * headBlend;
+      // Move shoulders separately: one arm bends more than the other as
+      // Milo holds the bars. All meshes stay attached to their existing rig.
+      for (let i = 0; i < arms.length; i++) {
+        const side = i === 0 ? -1 : 1;
+        const arm = arms[i];
+        const armPitch = clamp(-body.rotation.x * 0.58 +
+          side * turn * 0.10, -0.29, 0.29);
+        const armRoll = clamp(-body.rotation.z * 0.38 +
+          side * turn * 0.065, -0.25, 0.25);
+        arm.rotation.x += (armPitch - arm.rotation.x) * bodyBlend;
+        arm.rotation.z += (armRoll - arm.rotation.z) * bodyBlend;
+      }
     }
 
     function resetMotoRider() {
       previousSpeed = null;
       wasJumping = false;
       landingCompression = 0;
+      riderMotionTime = 0;
       if (!motoRider) return;
-      const { body, helmet, baseY } = motoRider;
+      const { body, helmet, arms = [], baseY } = motoRider;
       body.position.x = 0;
       body.position.y = baseY;
       body.rotation.x = 0;
@@ -87,6 +108,10 @@ const GcvRendering = (() => {
       helmet.rotation.x = 0;
       helmet.rotation.y = 0;
       helmet.rotation.z = 0;
+      for (const arm of arms) {
+        arm.rotation.x = 0;
+        arm.rotation.z = 0;
+      }
     }
 
     function resize() {
@@ -124,7 +149,8 @@ const GcvRendering = (() => {
       }
     }
 
-    function updatePlayer({ driver, fall, dt, brakePressed, jumpVelocity = 0 }) {
+    function updatePlayer({ driver, fall, dt, brakePressed, jumpVelocity = 0,
+      steerInput = 0 }) {
       const deltaYaw = previousYaw === null ? 0 :
         Math.atan2(Math.sin(driver.yaw - previousYaw),
           Math.cos(driver.yaw - previousYaw));
@@ -146,7 +172,8 @@ const GcvRendering = (() => {
           ? Math.max(-0.16, Math.min(0.16, -jumpVelocity * 0.018)) : 0;
         car.rotation.set(pitch, driver.yaw, motoLean, "YXZ");
       }
-      animateMotoRider(dt, driver, rate, acceleration, jumpVelocity, fall);
+      animateMotoRider(dt, driver, rate, steerInput, acceleration,
+        jumpVelocity, fall);
       for (const wheel of wheelPivots) wheel.rotation.x -= driver.speed * dt / 0.46;
       for (const wheel of extraWheelPivots) wheel.rotation.x -= driver.speed * dt / 0.49;
       car.updateMatrixWorld(true); // Needed before particles use car.localToWorld().
@@ -171,7 +198,9 @@ const GcvRendering = (() => {
       const [x, y, z] = cockpits[id] || cockpits.classic;
       insidePosition.set(x, y, z);
       insideTarget.set(x, y - 0.12, -14);
-      outsidePosition.set(0, id === "moto" ? 4.0 : 4.5, id === "moto" ? 8.6 : 9.7);
+      // Framing the motorcycle slightly closer makes the rider's movement
+      // legible on smaller phone screens without changing other cameras.
+      outsidePosition.set(0, id === "moto" ? 3.6 : 4.5, id === "moto" ? 7.3 : 9.7);
       initializedCamera = false;
     }
     function setView(outside) {
