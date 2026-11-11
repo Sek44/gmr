@@ -311,7 +311,7 @@
         if (button.dataset.gcvTrack === "classic") url.searchParams.delete("track");
         else url.searchParams.set("track", button.dataset.gcvTrack);
         // A new page URL forces an updated HTML document on older tablets.
-        url.searchParams.set("rev", "20261111f");
+        url.searchParams.set("rev", "20261111g");
         window.location.assign(url.href);
       });
     });
