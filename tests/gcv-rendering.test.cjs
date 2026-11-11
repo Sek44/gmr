@@ -168,10 +168,11 @@ test("cockpit intro enters only in the final third and hides the helmet late", (
   assert.equal(view.gridIntroActive, false);
   assert.equal(camera.position.x, 0);
   assert.ok(Math.abs(camera.position.y - 2.36) < 1e-9);
-  assert.equal(camera.position.z, 0.29);
+  assert.ok(Math.abs(camera.position.z - 0.29) < 1e-9);
   assert.deepEqual(visibility, [true, false, false]);
   view.updateCamera(0.016);
-  assert.equal(camera.position.z, 0.29, "handoff must not jump into the cockpit");
+  assert.ok(Math.abs(camera.position.z - 0.29) < 1e-9,
+    "handoff must not jump into the cockpit");
 });
 
 test("race intro freezes when paused and cancels on a manual camera change", () => {
