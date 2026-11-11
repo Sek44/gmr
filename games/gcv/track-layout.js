@@ -38,12 +38,27 @@ const GcvTrackLayout = (() => {
     SHOULDER_WIDTH, WAYPOINTS: SPRINT_POINTS,
     START: pointAt(SPRINT_POINTS[2]),
     FINISH: pointAt(SPRINT_POINTS[SPRINT_POINTS.length - 2]),
-    SPAWN: pointAt(SPRINT_POINTS[0]),
+    SPAWN: pointAt(SPRINT_POINTS[1]), // Leave space before the physical starting cap.
     nearestIndex,
     // This marked stretch contains the winding multicoloured guidance rails.
     RAINBOW: Object.freeze([0.51, 0.68]),
+    zigzagAt,
     HUMPS: Object.freeze([0.23, 0.39, 0.81]),
   });
+  // Four pronounced, deterministic side-to-side swerves. The entry and
+  // exit taper smoothly so the automatic guide never jerks at a boundary.
+  function zigzagAt(progress) {
+    const t = Math.min(1, Math.max(0, Number(progress) || 0));
+    const phase = t * Math.PI * 8;
+    const envelope = Math.min(1, t * 7, (1 - t) * 7);
+    const derivative = t < 1 / 7 ? 7 : t > 6 / 7 ? -7 : 0;
+    const amplitude = 4.1; // Metres: within the 9 m road half-width.
+    return {
+      offset: amplitude * envelope * Math.sin(phase),
+      slope: amplitude * (derivative * Math.sin(phase) +
+        envelope * Math.PI * 8 * Math.cos(phase)),
+    };
+  }
   function select(id) { return id === SPRINT.ID ? SPRINT : GcvTrackLayout; }
 
   function nearestIndex(positions, reference) {
