@@ -216,22 +216,24 @@
 }
 .gcv-race-overlay-actions #race-replay-button svg { width: 24px; height: 24px; }
 .gcv-actions {
-  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
-  width: min(32vw, 260px); max-width: none; gap: 7px; pointer-events: auto;
+  display: grid; grid-template-columns: repeat(2, 42px);
+  width: auto; max-width: none; gap: 7px; pointer-events: auto;
 }
 .gcv-actions #scores-button { grid-column: 1; grid-row: 1; }
 .gcv-actions #fullscreen-button { grid-column: 2; grid-row: 1; }
 .gcv-actions #menu-button { grid-column: 1; grid-row: 2; }
 .gcv-actions #restart-button { grid-column: 2; grid-row: 2; }
-.gcv-actions #camera-button { grid-column: 1 / -1; grid-row: 3; }
-.gcv-action-icon { display: none; width: 22px; height: 22px; }
-/* Replaying uses its icon in every orientation, not a text label. */
-.gcv-actions #restart-button .gcv-action-icon { display: block; flex: 0 0 22px; }
-.gcv-action-label { white-space: nowrap; }
+.gcv-actions #camera-button { grid-column: 1; grid-row: 3; }
+/* Action buttons remain icon-only in landscape and portrait alike. */
+.gcv-action-icon { display: block; width: 22px; height: 22px; flex: 0 0 22px; }
+.gcv-action-label { display: none; }
+.gcv-icon-collapse { display: none; }
+.gcv-action.is-fullscreen .gcv-icon-expand { display: none; }
+.gcv-action.is-fullscreen .gcv-icon-collapse { display: block; }
 .gcv-action {
   background: #0d182ad9; border: 1px solid #bad2e46b; color: white;
-  min-height: 40px; padding: 7px 10px; border-radius: 11px;
-  font-size: .78rem; font-weight: 800; display: inline-flex;
+  width: 42px; height: 42px; min-height: 42px; padding: 7px;
+  border-radius: 11px; font-size: 1rem; font-weight: 800; display: inline-flex;
   align-items: center; justify-content: center; text-decoration: none;
 }
 .gcv-action:active { background: #234569; }
@@ -315,10 +317,7 @@
   .gcv-bests { min-width: 116px; padding: 6px 8px; font-size: .75rem; }
   .gcv-speed { padding: 7px 9px; }
   .gcv-speed #speed-value { font-size: clamp(3.4rem, 9vw, 4.8rem); }
-  .gcv-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
-    width: min(175px, 48vw); max-width: none; gap: 5px; }
-  .gcv-actions #camera-button { grid-column: 1 / -1; }
-  .gcv-action { min-height: 31px; padding: 5px 4px; font-size: .68rem; }
+  .gcv-actions { gap: 5px; }
   .gcv-minimap { width: 132px; height: 102px; }
   .gcv-controls { left: 8px; right: 8px; top: 72%; bottom: auto; gap: 6px; }
   .gcv-steer-pad { width: 155px; height: 148px; }
@@ -403,15 +402,7 @@
   }
   .gcv-home-tools #menu-fullscreen-button { grid-column: 2; grid-row: 1; }
   .gcv-home-tools #menu-scores-button { grid-column: 1; grid-row: 1; }
-  .gcv-actions .gcv-action, .gcv-home-tools .gcv-action {
-    width: 42px; height: 42px; min-height: 42px;
-    padding: 7px; font-size: 1rem;
-  }
-  .gcv-action-label { display: none; }
-  .gcv-action-icon { display: block; flex: 0 0 22px; }
-  .gcv-icon-collapse { display: none; }
-  .gcv-action.is-fullscreen .gcv-icon-expand { display: none; }
-  .gcv-action.is-fullscreen .gcv-icon-collapse { display: block; }
+
 }
 
 
