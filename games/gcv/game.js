@@ -25,8 +25,7 @@
   const Scenery = window.GcvScenery;
   const World3D = window.GcvWorld3D;
   const Tracks = window.GcvTrackLayout;
-  const selectedTrackId = new URL(window.location.href).searchParams.get("track");
-  const TrackLayout = Tracks.select(selectedTrackId);
+  // The selected track is resolved for each 3D session, without reloading HTML.
   const Barriers = window.GcvBarriers;
   const LapTimes = window.GcvLapTimes;
   const Race = window.GcvRace;
@@ -41,6 +40,10 @@
   const Flow = window.GcvFlow;
   // Bump this revision after incompatible GCV updates. Old sessions are canceled.
   const SAVE_REVISION = 11;
+  // Keep this same fullscreen DOM element while rebuilding only the circuit.
+  let disposeGame = null;
+  let activeFlow = null;
+  let activeNavigation = null;
 
   function announce(message) {
     notice.textContent = message;
@@ -48,10 +51,18 @@
   }
 
   try {
-    if (!Physics || !TrackProgress || !Scenery || !World3D || !TrackLayout || !LapTimes || !Race || !Barriers || !Vehicles || !VisualEffects || !Rendering || !Controls || !Hud || !MiniMap || !Navigation || !Session || !Flow)
+    if (!Physics || !TrackProgress || !Scenery || !World3D || !Tracks || !LapTimes || !Race || !Barriers || !Vehicles || !VisualEffects || !Rendering || !Controls || !Hud || !MiniMap || !Navigation || !Session || !Flow)
       throw new Error("Les modules de conduite sont introuvables.");
     const THREE = await import("https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js");
-    start(THREE);
+    // Mount the shared time budget once; each rebuilt circuit supplies its
+    // current flow to the same persistent counter and fullscreen stage.
+    window.GmrPlayTime.mountGame({
+      host: stage,
+      isPlaying: () => Boolean(activeFlow && !activeFlow.paused &&
+        activeFlow.activity !== "finished"),
+      onBlocked: () => activeNavigation?.openMenu(),
+    });
+    disposeGame = start(THREE);
   } catch (error) {
     console.error("Super Kart cannot start:", error);
     // Notices behind the home panel are deliberately hidden in menu mode.
@@ -65,6 +76,9 @@
   }
 
   function start(THREE) {
+    const TrackLayout = Tracks.select(new URL(window.location.href).searchParams.get("track"));
+    const listeners = new AbortController();
+    const { signal } = listeners;
     const {
       scene, ROAD_HALF_WIDTH, OUTER_HALF_WIDTH, SAMPLE_COUNT, curve,
       trackLength, positions, directions, sides, barriers,
@@ -213,7 +227,7 @@
       cameraMode = cameraMode === "inside" ? "outside" : "inside";
       refreshCameraButton();
       session?.changed();
-    });
+    }, { signal });
 
     const miniMap = MiniMap.create({
       document, canvas: document.getElementById("mini-map"),
@@ -265,6 +279,8 @@
       onResume: () => { lastFrame = performance.now(); },
       changed: () => session?.changed(), announce,
     });
+    activeFlow = flow;
+    activeNavigation = navigation;
     session = Session.create({
       window, state: sessionState, flow, revision: SAVE_REVISION,
       circuitKey, layoutVersion: TrackLayout.VERSION, positions, directions,
@@ -302,7 +318,7 @@
       button.addEventListener("click", () => {
         if (vehicleId !== button.dataset.gcvVehicle)
           chooseVehicle(button.dataset.gcvVehicle, true);
-      });
+      }, { signal });
     });
     document.querySelectorAll("[data-gcv-track]").forEach((button) => {
       const active = button.dataset.gcvTrack === TrackLayout.ID;
@@ -310,29 +326,25 @@
       button.setAttribute("aria-pressed", String(active));
       button.addEventListener("click", () => {
         if (active) return;
-        // Old running sessions may be discarded, records are stored separately.
-        window.GameState.create("gcv").clear();
+        // Retain fullscreen: rebuilding in this document does not leave the
+        // fullscreen stage, unlike location.assign (which exits fullscreen).
         const url = new URL(window.location.href);
         if (button.dataset.gcvTrack === "classic") url.searchParams.delete("track");
         else url.searchParams.set("track", button.dataset.gcvTrack);
-        // A new page URL forces an updated HTML document on older tablets.
-        url.searchParams.set("rev", "20261111g");
-        window.location.assign(url.href);
-      });
+        url.searchParams.delete("rev");
+        disposeGame?.();
+        window.GameState.create("gcv").clear();
+        window.history.replaceState(null, "", url.href);
+        disposeGame = start(THREE);
+      }, { signal });
     });
     const raceModeCaption = raceModeButton.querySelector("strong");
     raceModeCaption.textContent = closed ? "Course · 3 tours" : "Course · parcours unique";
-    freeModeButton.addEventListener("click", session.chooseFree);
-    raceModeButton.addEventListener("click", session.startRace);
-    replayButton.addEventListener("click", session.startRace);
-    raceFreeButton.addEventListener("click", session.chooseFree);
-    restartButton.addEventListener("click", session.restartNearFinish);
-
-    window.GmrPlayTime.mountGame({
-      host: stage,
-      isPlaying: () => !flow.paused && flow.activity !== "finished",
-      onBlocked: () => navigation.openMenu(),
-    });
+    freeModeButton.addEventListener("click", session.chooseFree, { signal });
+    raceModeButton.addEventListener("click", session.startRace, { signal });
+    replayButton.addEventListener("click", session.startRace, { signal });
+    raceFreeButton.addEventListener("click", session.chooseFree, { signal });
+    restartButton.addEventListener("click", session.restartNearFinish, { signal });
 
     session.bind();
     chooseVehicle(vehicleId);
@@ -538,8 +550,9 @@
       refreshChrono();
     }
 
+    let frameId = null;
     function frame(now) {
-      requestAnimationFrame(frame);
+      frameId = requestAnimationFrame(frame);
       const realDt = Math.max(0, (now - lastFrame) / 1000);
       const dt = Math.min(realDt, 0.05);
       lastFrame = now;
@@ -565,6 +578,19 @@
     updateCar(0);
     rendering.updateCamera(0);
     rendering.render();
-    requestAnimationFrame(frame);
+    frameId = requestAnimationFrame(frame);
+    return () => {
+      // Prevent duplicate listeners, animation loops and WebGL contexts when
+      // changing tracks repeatedly on mobile.
+      cancelAnimationFrame(frameId);
+      listeners.abort();
+      controls.dispose();
+      navigation.dispose();
+      session.stop();
+      rendering.dispose();
+      activeFlow = null;
+      activeNavigation = null;
+      announce("");
+    };
   }
 })();
