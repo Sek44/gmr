@@ -121,6 +121,7 @@
     let resultRefreshCooldown = 0;
     let fall = null, respawnIndex = initialIndex;
     let jumpVelocity = 0;
+    let jumpCooldown = 0;
 
     function refreshBests() { hud.refreshBests(lapRecords.top()); }
     function bestPosition(ms) {
@@ -177,6 +178,7 @@
       driver.roadY = center.y;
       driver.jumpY = 0;
       jumpVelocity = 0;
+      jumpCooldown = 0;
       driver.reverseHold = 0;
       flow.land();
       fall = null;
@@ -226,6 +228,9 @@
     }
 
     function renderSession() {
+      // A saved/restarted run always resumes firmly on the road.
+      if (!driver.jumpY) jumpVelocity = 0;
+      jumpCooldown = 0;
       syncRaceCars();
       syncRaceHud();
       refreshCameraButton();
@@ -449,23 +454,26 @@
             }
           }
           hud.setLapCount(lapTracker.laps);
-          // A small jump after the crest of each raised bump. The car remains
-          // controllable and lands smoothly on the height-profiled surface.
+          // The three crests launch a short, sharp ballistic hop. Its
+          // touchdown is a single event for the dust FX, not a new race lap.
           const previousRoadY = driver.roadY || 0;
           driver.roadY = positions[nearest.index].y;
-          if (!closed && driver.speed > 24 && jumpVelocity === 0 &&
-              driver.jumpY === 0 && previousRoadY > 1.7 &&
-              driver.roadY < previousRoadY - 0.09) {
-            jumpVelocity = 4.5;
+          jumpCooldown = Math.max(0, jumpCooldown - dt);
+          if (!closed && driver.speed > 24 && jumpCooldown === 0 &&
+              jumpVelocity === 0 && driver.jumpY === 0 &&
+              previousRoadY > 1.7 && driver.roadY < previousRoadY - 0.09) {
+            jumpVelocity = Physics.JUMP_TAKEOFF_SPEED;
             driver.jumpY = 0.01;
+            jumpCooldown = 0.85; // No repeated takeoff on the same hump.
           }
           if (driver.jumpY > 0 || jumpVelocity > 0) {
-            driver.jumpY = Math.max(0, driver.jumpY + jumpVelocity * dt);
-            jumpVelocity -= Physics.GRAVITY * dt;
-            if (driver.jumpY === 0) jumpVelocity = 0;
+            const jump = Physics.advanceJump(driver.jumpY, jumpVelocity, dt);
+            driver.jumpY = jump.height;
+            jumpVelocity = jump.velocity;
+            if (jump.landed) visualEffects.land(driver);
           }
-          // Distinct automatic slalom: four smooth left/right oscillations,
-          // stronger than merely following the spline's normal bends.
+          // Distinct automatic slalom: seven short, fast left/right
+          // oscillations rather than four wide sweeps.
           if (TrackLayout.RAINBOW && driver.speed > 8 &&
               nearest.index / SAMPLE_COUNT >= TrackLayout.RAINBOW[0] &&
               nearest.index / SAMPLE_COUNT <= TrackLayout.RAINBOW[1]) {
@@ -480,10 +488,10 @@
               -(tangent.x + side.x * slope), -(tangent.z + side.z * slope));
             const error = Math.atan2(Math.sin(guidedYaw - driver.yaw),
               Math.cos(guidedYaw - driver.yaw));
-            driver.yaw += error * (1 - Math.exp(-7 * dt));
+            driver.yaw += error * (1 - Math.exp(-10 * dt));
             const lateral = (driver.x - center.x) * side.x +
               (driver.z - center.z) * side.z;
-            const correction = (zigzag.offset - lateral) * (1 - Math.exp(-5.8 * dt));
+            const correction = (zigzag.offset - lateral) * (1 - Math.exp(-11 * dt));
             driver.x += side.x * correction;
             driver.z += side.z * correction;
           }
@@ -515,6 +523,7 @@
 
       rendering.updatePlayer({
         driver, fall: flow.falling ? fall : null, dt, brakePressed,
+        jumpVelocity,
       });
       visualEffects.update(dt, driver, flow.falling ? 0 : mudSkidIntensity,
         flow.falling ? null : barrierSparkContact);
