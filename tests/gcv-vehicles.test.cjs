@@ -230,3 +230,26 @@ test("all five vehicle/pilot pairs can be selected without creating a new scene"
   }
   assert.equal(models.setVehicle("unknown"), "classic");
 });
+
+test("sport motorcycle has a crouched rider, full-face helmet and visible fairing", () => {
+  const drawing = {
+    fillRect() {}, fillText() {}, beginPath() {}, arc() {},
+    stroke() {}, moveTo() {}, lineTo() {},
+  };
+  const document = { createElement: () => ({ getContext: () => drawing }) };
+  const scene = new SceneNode();
+  const models = Vehicles.create({ THREE, scene, Race, trackLength: 1500, document });
+  models.setVehicle("moto");
+  const bike = models.car.children.find((node) => node.visible &&
+    node.children && node.children.length > 30);
+  assert.ok(bike, "the active low-poly motorcycle has a detailed silhouette");
+  assert.ok(bike.children.some((node) => node.material?.color === 0x17b5e5),
+    "bright sport fairing");
+  const helmet = bike.children.find((node) => node.children?.some((part) =>
+    part.material?.color === 0xffd239));
+  assert.ok(helmet, "independent full-face helmet with visor");
+  models.setCameraMode(false);
+  assert.equal(helmet.visible, false, "inside camera must not see the helmet");
+  models.setCameraMode(true);
+  assert.equal(helmet.visible, true);
+});
