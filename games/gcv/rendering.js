@@ -58,7 +58,7 @@ const GcvRendering = (() => {
     const outsideTarget = new THREE.Vector3(0, 1.13, -8);
     // Start on the player's outer grid side, at an oblique angle that shows
     // the bodywork and pilot. The grid's adjacent car is on the other side.
-    const introSidePosition = new THREE.Vector3(-7.5, 3.2, 4.1);
+    const introSidePosition = new THREE.Vector3(7.5, 3.2, 4.1);
     const introSideTarget = new THREE.Vector3(0, 1.3, 0);
     const desiredPosition = new THREE.Vector3();
     const desiredTarget = new THREE.Vector3();

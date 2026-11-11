@@ -197,11 +197,11 @@ test("race intro travels smoothly from the side to the exact chase camera", () =
   view.startGridIntro();
   view.updateCamera(0);
   assert.equal(view.gridIntroActive, true);
-  assert.equal(camera.position.x, -7.5);
+  assert.equal(camera.position.x, 7.5);
   assert.equal(camera.position.z, 4.1);
   const midway = Rendering.GRID_INTRO_DURATION / 2;
   view.updateCamera(midway);
-  assert.ok(camera.position.x > -7.5 && camera.position.x < 0);
+  assert.ok(camera.position.x < 7.5 && camera.position.x > 0);
   view.updateCamera(midway);
   assert.equal(view.gridIntroActive, false);
   assert.deepEqual([camera.position.x, camera.position.y, camera.position.z],
