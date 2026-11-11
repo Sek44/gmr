@@ -225,6 +225,8 @@
 .gcv-actions #restart-button { grid-column: 2; grid-row: 2; }
 .gcv-actions #camera-button { grid-column: 1 / -1; grid-row: 3; }
 .gcv-action-icon { display: none; width: 22px; height: 22px; }
+/* Replaying uses its icon in every orientation, not a text label. */
+.gcv-actions #restart-button .gcv-action-icon { display: block; flex: 0 0 22px; }
 .gcv-action-label { white-space: nowrap; }
 .gcv-action {
   background: #0d182ad9; border: 1px solid #bad2e46b; color: white;
@@ -260,8 +262,8 @@
   pointer-events: auto; touch-action: none; cursor: ew-resize;
 }
 .gcv-steer-visual {
-  /* Only the short slider itself has a visible frame. */
-  box-sizing: border-box; width: 100%; height: 62px;
+  /* Compact visible frame, independent from the large touch-sensitive pad. */
+  box-sizing: border-box; width: min(152px, calc(100% - 14px)); height: 54px;
   display: flex; align-items: center; justify-content: center; gap: 6px;
   padding: 9px; border: 2px solid #d5e4f9a0; border-radius: 18px;
   background: #0e2439b8; backdrop-filter: blur(5px);
@@ -320,6 +322,7 @@
   .gcv-minimap { width: 132px; height: 102px; }
   .gcv-controls { left: 8px; right: 8px; top: 72%; bottom: auto; gap: 6px; }
   .gcv-steer-pad { width: 155px; height: 148px; }
+  .gcv-steer-visual { width: min(130px, calc(100% - 12px)); }
   .gcv-steer-side { font-size: .78rem; }
   .gcv-steer-knob { width: 29px; height: 48px; }
   .gcv-pedals { gap: 6px; }
@@ -365,6 +368,7 @@
 /* Fit both thumbs even on very narrow portrait phones. */
 @media (max-width: 350px) {
   .gcv-steer-pad { width: 132px; height: 138px; }
+  .gcv-steer-visual { width: 120px; }
   .gcv-pedal { min-width: 67px; height: 88px; font-size: .77rem; }
   .gcv-pedals { gap: 5px; }
 }
