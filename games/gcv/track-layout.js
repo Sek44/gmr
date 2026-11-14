@@ -35,13 +35,13 @@ const GcvTrackLayout = (() => {
   // Spawn and timing gates use the same { x, z } contract as the
   // original track. Array waypoints are only for Catmull-Rom construction.
   const pointAt = ([x, z]) => Object.freeze({ x, z });
-  // Four oversized, broad launch hills (fraction of the open centerline).
-  // Height and width drive the geometry; HUMPS is the shared crest lookup.
+  // Tall, gradual hills keep their visual scale without launching cars
+  // far above the surface. Their curvature determines takeoff speed.
   const HUMP_PROFILES = Object.freeze([
-    { at: 0.18, height: 16, width: 0.018 },
-    { at: 0.34, height: 14, width: 0.018 },
-    { at: 0.73, height: 18, width: 0.022 },
-    { at: 0.88, height: 15, width: 0.019 },
+    { at: 0.18, height: 16, width: 0.041 },
+    { at: 0.34, height: 14, width: 0.039 },
+    { at: 0.73, height: 18, width: 0.043 },
+    { at: 0.88, height: 15, width: 0.040 },
   ].map((hump) => Object.freeze(hump)));
   const SPRINT = Object.freeze({
     ID: "rainbow", NAME: "Route Arc-en-ciel", VERSION: 3,
