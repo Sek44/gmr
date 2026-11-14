@@ -16,7 +16,7 @@ GMR est un monorepo de petits jeux jouables directement dans le navigateur, publ
 | Module | Responsabilité |
 | --- | --- |
 | `shared/home.js` | Construction des cartes accessibles depuis le catalogue (illustrations SVG, catégorie et actions Jouer/Reprendre, sans description) |
-| `shared/game-host.js` | Intercepte les liens des jeux déclarés `fullscreen` depuis Accueil et Scores, demande le plein écran dans le clic, charge une iframe même origine et quitte le plein écran avant de naviguer vers Accueil/Scores |
+| `shared/game-host.js` | Intercepte les liens des jeux déclarés `fullscreen` depuis Accueil et Scores, demande le plein écran dans le clic, charge une iframe même origine avec un paramètre `gmr-refresh` renouvelé à chaque chargement de la page hôte, puis quitte le plein écran avant de naviguer vers Accueil/Scores |
 | `shared/site.css` et `shared/styles/` | Entrée CSS stable ; structure indépendante du thème, composants communs, scores et temps de jeu |
 | `shared/themes/classic-play/` | Thème visuel du seul accueil : palette, décor et icônes SVG. Les illustrations des jeux restent dans leurs propres dossiers |
 | `games/<id>/game.css` | Présentation spécifique au jeu (scène, HUD, commandes, animations), hors couche commune |
