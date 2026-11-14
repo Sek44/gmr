@@ -75,7 +75,8 @@ const GcvBarriers = (() => {
   // tiny folded arc. The rail remains continuous at the outer shoulder.
   function clipFoldedLoops(points, skippedSamples) {
     const n = points.length;
-    for (let pass = 0; pass < 24; pass++) {
+    // More sampled corners can produce several separate small folded arcs.
+    for (let pass = 0; pass < Math.min(64, n); pass++) {
       const crossings = railIntersections(points);
       if (!crossings.length) return;
       const [i, j] = crossings[0];
