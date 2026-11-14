@@ -158,3 +158,86 @@ test("difficulty spread stays comparable on open and closed circuits", () => {
   assert.ok(Math.abs(classicSpread - rainbowSpread) < 0.3,
     "circuit changes must not collapse or reverse opponent difficulty");
 });
+
+
+test("opponents smoothly vary their lane without leaving the paved road", () => {
+  for (const route of [
+    Layout.CLASSIC, Layout.SPRINT, Layout.generateSprint(42),
+  ]) {
+    const { navigation, routeLength, laps } = sampledLayout(route);
+    const drivers = Race.create(routeLength, () => 0.5,
+      null, laps, navigation).opponents;
+    for (const ai of drivers) {
+      assert.equal(navigation.sample(ai, 0).lateral, ai.gridLateral);
+      const plan = navigation.plan(ai);
+      const checkpoints = [];
+      for (let i = 0; i <= 80; i++) {
+        const time = plan.totalTime * i / 80;
+        const pose = navigation.sample(ai, time);
+        assert.ok(Math.abs(pose.lateral) <= route.ROAD_HALF_WIDTH - 2.19);
+        assert.ok(Math.abs(pose.roll) <= 0.101);
+        assert.ok(Math.abs(pose.yawOffset) < 0.28);
+        assert.ok(pose.jumpY >= 0 && Number.isFinite(pose.pitch));
+        checkpoints.push(pose);
+      }
+      assert.ok(Math.abs(checkpoints[50].lateral - ai.gridLateral) > 0.2,
+        "lane preferences must change during the course");
+      assert.deepEqual(checkpoints[50],
+        navigation.sample(ai, plan.totalTime * 50 / 80),
+        "AI position and drift must not depend on previous frames");
+    }
+  }
+});
+
+test("fast opponents leave the surface over generated crests and land", () => {
+  const sprint = sampledLayout(Layout.SPRINT);
+  const drivers = Race.create(sprint.routeLength, () => 0.5,
+    null, sprint.laps, sprint.navigation).opponents;
+  const fastest = drivers[0];
+  const plan = sprint.navigation.plan(fastest);
+  let maxJump = 0, jumps = 0, landed = 0, wasAirborne = false;
+  for (let i = 0; i <= 1000; i++) {
+    const pose = sprint.navigation.sample(fastest, i * plan.totalTime / 1000);
+    const airborne = pose.jumpY > 0.06;
+    if (airborne && !wasAirborne) jumps++;
+    if (!airborne && wasAirborne) landed++;
+    maxJump = Math.max(maxJump, pose.jumpY);
+    wasAirborne = airborne;
+  }
+  assert.ok(jumps >= 2 && landed >= 2,
+    "the fastest driver must jump and land on several actual bumps");
+  assert.ok(maxJump > 0.4,
+    "the jump follows the common road elevation and gravity");
+  const classic = sampledLayout(Layout.CLASSIC);
+  const driver = Race.create(classic.routeLength, () => 0.5,
+    null, classic.laps, classic.navigation).opponents[0];
+  for (let i = 0; i <= 60; i++) {
+    const pose = classic.navigation.sample(driver,
+      classic.navigation.plan(driver).totalTime * i / 60);
+    assert.equal(pose.jumpY, 0, "flat tracks must not launch vehicles");
+  }
+});
+
+test("lane, drift, jumping and finish rank survive different frame sizes and resume", () => {
+  const { navigation, routeLength, laps } = sampledLayout(Layout.SPRINT);
+  let start = Race.create(routeLength, () => 0.7, null, laps, navigation);
+  start = Race.advance(start, 5, 0, null, navigation);
+  const big = Race.advance(start, 23, 0, null, navigation);
+  let small = start;
+  for (let i = 0; i < 230; i++)
+    small = Race.advance(small, 0.1, 0, null, navigation);
+  for (let i = 0; i < 9; i++) {
+    const a = big.opponents[i], b = small.opponents[i];
+    for (const key of ["progress", "lateral", "jumpY",
+      "yawOffset", "roll", "pitch", "landing"]) {
+      assert.ok(Math.abs(a[key] - b[key]) < 1e-6,
+        key + " differs across frame rates");
+    }
+  }
+  const saved = JSON.parse(JSON.stringify(big));
+  const restored = Race.restore(saved, routeLength, laps, navigation);
+  assert.deepEqual(restored, big);
+  const after = Race.advance(restored, 1.7, 0, null, navigation);
+  const uninterrupted = Race.advance(big, 1.7, 0, null, navigation);
+  assert.deepEqual(after, uninterrupted);
+});
