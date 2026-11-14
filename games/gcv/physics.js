@@ -8,8 +8,10 @@ const GcvPhysics = (() => {
   const REVERSE_MAX_SPEED = 8; // 28.8 km/h: twice the previous reverse speed.
   const REVERSE_ACCELERATION = 7;
   const GRAVITY = 9.81;
-  const JUMP_TAKEOFF_SPEED = 8.5; // Sharper lift off a crest (m/s).
-  const JUMP_GRAVITY = 32; // Fast, punchy touchdown; distinct from fall gravity.
+  const JUMP_TAKEOFF_SPEED = 20; // Sustained arcade airtime after big crests.
+  const JUMP_GRAVITY = 14; // Ballistic arc; off-track falls still use GRAVITY.
+  const AIR_STEER_FACTOR = 0.12; // Gentle yaw correction, not road grip.
+  const AIR_BRAKE_FACTOR = 0.075; // Small reduction of forward momentum.
   const FALL_SECONDS = 2;
   const CAR_HEIGHT = 0.14;
   const INITIAL_FALL_VELOCITY = -7; // m/s: descent is immediate at the track edge.
@@ -20,12 +22,19 @@ const GcvPhysics = (() => {
     const currentSpeed = clamp(Number(state.speed) || 0, -REVERSE_MAX_SPEED, MAX_SPEED);
     const gas = Boolean(input.accelerate);
     const brake = Boolean(input.brake);
+    const airborne = Boolean(input.airborne);
     // Paved-road handling on the muddy-looking track AND safety shoulders.
     const drag = 1.4 + 0.003 * currentSpeed * currentSpeed;
     let speed;
     let reverseHold = 0;
 
-    if (brake) {
+    if (airborne) {
+      // No reverse and no instantaneous road braking while the wheels are up.
+      // The brake still trims speed enough to adjust where the car lands.
+      speed = brake
+        ? Math.max(0, currentSpeed - (BRAKE_DECELERATION * AIR_BRAKE_FACTOR + 0.55) * elapsed)
+        : clamp(currentSpeed + (gas ? 0.8 : -0.55) * elapsed, 0, MAX_SPEED);
+    } else if (brake) {
       if (currentSpeed > 0) {
         speed = Math.max(0, currentSpeed - (BRAKE_DECELERATION + drag) * elapsed);
         // Keep braking at zero before reverse engages; never leap into reverse.
@@ -44,7 +53,8 @@ const GcvPhysics = (() => {
 
     const steer = clamp(Number(input.steer) || 0, -1, 1);
     const yaw = state.yaw - steer * Math.sign(speed) *
-      Math.min(Math.abs(speed) / 14, 1) * MAX_STEER_RATE * elapsed;
+      Math.min(Math.abs(speed) / 14, 1) *
+      MAX_STEER_RATE * (airborne ? AIR_STEER_FACTOR : 1) * elapsed;
     return {
       x: state.x - Math.sin(yaw) * speed * elapsed,
       z: state.z - Math.cos(yaw) * speed * elapsed,
@@ -78,15 +88,16 @@ const GcvPhysics = (() => {
     });
   }
 
-  // Short ballistic jump above the road, independent from the long off-road
-  // fall. Analytic integration gives a single reliable touchdown event even
-  // with uneven frame times.
-  function advanceJump(height, velocity, dt) {
+  // Ballistic world-space altitude expressed as an offset above the local road.
+  // Subtract road elevation change each frame: the car does NOT follow the
+  // descending hill while airborne. Touchdown still emits exactly once.
+  function advanceJump(height, velocity, dt, roadRise = 0) {
     const y = Math.max(0, Number(height) || 0);
     const vy = Number(velocity) || 0;
     const step = clamp(Number.isFinite(dt) ? dt : 0, 0, 0.05);
     if (y === 0 && vy <= 0) return { height: 0, velocity: 0, landed: false };
-    const nextHeight = y + vy * step - JUMP_GRAVITY * step * step / 2;
+    const rise = Number.isFinite(roadRise) ? roadRise : 0;
+    const nextHeight = y + vy * step - JUMP_GRAVITY * step * step / 2 - rise;
     if (step > 0 && y > 0 && nextHeight <= 0)
       return { height: 0, velocity: 0, landed: true };
     return {
@@ -133,6 +144,7 @@ const GcvPhysics = (() => {
     MAX_SPEED, MAX_STEER_RATE, BRAKE_DECELERATION,
     REVERSE_DELAY, REVERSE_MAX_SPEED, GRAVITY, FALL_SECONDS,
     INITIAL_FALL_VELOCITY, JUMP_TAKEOFF_SPEED, JUMP_GRAVITY,
+    AIR_STEER_FACTOR, AIR_BRAKE_FACTOR,
     advance, skidIntensity, shouldLaunchAtCrest, advanceJump, startFall, advanceFall,
   });
 })();
