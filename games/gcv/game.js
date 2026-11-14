@@ -12,9 +12,10 @@
   const resumeButton = document.getElementById("resume-button");
   const menuButton = document.getElementById("menu-button");
   const menuFullscreenButton = document.getElementById("menu-fullscreen-button");
+  const homeButton = document.getElementById("home-button");
+  const menuHomeButton = document.getElementById("menu-home-button");
   const scoresButton = document.getElementById("scores-button");
   const menuScoresButton = document.getElementById("menu-scores-button");
-  const scoresFrame = document.getElementById("gcv-scores");
   const freeModeButton = document.getElementById("free-mode-button");
   const raceModeButton = document.getElementById("race-mode-button");
   const replayButton = document.getElementById("race-replay-button");
@@ -294,8 +295,8 @@
     let session = null;
     const navigation = Navigation.create({
       window, document, location: window.location, stage, homePanel,
-      resumeButton, menuButton, scoresButton, menuScoresButton, scoresFrame,
-      fullscreenButton, menuFullscreenButton, clearControls,
+      resumeButton, menuButton, homeButton, menuHomeButton,
+      scoresButton, menuScoresButton, fullscreenButton, menuFullscreenButton, clearControls,
       flow,
       onResume: () => {
         lastFrame = performance.now();
