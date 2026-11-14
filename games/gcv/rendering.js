@@ -121,6 +121,7 @@ const GcvRendering = (() => {
     opponentShadows.frustumCulled = false;
     scene.add(opponentShadows);
     const opponentShadowTransform = new THREE.Object3D();
+    const opponentsById = new Map(); // Reused every frame: no Map allocation in the render loop.
 
     let riderMotionTime = 0;
     // Explicitly visible arcade-style rider motion: the bike banks while Milo
@@ -234,10 +235,13 @@ const GcvRendering = (() => {
     function syncOpponents(opponents) {
       // One matrix upload per frame, not one shadow mesh/draw call per AI.
       // Dense indices keep the batch correct when an opponent is absent.
-      const byId = new Map(opponents?.map((entry) => [entry.id, entry]) || []);
+      opponentsById.clear();
+      if (opponents) {
+        for (const entry of opponents) opponentsById.set(entry.id, entry);
+      }
       let shadowCount = 0;
       for (const [id, mesh] of opponentMeshes) {
-        const ai = byId.get(id);
+        const ai = opponentsById.get(id);
         mesh.visible = Boolean(ai);
         if (!ai) continue;
         // Use arc length, including on the final long straight.
