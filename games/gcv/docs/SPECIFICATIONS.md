@@ -25,6 +25,7 @@ Au premier lancement, la caméra est extérieure. Le dernier véhicule, circuit,
 - La mini-carte représente le circuit et la position du joueur ; en course, elle affiche aussi les concurrents. Elle indique la ligne d'arrivée et les trois points intermédiaires.
 - Le bouton plein écran est disponible depuis le menu et pendant la conduite. Si le navigateur refuse le plein écran, le jeu reste jouable en page normale.
 - Les commandes compactes et le HUD s'adaptent aux présentations portrait et paysage.
+- La qualité de résolution interne du rendu 3D s'adapte automatiquement aux performances pendant la conduite, sans modifier la physique, le chronomètre, les collisions ou la sauvegarde. La netteté peut temporairement diminuer sur les appareils plus lents puis remonter si les images restent fluides ; cette qualité n'est pas une préférence persistante.
 
 ## 4. Essais libres et records
 
