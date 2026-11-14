@@ -19,6 +19,9 @@ class WebGLRenderer {
   setPixelRatio(ratio) { this.pixelRatio = ratio; }
   setSize(...size) { this.size = size; }
   render(scene, camera) { this.lastRender = { scene, camera }; }
+  getContext() { return {
+    getContextAttributes: () => ({ antialias: this.options.antialias }),
+  }; }
 }
 class Mesh {
   constructor(geometry, material) {
@@ -65,8 +68,9 @@ class PerspectiveCamera {
   lookAt(v) { this.target = new Vector().copy(v); }
 }
 
-function fixture(closed = true, withMotoRider = false, aiCount = 1) {
-  const window = { devicePixelRatio: 3, listeners: {},
+function fixture(closed = true, withMotoRider = false, aiCount = 1,
+  navigator = {}) {
+  const window = { devicePixelRatio: 3, navigator, listeners: {},
     document: { createElement() {
       return { getContext() {
         return { createRadialGradient() { return { addColorStop() {} }; },
@@ -397,6 +401,45 @@ test("rendering module is loaded before game.js and exposes a browser factory", 
   assert.match(entry, /Rendering\.create\(/);
   assert.match(entry, /rendering\.render\(\)/);
   assert.doesNotMatch(entry, /new THREE\.WebGLRenderer/);
+});
+
+test("low-end hardware disables MSAA on classic as well as rainbow", () => {
+  const tablet = { deviceMemory: 2, hardwareConcurrency: 8 };
+  const phone = { deviceMemory: 8, hardwareConcurrency: 8 };
+  const slowCPU = { hardwareConcurrency: 4 };
+  for (const hints of [tablet, slowCPU, { deviceMemory: 4 }]) {
+    assert.equal(Rendering.isLowEndDevice(hints), true);
+    assert.equal(Rendering.wantsMSAA(true, hints), false);
+    const { renderer, view } = fixture(true, false, 1, hints);
+    assert.equal(renderer.options.antialias, false,
+      "classic must create its WebGL context without MSAA on slow devices");
+    assert.equal(view.getMetrics().msaaRequested, false);
+    assert.equal(view.getMetrics().msaaActive, false);
+    assert.equal(view.getMetrics().lowEndDevice, true);
+    assert.equal(view.getMetrics().pixelRatio, null,
+      "missing renderer mock methods do not affect quality selection");
+  }
+  assert.equal(Rendering.isLowEndDevice(phone), false);
+  assert.equal(Rendering.wantsMSAA(true, phone), true);
+  const fast = fixture(true, false, 1, phone);
+  assert.equal(fast.renderer.options.antialias, true);
+  assert.equal(fast.view.getMetrics().msaaActive, true);
+  const open = fixture(false, false, 1, phone);
+  assert.equal(open.renderer.options.antialias, false,
+    "rainbow must disable MSAA even on high-end devices");
+});
+
+test("missing or invalid device hints do not mistake every device for low-end", () => {
+  for (const hints of [undefined, {}, { deviceMemory: 0, hardwareConcurrency: 0 },
+    { deviceMemory: NaN, hardwareConcurrency: Infinity },
+    { deviceMemory: "2", hardwareConcurrency: "4" }]) {
+    assert.equal(Rendering.isLowEndDevice(hints), false);
+    assert.equal(Rendering.wantsMSAA(true, hints), true);
+  }
+  assert.equal(Rendering.wantsMSAA(false, undefined), false);
+  assert.equal(Rendering.isLowEndDevice({
+    deviceMemory: 8, hardwareConcurrency: 2,
+  }), true, "weak CPU hint should also disable MSAA");
 });
 
 test("the open route caps WebGL framebuffer memory on large Android screens", () => {
