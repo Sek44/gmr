@@ -18,6 +18,24 @@ test("launcher has distinct resume and start actions after its options", () => {
   assert.ok(html.indexOf('id="gcv-track-title"') < html.indexOf('id="start-button"'));
   assert.ok(html.indexOf('id="gcv-vehicle-title"') < html.indexOf('id="start-button"'));
   assert.ok(html.indexOf('id="gcv-mode-title"') < html.indexOf('id="start-button"'));
+  assert.match(html, /<section class="gcv-menu-main" aria-labelledby="gcv-new-game-title">/);
+  assert.match(html, /<h3 id="gcv-new-game-title">Nouvelle partie<\/h3>/);
+  const title = html.indexOf('<header class="gcv-menu-heading">');
+  const resume = html.indexOf('<section id="resume-card"');
+  const newGame = html.indexOf('<section class="gcv-menu-main"');
+  const start = html.indexOf('id="start-button"');
+  assert.ok(title > -1 && title < resume && resume < newGame && newGame < start,
+    "title and resume must precede the grouped new-game card");
+  const beforeNewGame = html.slice(title, newGame);
+  assert.ok(beforeNewGame.includes('</header>'));
+  assert.ok(beforeNewGame.includes('</section>'));
+  const grouped = html.slice(newGame, html.indexOf('</section>', html.indexOf('id="start-button"')));
+  assert.match(grouped, /class="gcv-menu-options"/);
+  assert.match(grouped, /class="gcv-menu-launch"/);
+  assert.match(grouped, /id="start-button"/);
+  const css = file("game.css");
+  assert.match(css, /\.gcv-new-game-content\s*\{/);
+  assert.match(css, /@media \(orientation: portrait\) and \(max-width: 700px\)/);
 });
 
 test("choosing options does not start or delete an in-progress race", () => {
