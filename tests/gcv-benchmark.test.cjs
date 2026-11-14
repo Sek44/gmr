@@ -6,6 +6,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const Metrics = require("../games/gcv/benchmark-metrics.js");
+const Config = require("../games/gcv/benchmark-config.js");
 
 const game = path.resolve(__dirname, "../games/gcv");
 
@@ -75,7 +76,116 @@ test("standalone benchmark browser scripts load in dependency order", () => {
   }
   for (const name of ["GcvTrackProgress", "GcvRace", "GcvTrackLayout",
     "GcvBarriers", "GcvScenery", "GcvWorld3D", "GcvVehicles",
-    "GcvRendering", "GcvVisualEffects", "GcvBenchmarkMetrics"]) {
+    "GcvRendering", "GcvVisualEffects", "GcvBenchmarkConfig", "GcvBenchmarkMetrics"]) {
     assert.ok(sandbox.window[name], `Missing ${name} after loading benchmark scripts`);
   }
+});
+
+test("seven scripted runs keep like-for-like resolution comparisons", () => {
+  assert.equal(Config.VERSION, "gcv-render-v2");
+  assert.equal(Config.SCENARIOS.length, 7);
+  assert.ok(Config.validatePlan());
+  const full = Config.SCENARIOS.find((item) => item.id === "classic-race");
+  const passes = Config.SCENARIOS.filter((item) =>
+    item.group === "resolution" || item.group === "repeat");
+  assert.deepEqual(passes.map((item) => item.scale), [0.75, 0.55, 1]);
+  for (const run of passes) {
+    assert.equal(run.track, full.track);
+    assert.equal(run.vehicle, full.vehicle);
+    assert.equal(run.race, full.race);
+  }
+  assert.ok(Config.SCENARIOS.findIndex((item) =>
+    item.id === "classic-race-repeat") >
+    Config.SCENARIOS.findIndex((item) => item.id === "classic-race"));
+  assert.equal(Config.validatePlan([{ id: "wrong", name: "bad",
+    track: "classic", vehicle: "moto", race: false, scale: 0.1 }]), false);
+  assert.ok(Object.isFrozen(Config.SCENARIOS));
+});
+
+test("CPU profiler returns distinct phase averages, frame tail and spike rates", () => {
+  const sample = (intervalMs, factor) => ({
+    intervalMs, drawCalls: 100, triangles: 1000,
+    cpuMs: factor * 7,
+    routeMs: factor, opponentsMs: factor,
+    playerMs: factor, effectsMs: factor,
+    cameraMs: factor, submitMs: factor * 2,
+  });
+  const result = Metrics.summarize([
+    sample(16, 1), sample(34, 2), sample(51, 3),
+  ]);
+  assert.equal(result.frames, 3);
+  assert.equal(result.longFramePct, 200 / 3);
+  assert.equal(result.over50Pct, 100 / 3);
+  assert.equal(result.over20Pct, 200 / 3);
+  assert.equal(result.frameMaxMs, 51);
+  assert.equal(result.cpuAvgMs, 14);
+  assert.equal(result.cpuP95Ms, 19.6);
+  assert.equal(result.cpuMaxMs, 21);
+  assert.equal(result.routeAvgMs, 2);
+  assert.equal(result.opponentsAvgMs, 2);
+  assert.equal(result.playerAvgMs, 2);
+  assert.equal(result.effectsAvgMs, 2);
+  assert.equal(result.cameraAvgMs, 2);
+  assert.equal(result.submitAvgMs, 4);
+  assert.equal(result.updateAvgMs, 10);
+  assert.ok(result.frameP99Ms > result.frameP95Ms);
+});
+
+test("older metric samples still work when per-phase counters are missing", () => {
+  const result = Metrics.summarize([
+    { intervalMs: 16, cpuMs: 3, drawCalls: 5, triangles: 7 },
+  ]);
+  assert.equal(result.fps, 62.5);
+  assert.equal(result.routeAvgMs, null);
+  assert.equal(result.submitAvgMs, null);
+  assert.equal(result.updateAvgMs, null);
+});
+
+test("resolution comparison detects frame-cap and run-order drift", () => {
+  const make = (id, scale, fps) => ({
+    id, track: "classic", vehicle: "classic", opponents: 9, scale,
+    fps, pixelRatio: scale * 1.7, framebufferWidth: Math.round(800 * scale),
+    framebufferHeight: Math.round(1100 * scale),
+  });
+  const normal = [
+    make("classic-race", 1, 40),
+    make("classic-race-75", 0.75, 50),
+    make("classic-race-55", 0.55, 60),
+    make("classic-race-repeat", 1, 38),
+  ];
+  const result = Metrics.resolutionComparison(normal);
+  assert.equal(result.refreshCappedAt60, false);
+  assert.equal(result.driftPct, -5);
+  assert.equal(result.cases[0].fpsDeltaPct, 25);
+  assert.equal(result.cases[1].pixels,
+    Math.round(800 * 0.55) * Math.round(1100 * 0.55));
+  assert.equal(Metrics.resolutionComparison(normal.slice(0, 3)), null);
+  const capped = normal.map((item) => ({ ...item, fps: 60 }));
+  assert.equal(Metrics.resolutionComparison(capped).refreshCappedAt60, true);
+  const mismatch = normal.map((item) => ({ ...item }));
+  mismatch[2].opponents = 0;
+  assert.equal(Metrics.resolutionComparison(mismatch), null);
+});
+
+test("three report pages provide readable screenshot sections", () => {
+  const html = fs.readFileSync(path.join(game, "benchmark.html"), "utf8");
+  const code = fs.readFileSync(path.join(game, "benchmark.js"), "utf8");
+  const css = fs.readFileSync(path.join(game, "benchmark.css"), "utf8");
+  const pages = [...html.matchAll(/data-report-page="(\d+)"/g)]
+    .map((match) => Number(match[1]));
+  assert.deepEqual(pages, [0, 1, 2]);
+  for (const id of [
+    "benchmark-overview-rows", "benchmark-cpu-rows", "benchmark-phase-rows",
+    "benchmark-resolution-rows", "benchmark-device", "benchmark-hardware",
+    "benchmark-run-id", "benchmark-page-number", "benchmark-prev",
+    "benchmark-next", "benchmark-end-actions", "benchmark-copy",
+  ]) {
+    assert.match(html, new RegExp('id="' + id + '"'));
+  }
+  assert.match(html, /src="\.\/benchmark-config\.js\?v=/);
+  assert.match(code, /setResolutionScale\(scenario\.scale\)/);
+  assert.match(code, /performance\.now\(\)/);
+  assert.match(code, /metrics\.resolutionComparison\(output\)/);
+  assert.match(css, /\[hidden\] \{ display: none !important; \}/);
+  assert.doesNotMatch(html, /play-time|game-state|session\.js|game\.js/);
 });
