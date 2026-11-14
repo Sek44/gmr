@@ -90,6 +90,12 @@ const GcvRendering = (() => {
     let selectedVehicle = "classic";
     let previousYaw = null;
     let motoLean = 0;
+    // Preserve both the bike's bank and the rider's lean across takeoff.
+    // In the air, steering sets a new bank without relying on yaw rate,
+    // which can be suppressed by the aerial road-following assistance.
+    let airborneLean = 0;
+    let airborneRiderTurn = 0;
+    let wasAirborne = false;
     let visualPitch = 0;
     let previousSpeed = null;
     let wasJumping = false;
@@ -158,8 +164,8 @@ const GcvRendering = (() => {
       riderMotionTime += step;
       // Steering anticipates the bend, while actual yaw keeps reacting in
       // autonomous rainbow zigzags. Capped angles prevent rubbery motion.
-      const turn = !fall ? clamp(
-        (moving ? yawRate : 0) - steerInput * 0.75, -2.8, 2.8) : 0;
+      const turn = !fall ? (airborne ? airborneRiderTurn : clamp(
+        (moving ? yawRate : 0) - steerInput * 0.75, -2.8, 2.8)) : 0;
       const speed = moving ? Math.abs(driver.speed) : 0;
       // Positive yaw and roll both mean a leftward turn/lean.
       const bodyRoll = clamp(turn * 0.12, -0.29, 0.29);
@@ -299,9 +305,36 @@ const GcvRendering = (() => {
         placeShadow(playerShadow, driver.x, driver.roadY || 0, driver.z,
           driver.yaw, footprint, flight.scale);
       }
+      const airborne = !fall && (driver.jumpY || 0) > 0;
+      const steering = clamp(Number(steerInput) || 0, -1, 1);
+      if (selectedVehicle === "moto" && airborne) {
+        if (!wasAirborne) {
+          // Snapshot the current visual pose before the low airborne yaw rate
+          // would straighten the motorcycle and its pilot.
+          airborneLean = motoLean;
+          airborneRiderTurn = motoRider
+            ? clamp(motoRider.body.rotation.z / 0.12, -2.8, 2.8) : 0;
+          // If the first airborne frame is also the first turn frame, retain
+          // the incoming turn instead of starting with zero bank.
+          if (Math.abs(airborneLean) < 0.001)
+            airborneLean = clamp(rate * 0.18, -0.19, 0.19);
+          if (Math.abs(airborneRiderTurn) < 0.01)
+            airborneRiderTurn = clamp(rate, -2.8, 2.8);
+        }
+        if (Math.abs(steering) > 0.05) {
+          // Right input is positive: bike and rider bank to the right.
+          // The held target remains when the control is released.
+          airborneLean = -steering * 0.19;
+          airborneRiderTurn = -steering * 1.5;
+        }
+      }
+      wasAirborne = airborne;
       const targetLean = selectedVehicle === "moto" && !fall
-        ? Math.max(-0.19, Math.min(0.19, rate * 0.18)) : 0;
-      motoLean += (targetLean - motoLean) * (1 - Math.exp(-12 * Math.max(0, dt)));
+        ? (airborne ? airborneLean : clamp(rate * 0.18, -0.19, 0.19)) : 0;
+      // Less aggressive aerial damping preserves the takeoff pose. Changing
+      // steering direction still eases smoothly rather than snapping.
+      motoLean += (targetLean - motoLean) *
+        (1 - Math.exp(-(airborne ? 7 : 12) * Math.max(0, dt)));
       if (fall) {
         visualPitch = 0;
         car.position.set(fall.x, fall.y, fall.z);
@@ -347,6 +380,9 @@ const GcvRendering = (() => {
       selectedVehicle = id;
       previousYaw = null;
       motoLean = 0;
+      airborneLean = 0;
+      airborneRiderTurn = 0;
+      wasAirborne = false;
       visualPitch = 0;
       resetMotoRider();
       const cockpits = {
