@@ -393,36 +393,58 @@
           geometry.computeVertexNormals();
           group.add(new THREE.Mesh(geometry, material));
         }
-        function sportWheel(z, radius = 0.59) {
+        // Both wheels have the same silhouette. Share five rigid geometries
+        // and draw the ten spokes and two rim rings with instancing, keeping
+        // each complete wheel under its original animated spinning pivot.
+        const wheelRadius = 0.59;
+        const wheelGeometry = {
+          tyre: new THREE.TorusGeometry(wheelRadius - 0.105, 0.105, 7, 22),
+          rim: new THREE.TorusGeometry(wheelRadius - 0.21, 0.042, 6, 20),
+          spoke: new THREE.CylinderGeometry(0.033, 0.033,
+            wheelRadius - 0.33, 7),
+          hub: new THREE.CylinderGeometry(0.12, 0.12, 0.28, 10),
+          brake: new THREE.TorusGeometry(wheelRadius - 0.255, 0.042, 5, 16),
+        };
+        const wheelTransform = new THREE.Object3D();
+        const wheelUp = new THREE.Vector3(0, 1, 0);
+        function sportWheel(z) {
           const pivot = new THREE.Group();
-          pivot.position.set(0, radius, z);
-          const tyre = new THREE.Mesh(
-            new THREE.TorusGeometry(radius - 0.105, 0.105, 7, 22), rubber);
+          pivot.position.set(0, wheelRadius, z);
+          const tyre = new THREE.Mesh(wheelGeometry.tyre, rubber);
           tyre.rotation.y = Math.PI / 2;
           pivot.add(tyre);
-          // Open alloy rims, five spokes, hub and a narrow brake ring.
-          for (const side of [-1, 1]) {
-            const rim = new THREE.Mesh(
-              new THREE.TorusGeometry(radius - 0.21, 0.042, 6, 20),
-              wheelSilver);
-            rim.rotation.y = Math.PI / 2;
-            rim.position.x = side * 0.095;
-            pivot.add(rim);
+
+          const rims = new THREE.InstancedMesh(wheelGeometry.rim, wheelSilver, 2);
+          const spokes = new THREE.InstancedMesh(wheelGeometry.spoke, wheelSilver, 10);
+          for (const [sideIndex, side] of [-1, 1].entries()) {
+            wheelTransform.position.set(side * 0.095, 0, 0);
+            wheelTransform.rotation.set(0, Math.PI / 2, 0);
+            wheelTransform.quaternion.setFromEuler(wheelTransform.rotation);
+            wheelTransform.updateMatrix();
+            rims.setMatrixAt(sideIndex, wheelTransform.matrix);
             for (let i = 0; i < 5; i++) {
               const angle = i * Math.PI * 2 / 5;
-              tube(pivot, [side * 0.095, Math.sin(angle) * 0.11,
-                Math.cos(angle) * 0.11],
-              [side * 0.095, Math.sin(angle) * (radius - 0.22),
-                Math.cos(angle) * (radius - 0.22)], 0.033, wheelSilver);
+              const from = new THREE.Vector3(side * 0.095,
+                Math.sin(angle) * 0.11, Math.cos(angle) * 0.11);
+              const to = new THREE.Vector3(side * 0.095,
+                Math.sin(angle) * (wheelRadius - 0.22),
+                Math.cos(angle) * (wheelRadius - 0.22));
+              const axis = to.clone().sub(from);
+              wheelTransform.position.copy(from).add(to).multiplyScalar(0.5);
+              wheelTransform.quaternion.setFromUnitVectors(wheelUp,
+                axis.normalize());
+              wheelTransform.updateMatrix();
+              spokes.setMatrixAt(sideIndex * 5 + i, wheelTransform.matrix);
             }
           }
-          const hub = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.12, 0.12, 0.28, 10), brakeMetal);
+          rims.instanceMatrix.needsUpdate = true;
+          spokes.instanceMatrix.needsUpdate = true;
+          pivot.add(rims, spokes);
+
+          const hub = new THREE.Mesh(wheelGeometry.hub, brakeMetal);
           hub.rotation.z = Math.PI / 2;
           pivot.add(hub);
-          const brake = new THREE.Mesh(
-            new THREE.TorusGeometry(radius - 0.255, 0.042, 5, 16),
-            brakeMetal);
+          const brake = new THREE.Mesh(wheelGeometry.brake, brakeMetal);
           brake.rotation.y = Math.PI / 2;
           brake.position.x = -0.145;
           pivot.add(brake);
