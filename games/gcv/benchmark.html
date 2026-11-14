@@ -6,19 +6,20 @@
   <meta name="theme-color" content="#101b2c">
   <meta name="description" content="Profilage CPU et rendu 3D Super Kart sur téléphone et tablette.">
   <title>Benchmark 3D — Super Kart</title>
-  <link rel="stylesheet" href="./benchmark.css?v=20261114c">
-  <script defer src="./track-layout.js?v=20261114c"></script>
-  <script defer src="./scenery.js?v=20261114c"></script>
-  <script defer src="./barriers.js?v=20261114c"></script>
-  <script defer src="./track-progress.js?v=20261114c"></script>
-  <script defer src="./race.js?v=20261114c"></script>
-  <script defer src="./world-3d.js?v=20261114c"></script>
-  <script defer src="./vehicles.js?v=20261114c"></script>
-  <script defer src="./rendering.js?v=20261114c"></script>
-  <script defer src="./visual-effects.js?v=20261114c"></script>
-  <script defer src="./benchmark-config.js?v=20261114c"></script>
-  <script defer src="./benchmark-metrics.js?v=20261114c"></script>
-  <script type="module" src="./benchmark.js?v=20261114c"></script>
+  <link rel="stylesheet" href="./benchmark.css?v=20261114d">
+  <script defer src="./track-layout.js?v=20261114d"></script>
+  <script defer src="./scenery.js?v=20261114d"></script>
+  <script defer src="./barriers.js?v=20261114d"></script>
+  <script defer src="./track-progress.js?v=20261114d"></script>
+  <script defer src="./race.js?v=20261114d"></script>
+  <script defer src="./world-3d.js?v=20261114d"></script>
+  <script defer src="./vehicles.js?v=20261114d"></script>
+  <script defer src="./rendering.js?v=20261114d"></script>
+  <script defer src="./visual-effects.js?v=20261114d"></script>
+  <script defer src="./benchmark-config.js?v=20261114d"></script>
+  <script defer src="./benchmark-display.js?v=20261114d"></script>
+  <script defer src="./benchmark-metrics.js?v=20261114d"></script>
+  <script type="module" src="./benchmark.js?v=20261114d"></script>
 </head>
 <body>
   <section id="benchmark-stage" class="benchmark-stage" aria-label="Scène 3D de mesure">
@@ -30,8 +31,11 @@
       <a href="./index.html" class="benchmark-link">Retour au jeu</a>
     </div>
     <p class="benchmark-intro">Sept séquences automatiques : quatre scènes 3D, trois mesures supplémentaires de résolution et profilage JavaScript.</p>
-    <p class="benchmark-instruction">Laisse la page au premier plan, sans toucher à l'écran ni changer l'orientation. Le test ne consomme pas de temps de jeu.</p>
-    <button type="button" id="benchmark-start" class="benchmark-button">Lancer le test</button>
+    <p class="benchmark-instruction">Le plein écran est recommandé pour comparer les appareils. Ne change pas d'orientation pendant les mesures. Aucun temps de jeu n'est consommé.</p>
+    <div class="benchmark-launch-actions">
+      <button type="button" id="benchmark-start" class="benchmark-button">Lancer en plein écran</button>
+      <button type="button" id="benchmark-windowed" class="benchmark-button benchmark-secondary">Sans plein écran</button>
+    </div>
     <p id="benchmark-status" class="benchmark-status" role="status" aria-live="polite">Prêt · environ 70 secondes, après chargement.</p>
   </main>
 
@@ -49,6 +53,7 @@
     <section data-report-page="0" class="benchmark-report-page">
       <h3>1. Fluidité et rendu</h3>
       <p id="benchmark-viewport" class="benchmark-detail"></p>
+      <p id="benchmark-capture-mode" class="benchmark-detail"></p>
       <div class="benchmark-table-container">
         <table class="benchmark-table">
           <thead>
@@ -98,6 +103,7 @@
       <p id="benchmark-resolution-note" class="benchmark-detail"></p>
       <h4>Matériel et initialisation</h4>
       <p id="benchmark-hardware" class="benchmark-detail"></p>
+      <p id="benchmark-display-info" class="benchmark-detail"></p>
       <p id="benchmark-device" class="benchmark-user-agent"></p>
       <p id="benchmark-setup" class="benchmark-detail"></p>
       <p id="benchmark-method" class="benchmark-footnote"></p>
@@ -110,6 +116,7 @@
         <button type="button" id="benchmark-copy" class="benchmark-button">Copier JSON</button>
         <button type="button" id="benchmark-restart" class="benchmark-button benchmark-secondary">Relancer</button>
       </div>
+      <button type="button" id="benchmark-exit-fullscreen" class="benchmark-button benchmark-secondary" hidden>Quitter plein écran</button>
     </nav>
     <p id="benchmark-copy-status" class="benchmark-status" role="status" aria-live="polite"></p>
     <a href="./index.html" class="benchmark-results-link">Retour à Super Kart</a>
