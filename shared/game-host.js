@@ -4,6 +4,14 @@
 // same-origin iframe while the host itself remains fullscreen.
 (() => {
   const root = new URL("../", document.currentScript.src);
+  // A new host document (including a refresh of GMR home) gets a new
+  // cache key. Pass it to the iframe so both its HTML and assets are fresh.
+  const refreshKey = String(Date.now());
+  function freshGameUrl(destination) {
+    const url = new URL(destination);
+    url.searchParams.set("gmr-refresh", refreshKey);
+    return url.href;
+  }
   const host = document.createElement("div");
   host.className = "gmr-game-host";
   host.hidden = true;
@@ -49,8 +57,9 @@
     if (!game) return;
 
     event.preventDefault();
+    const gameUrl = freshGameUrl(destination.href);
     if (!host.requestFullscreen) {
-      window.location.assign(destination.href);
+      window.location.assign(gameUrl);
       return;
     }
 
@@ -65,13 +74,13 @@
       request = host.requestFullscreen({ navigationUI: "hide" });
     } catch (error) {
       console.warn("Fullscreen unavailable:", error);
-      window.location.assign(destination.href);
+      window.location.assign(gameUrl);
       return;
     }
-    frame.src = destination.href;
+    frame.src = gameUrl;
     Promise.resolve(request).catch((error) => {
       console.warn("Fullscreen unavailable:", error);
-      if (!navigating) window.location.assign(destination.href);
+      if (!navigating) window.location.assign(gameUrl);
     });
   });
 
