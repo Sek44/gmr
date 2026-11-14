@@ -32,6 +32,7 @@
     if (page === "scores" && gameId) {
       target.searchParams.set("game", gameId);
       target.searchParams.set("from", gameId);
+      target.searchParams.set("gmr-refresh", refreshKey);
     }
     const openPage = () => window.location.assign(target.href);
     if (document.fullscreenElement && document.exitFullscreen) {
