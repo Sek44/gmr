@@ -105,7 +105,7 @@ const GcvAiNavigation = (() => {
       return closed ? ((raw % 1) + 1) % 1 : clamp(raw, 0, 1);
     }
     function laneAt(ai, progress) {
-      const gridLateral = Number(ai.lateral) || 0;
+      const gridLateral = Number(ai.gridLateral ?? ai.lateral) || 0;
       const start = Number.isFinite(ai.startProgress) ? ai.startProgress : 0;
       const travelled = Math.max(0, progress - start);
       const f = clamp(travelled / 55, 0, 1);
