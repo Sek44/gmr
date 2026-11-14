@@ -551,12 +551,16 @@
           hud.setLapCount(lapTracker.laps);
           // Project the vehicle between track samples rather than stepping
           // its altitude by a whole sample (visible as a camera hitch).
+          const projection = !closed && TrackProgress.projectOpenRoad(
+            positions, SAMPLE_COUNT, driver.x, driver.z, nearest.index);
           const roadCenter = positions[nearest.index];
           const tangent = directions[nearest.index];
           const along = (driver.x - roadCenter.x) * tangent.x +
             (driver.z - roadCenter.z) * tangent.z;
-          const trackFraction = Math.max(0, Math.min(1,
-            nearest.index / SAMPLE_COUNT + along / trackLength));
+          const trackFraction = projection
+            ? projection.fraction
+            : Math.max(0, Math.min(1,
+              nearest.index / SAMPLE_COUNT + along / trackLength));
           driver.roadY = heightAt(trackFraction);
           // Anticipate the crest instead of detecting a drop after passing it.
           // Landing dust remains a single event, separate from race progress.
