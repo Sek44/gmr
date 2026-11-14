@@ -17,7 +17,7 @@ Il n'existe ni serveur de jeu, ni build, ni moteur physique externe. Les autres 
 | Module | Responsabilité actuelle |
 | --- | --- |
 | `track-layout.js` | Registre des tracés fermé/ouvert, sélection, départ/arrivée, quatre profils de bosses géantes et passage coloré |
-| `world-3d.js` | Géométrie ouverte/fermée, bosses profilées, sept rubans colorés, lignes, scène/décor, points et tangentes partagés |
+| `world-3d.js` | Géométrie ouverte/fermée, bosses profilées, sept rubans colorés, lignes de départ/arrivée à damier groupées par couleur en `InstancedMesh` (deux appels de dessin par ligne), scène/décor, points et tangentes partagés |
 | `scenery.js` | Placement et paramètres du décor statique |
 | `barriers.js` | Collision latérale de précision contre les rails, glissement/frottement/réalignement du cap et arrêt contre les deux barrières de fermeture de la route ouverte |
 | `vehicles.js` | Modèle de voiture historique, quatre couples pilote/véhicule low-poly originaux sélectionnables (moto sportive rouge avec carénages à sections profilées, jantes ouvertes et bulle translucide procédurales, sans modèle ou texture externe) et neuf voitures IA ; textures de numéros partagées et visibilité exclusive du modèle actif ; pose du motard organisée en quatre pivots légers (bassin, casque et deux épaules, exposés via `motoRider`) ; API `CHOICES`, `normalize`, `setVehicle`, `setCameraMode` |
@@ -33,7 +33,7 @@ Il n'existe ni serveur de jeu, ni build, ni moteur physique externe. Les autres 
 | `controls.js` | Clavier, direction tactile, pédales multitouch et remise à zéro des commandes |
 | `rendering.js` | WebGL, caméras adaptées au véhicule choisi, travelling de grille (`startGridIntro`, progression de 3,8 s côté → arrière → cockpit selon la vue, annulable et interrompu pendant une pause), visibilité du pilote coordonnée via `onCameraVisibility`, transformations, rotation des roues, inclinaison de la moto vers l'intérieur des virages (roulis de même signe que la rotation du cap), assiette pendant les sauts et animation procédurale amortie du motard suivant vitesse, accélération, rotation et atterrissage ; ombres planes à dégradé partagé, créées dans la scène (indépendantes des groupes 3D), suivant l'altitude de la chaussée sans suivre la hauteur du saut |
 | `visual-effects.js` | Particules dynamiques de boue et étincelles de friction ; petite gerbe radiale de poussière à l'atterrissage réutilisant le tampon de particules existant (`land`) sans nouvel appel de dessin |
-| `hud.js` | Indicateurs de conduite, chrono, classements et panneau d'arrivée |
+| `hud.js` | Indicateurs de conduite, chrono, classements et panneau d'arrivée ; les affectations DOM texte, attributs, visibilité et classes sont évitées lorsqu'elles ne changent pas |
 | `mini-map.js` | Carte ouverte/fermée, départ et arrivée distincts, secteurs et marqueurs dynamiques |
 | `adaptive-resolution.js` | Politique pure d'ajustement du facteur de résolution (échelle 1 → 0,55), basée sur les intervalles des frames WebGL actives ; fenêtre temporelle, hystérésis, stabilisation et remontée lente avec retour arrière en cas de régression |
 
@@ -44,7 +44,7 @@ Il n'existe ni serveur de jeu, ni build, ni moteur physique externe. Les autres 
 3. `track-progress.js` projette le déplacement réel sur la tangente, reconnaît le passage géométrique de ligne et produit des événements `start` ou `lap` **validés**. Les indices d'échantillon n'autorisent pas les tours.
 4. `lap-times.js` reçoit la progression pour les secteurs et les événements de ligne validés pour le chrono. `race.js` reçoit le même mouvement/les mêmes événements pour les tours, les temps de passage et le classement ; le moteur de course avance aussi les IA.
 5. `race.js` reste autoritaire pour ses phases (`staging`, `countdown`, `racing`, `finished`) ; `flow.js` synchronise ces phases et contrôle leur transition. Les axes écran (`menu`, `play`, `scores`) et chute sont indépendants de l'avancement de la course. `session.js` déclenche le travelling de départ par `onRaceStart` après le placement sur la grille ; `rendering.js` anime uniquement la caméra pendant l'attente et le décompte, sans modifier la simulation ni la progression des phases. Le temps de travelling n'est pas persisté.
-6. `hud.js`, `mini-map.js`, `rendering.js` et `visual-effects.js` présentent l'état résultant, sans recalculer les tours.
+6. `hud.js`, `mini-map.js`, `rendering.js` et `visual-effects.js` présentent l'état résultant, sans recalculer les tours. Le chrono est rafraîchi une seule fois par frame courante après les mises à jour de simulation et du temps de maintien (les transitions de session le rafraîchissent aussi si nécessaire).
 7. `session.js` extrait des snapshots du même état pour la persistance.
 
 **Invariant clé :** un affichage, un secteur chronométré ou la progression approximative des concurrents ne doit jamais fabriquer un franchissement de tour du joueur. Voir [ADR-0001](adr/0001-progression-des-tours.md).
