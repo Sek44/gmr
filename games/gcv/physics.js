@@ -8,8 +8,7 @@ const GcvPhysics = (() => {
   const REVERSE_MAX_SPEED = 8; // 28.8 km/h: twice the previous reverse speed.
   const REVERSE_ACCELERATION = 7;
   const GRAVITY = 9.81;
-  const JUMP_TAKEOFF_SPEED = 20; // Sustained arcade airtime after big crests.
-  const JUMP_GRAVITY = 14; // Ballistic arc; off-track falls still use GRAVITY.
+  const JUMP_GRAVITY = GRAVITY; // Same physical gravity in every jump and fall.
   const AIR_STEER_FACTOR = 0.12; // Gentle yaw correction, not road grip.
   const AIR_BRAKE_FACTOR = 0.075; // Small reduction of forward momentum.
   const FALL_SECONDS = 2;
@@ -75,17 +74,30 @@ const GcvPhysics = (() => {
     return Math.min(1.5, Math.max(0, (lateralLoad - 45) / 32));
   }
 
-  // Detect the approach to a hump's crest, before the road starts falling.
-  // The look-ahead covers at least one physics frame even at high speed.
-  function shouldLaunchAtCrest(progress, speed, dt, trackLength, humps) {
-    if (!Array.isArray(humps) || !Number.isFinite(progress) ||
-        !Number.isFinite(trackLength) || trackLength <= 0 || speed <= 24)
-      return false;
-    const lead = Math.max(2.1, speed * Math.max(0.016, dt || 0) + 0.75);
-    return humps.some((fraction) => {
-      const metresToCrest = (fraction - progress) * trackLength;
-      return metresToCrest >= -0.8 && metresToCrest <= lead;
-    });
+  // Determine whether wheels lose contact over a convex hill. Following the
+  // road would require downward acceleration greater than gravity. There is
+  // no invented launch impulse: takeoff inherits the road's vertical speed.
+  // heightAt is the same continuous profile used by world-3d.js.
+  function takeoffVelocity(progress, speed, trackLength, heightAt) {
+    if (!Number.isFinite(progress) || progress <= 0 || progress >= 1 ||
+        !Number.isFinite(speed) || speed <= 20 ||
+        !Number.isFinite(trackLength) || trackLength <= 0 ||
+        typeof heightAt !== "function") return null;
+    const sampleMetres = 2;
+    const delta = sampleMetres / trackLength;
+    if (progress <= delta || progress >= 1 - delta) return null;
+    const before = heightAt(progress - delta);
+    const current = heightAt(progress);
+    const after = heightAt(progress + delta);
+    if (![before, current, after].every(Number.isFinite) || current < 1)
+      return null;
+    const slope = (after - before) / (2 * sampleMetres);
+    const curvature = (before - 2 * current + after) /
+      (sampleMetres * sampleMetres);
+    // A downhill crossing or a slow crest keeps the vehicle on the surface.
+    if (slope <= 0 || -curvature * speed * speed <= GRAVITY * 1.08)
+      return null;
+    return slope * speed;
   }
 
   // Ballistic world-space altitude expressed as an offset above the local road.
@@ -143,9 +155,9 @@ const GcvPhysics = (() => {
   return Object.freeze({
     MAX_SPEED, MAX_STEER_RATE, BRAKE_DECELERATION,
     REVERSE_DELAY, REVERSE_MAX_SPEED, GRAVITY, FALL_SECONDS,
-    INITIAL_FALL_VELOCITY, JUMP_TAKEOFF_SPEED, JUMP_GRAVITY,
+    INITIAL_FALL_VELOCITY, JUMP_GRAVITY,
     AIR_STEER_FACTOR, AIR_BRAKE_FACTOR,
-    advance, skidIntensity, shouldLaunchAtCrest, advanceJump, startFall, advanceFall,
+    advance, skidIntensity, takeoffVelocity, advanceJump, startFall, advanceFall,
   });
 })();
 
