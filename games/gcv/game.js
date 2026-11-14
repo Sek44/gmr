@@ -561,12 +561,14 @@
           // Landing dust remains a single event, separate from race progress.
           jumpCooldown = Math.max(0, jumpCooldown - dt);
           if (!closed && jumpCooldown === 0 &&
-              jumpVelocity === 0 && driver.jumpY === 0 &&
-              Physics.shouldLaunchAtCrest(trackFraction, driver.speed, dt,
-                trackLength, TrackLayout.HUMPS)) {
-            jumpVelocity = Physics.JUMP_TAKEOFF_SPEED;
-            driver.jumpY = 0.01;
-            jumpCooldown = 1.0; // Prevent re-launching on one crest.
+              jumpVelocity === 0 && driver.jumpY === 0) {
+            const launch = Physics.takeoffVelocity(trackFraction,
+              driver.speed, trackLength, heightAt);
+            if (launch !== null) {
+              jumpVelocity = launch;
+              driver.jumpY = 0.01;
+              jumpCooldown = 1.0; // One launch per crest.
+            }
           }
           if (driver.jumpY > 0 || jumpVelocity > 0) {
             const jump = Physics.advanceJump(driver.jumpY, jumpVelocity,
