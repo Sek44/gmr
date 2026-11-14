@@ -168,6 +168,8 @@ const GcvRace = (() => {
   // Both paths use the SAME progression and lap-validation implementation.
   function advance(race, elapsedSeconds, playerDistance = 0,
     finishFraction = null, navigation = null) {
+    if (Boolean(navigation) !== (race.distanceModel === "geometry-pace-v2"))
+      throw new Error("Race and AI navigation models must match");
     const dt = Number.isFinite(elapsedSeconds) ? Math.max(0, elapsedSeconds) : 0;
     if (!dt) return race;
     if (race.phase === "staging") {
