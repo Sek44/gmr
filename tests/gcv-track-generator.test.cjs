@@ -196,7 +196,7 @@ test("closed-loop generator rejects open seams, intersecting roads and unsafe gr
   }), /grid or finish/);
   assert.throws(() => Generator.build({
     ...Layout.CLASSIC_TEMPLATE,
-    spawnMetres: 500,
+    spawnMetres: 250,
   }), /straights/);
   assert.throws(() => Generator.build({
     ...Layout.CLASSIC_TEMPLATE,
