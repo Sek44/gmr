@@ -233,3 +233,46 @@ test("airborne guidance cannot manufacture distance beyond open road end", () =>
   assert.equal(guided.index, 1);
   assert.ok(guided.z >= -10);
 });
+
+test("continuous projection avoids road-height jumps between samples", () => {
+  const points = Array.from({ length: 21 }, (_, i) =>
+    ({ x: i * 4, z: i < 8 ? 0 : (i - 8) * 0.35 }));
+  const trackLength = 80;
+  let previous = -1;
+  for (let i = 0; i < 200; i++) {
+    const fraction = i / 200;
+    const x = 80 * fraction;
+    const z = x <= 32 ? 0 : (x - 32) * 0.0875;
+    const result = track.projectOpenRoad(points, 20, x, z, Math.floor(fraction * 20));
+    assert.ok(result && result.distanceSquared < 0.001);
+    assert.ok(result.fraction >= previous, "fraction must remain monotonic");
+    assert.ok(Math.abs(result.fraction - fraction) < 1e-7,
+      "fraction must be continuous across each sample boundary");
+    previous = result.fraction;
+  }
+});
+
+test("airborne guidance from an on-road position avoids sideways teleportation", () => {
+  // A representative gently curving stretch of the first hill. No 10 m
+  // re-centering when the car switches from ground to air.
+  const points = Array.from({ length: 31 }, (_, i) => {
+    const angle = i * 0.017;
+    const radius = 200;
+    return { x: radius * (1 - Math.cos(angle)), z: -radius * Math.sin(angle) };
+  });
+  let before = { x: points[4].x + 2, z: points[4].z, yaw: 0, speed: 69 };
+  let index = 4;
+  for (let frame = 0; frame < 45; frame++) {
+    const candidate = { ...before,
+      x: before.x - Math.sin(before.yaw) * 69 / 60,
+      z: before.z - Math.cos(before.yaw) * 69 / 60 };
+    const guided = track.guideAirborne(points, 30,
+      before, candidate, index, 9, 0, 1 / 60);
+    assert.ok(guided);
+    assert.ok(Math.hypot(guided.x - before.x, guided.z - before.z) < 1.8,
+      "no visible snap on a smoothly curved hill");
+    assert.ok(Math.abs(guided.index - index) <= 1);
+    before = { ...candidate, ...guided };
+    index = guided.index;
+  }
+});
