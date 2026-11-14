@@ -12,7 +12,7 @@ function source(relative) {
 
 function renderHeadAssets(file, key = "new-page") {
   const html = source(file);
-  const match = html.match(/<script>\s*(\/\/ The host refresh key[\s\S]*?)<\/script>/);
+  const match = html.match(/<script>\s*(\/\/ (?:The host refresh key|The homepage refresh token)[\s\S]*?)<\/script>/);
   assert.ok(match, file + " must declare the shared per-load asset scheme");
   const written = [];
   const location = {
@@ -28,12 +28,17 @@ function renderHeadAssets(file, key = "new-page") {
 }
 
 test("refresh of a game URL makes its HTML and all JS/CSS entry assets fresh", () => {
-  for (const file of ["games/gcv/index.html", "games/gcv/benchmark.html"]) {
+  for (const [file, minimum] of [
+    ["games/gcv/index.html", 24],
+    ["games/gcv/benchmark.html", 14],
+    ["games/_template/index.html", 7],
+  ]) {
     const written = renderHeadAssets(file, "home-refresh-101");
-    assert.ok(written.length >= 14);
+    assert.ok(written.length >= minimum);
     assert.ok(written.some(tag => tag.startsWith('<link rel="stylesheet"')));
     assert.ok(written.some(tag => tag.startsWith('<script defer')));
-    assert.ok(written.some(tag => tag.startsWith('<script type="module"')));
+    if (!file.includes("_template"))
+      assert.ok(written.some(tag => tag.startsWith('<script type="module"')));
     for (const tag of written)
       assert.match(tag, /[?&]gmr-refresh=home-refresh-101/);
     assert.ok(written.every(tag => !tag.includes("gmr-refresh=old")));
