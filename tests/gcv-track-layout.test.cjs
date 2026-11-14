@@ -49,3 +49,17 @@ test("roadside shoulders are seven metres per side", () => {
   assert.equal(layout.SHOULDER_WIDTH, 7);
   assert.equal(layout.ROAD_HALF_WIDTH + layout.SHOULDER_WIDTH, 16);
 });
+
+test("extended rainbow sprint has four oversized launch hills", () => {
+  const points = layout.SPRINT.WAYPOINTS;
+  const length = points.slice(1).reduce((distance, [x, z], index) =>
+    distance + Math.hypot(x - points[index][0], z - points[index][1]), 0);
+  assert.ok(length > 2500, "route must be substantially longer than 1.6 km");
+  assert.equal(layout.SPRINT.VERSION, 3);
+  assert.equal(layout.SPRINT.HUMPS.length, 4);
+  assert.deepEqual(layout.SPRINT.HUMPS,
+    layout.SPRINT.HUMP_PROFILES.map((hump) => hump.at));
+  assert.ok(layout.SPRINT.HUMP_PROFILES.every((hump) =>
+    hump.height >= 14 && hump.width >= 0.017));
+  assert.ok(layout.SPRINT.FINISH.z < layout.SPRINT.START.z);
+});
