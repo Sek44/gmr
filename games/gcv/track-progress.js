@@ -152,9 +152,27 @@ const GcvTrackProgress = (() => {
     let a = positions[index], b = positions[index + 1];
     let dx = b.x - a.x, dz = b.z - a.z;
     let length = Math.hypot(dx, dz);
-    const initialSideX = -dz / length, initialSideZ = dx / length;
-    const previousLateral = (before.x - (a.x + t * dx)) * initialSideX +
-      (before.z - (a.z + t * dz)) * initialSideZ;
+    // Parallel-transport a smoothly interpolated side vector, rather than
+    // rotating the full lateral offset in a single frame at each sample
+    // boundary. This prevents multi-metre sidesteps during a crest jump.
+    function sideAt(segment, fraction) {
+      function tangentAtVertex(vertex) {
+        const prev = positions[Math.max(0, vertex - 1)];
+        const next = positions[Math.min(limit, vertex + 1)];
+        const vx = next.x - prev.x, vz = next.z - prev.z;
+        const magnitude = Math.hypot(vx, vz) || 1;
+        return { x: vx / magnitude, z: vz / magnitude };
+      }
+      const left = tangentAtVertex(segment);
+      const right = tangentAtVertex(segment + 1);
+      const vx = left.x + (right.x - left.x) * fraction;
+      const vz = left.z + (right.z - left.z) * fraction;
+      const magnitude = Math.hypot(vx, vz) || 1;
+      return { x: -vz / magnitude, z: vx / magnitude };
+    }
+    const initialSide = sideAt(index, t);
+    const previousLateral = (before.x - (a.x + t * dx)) * initialSide.x +
+      (before.z - (a.z + t * dz)) * initialSide.z;
     let remaining = Math.hypot(candidate.x - before.x, candidate.z - before.z);
     let travel = 0;
     // Arc-length walking is stable in sharp bends and through the final gate.
@@ -178,8 +196,9 @@ const GcvTrackProgress = (() => {
     const lateral = Math.max(-maxSide, Math.min(maxSide,
       previousLateral + Math.max(-1, Math.min(1, Number(steer) || 0)) *
       sidewaysSpeed * Math.max(0, dt)));
-    const sideX = -dz / length, sideZ = dx / length;
-    const targetYaw = Math.atan2(-dx, -dz);
+    const smoothedSide = sideAt(index, t);
+    const sideX = smoothedSide.x, sideZ = smoothedSide.z;
+    const targetYaw = Math.atan2(-sideZ, sideX);
     const yawError = Math.atan2(Math.sin(targetYaw - candidate.yaw),
       Math.cos(targetYaw - candidate.yaw));
     const blend = 1 - Math.exp(-7 * Math.max(0, dt));
