@@ -28,7 +28,11 @@
     artwork.className = "game-artwork";
     const picture = document.createElement("img");
     picture.className = "game-picture";
-    picture.src = game.artwork || assetRoot + "gamepad.svg";
+    // Same per-load cache key as the game iframe: the official game image
+    // updates together with the game after a refresh of the GMR homepage.
+    const imageUrl = new URL(game.artwork || assetRoot + "gamepad.svg", location.href);
+    imageUrl.searchParams.set("gmr-refresh", refreshKey);
+    picture.src = imageUrl.href;
     picture.alt = "";
     picture.loading = "lazy";
     artwork.append(picture);
