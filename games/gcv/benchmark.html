@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#101b2c">
+  <meta name="description" content="Test de performance du rendu 3D Super Kart sur téléphone et tablette.">
+  <title>Benchmark 3D — Super Kart</title>
+  <link rel="stylesheet" href="./benchmark.css?v=20261114a">
+  <script defer src="./track-layout.js"></script>
+  <script defer src="./scenery.js"></script>
+  <script defer src="./barriers.js"></script>
+  <script defer src="./race.js"></script>
+  <script defer src="./world-3d.js"></script>
+  <script defer src="./vehicles.js"></script>
+  <script defer src="./rendering.js"></script>
+  <script defer src="./visual-effects.js"></script>
+  <script defer src="./benchmark-metrics.js?v=20261114a"></script>
+  <script type="module" src="./benchmark.js?v=20261114a"></script>
+</head>
+<body>
+  <section id="benchmark-stage" class="benchmark-stage" aria-label="Scène 3D du benchmark">
+    <div id="benchmark-scene" class="benchmark-scene"></div>
+  </section>
+  <main class="benchmark-panel" id="benchmark-panel">
+    <div class="benchmark-heading">
+      <div>
+        <p class="benchmark-kicker">SUPER KART</p>
+        <h1>Benchmark 3D</h1>
+      </div>
+      <a href="./index.html" class="benchmark-link">Retour au jeu</a>
+    </div>
+    <p class="benchmark-intro">Quatre parcours automatiques comparent les scènes 3D (voiture, course à 10, moto et Arc-en-ciel), sans utiliser le temps de jeu.</p>
+    <p class="benchmark-instruction">Garde cette page au premier plan, sans toucher à l'écran ni changer l'orientation pendant le test.</p>
+    <button type="button" id="benchmark-start" class="benchmark-button">Lancer le test</button>
+    <p id="benchmark-status" class="benchmark-status" role="status" aria-live="polite">Prêt. Environ 40 secondes de mesure, après chargement.</p>
+  </main>
+
+  <section id="benchmark-results" class="benchmark-results" hidden aria-label="Résultats du benchmark">
+    <div class="benchmark-results-header">
+      <p class="benchmark-kicker">SUPER KART · RENDU 3D</p>
+      <h2>Résultats du benchmark</h2>
+      <p id="benchmark-device" class="benchmark-device"></p>
+      <p id="benchmark-render-size" class="benchmark-device"></p>
+    </div>
+    <div class="benchmark-table-container">
+      <table class="benchmark-table">
+        <thead>
+          <tr><th scope="col">Scène</th><th scope="col">FPS</th><th scope="col">P95</th><th scope="col">Draws</th><th scope="col">Tris</th></tr>
+        </thead>
+        <tbody id="benchmark-result-rows"></tbody>
+      </table>
+    </div>
+    <div id="benchmark-extras" class="benchmark-extras"></div>
+    <p class="benchmark-footnote">P95 : durée d'image dépassée par les 5 % de frames les plus lentes (ms). Draws/Tris : moyennes Three.js. Ce test mesure le rendu 3D et ses mises à jour synthétiques, pas la simulation complète ni le temps GPU.</p>
+    <div class="benchmark-actions">
+      <button type="button" id="benchmark-copy" class="benchmark-button">Copier les données JSON</button>
+      <button type="button" id="benchmark-restart" class="benchmark-button benchmark-secondary">Relancer</button>
+    </div>
+    <p id="benchmark-copy-status" class="benchmark-status" role="status" aria-live="polite"></p>
+    <a href="./index.html" class="benchmark-results-link">Retour à Super Kart</a>
+  </section>
+</body>
+</html>
