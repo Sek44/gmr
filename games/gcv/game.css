@@ -6,64 +6,123 @@
 .gcv-number { justify-self: end; font-weight: 850; color: #ce273a; font-size: 1.05rem; }
 
 .gcv-home {
-  position: absolute; inset: 0; z-index: 9; display: flex; align-items: flex-start;
-  justify-content: center; padding: 64px 16px 16px; overflow-y: auto;
-  /* Full-screen selection view: do not reveal the hidden WebGL scene. */
-  background: linear-gradient(145deg, #071626, #142e43);
+  position: absolute; inset: 0; z-index: 9;
+  display: flex; justify-content: center; align-items: flex-start;
+  padding: max(62px, calc(env(safe-area-inset-top) + 50px)) 14px max(14px, env(safe-area-inset-bottom));
+  overflow-y: auto; background: linear-gradient(145deg, #071626, #142e43);
   touch-action: pan-y;
 }
 .gcv-home-panel {
-  display: flex; flex-direction: column; align-items: center; gap: 10px;
-  width: min(525px, 100%); padding: clamp(12px, 2.5vw, 24px); margin-block: auto;
-  border-radius: 22px; border: 1px solid #aecbd58c;
-  background: #0b2036eb; box-shadow: 0 16px 54px #0009;
-  color: white; text-align: center;
+  width: min(900px, 100%); margin-block: auto; padding: clamp(14px, 2vw, 22px);
+  display: flex; flex-direction: column; gap: 14px;
+  border: 1px solid #aecbd58c; border-radius: 22px;
+  background: #0b2036f2; color: white;
+  box-shadow: 0 16px 54px #0009;
 }
-.gcv-home-eyebrow { margin: 0; font-size: .78rem; color: #f6d581;
-  font-weight: 900; letter-spacing: .11em; }
-.gcv-home-panel h2 { margin: 0; font-size: clamp(1.4rem, 4.7vw, 2.35rem);
-  line-height: 1.1; }
-.gcv-home-description { margin: 0 0 3px; color: #cbdce8; font-size: .89rem; }
-/* Author-level display rules must respect dynamically toggled hidden state. */
-.gcv-race-results[hidden],
-.gcv-home[hidden],
-.gcv-home-resume[hidden],
-.gcv-race-overlay[hidden],
-.gcv-race-overlay-actions[hidden],
-.gcv-race-position[hidden] { display: none; }
-
-.gcv-mode-chooser { display: grid; grid-template-columns: 1fr 1fr; width: 100%;
-  gap: 10px; margin-top: 3px; }
+.gcv-menu-heading { text-align: left; border-bottom: 1px solid #8daec347; padding: 0 3px 10px; }
+.gcv-home-eyebrow { margin: 0 0 4px; color: #f6d581; font-size: .72rem; font-weight: 900; letter-spacing: .17em; }
+.gcv-home-panel h2 { margin: 0; font-size: clamp(1.8rem, 4.6vw, 2.9rem); line-height: 1.05; font-weight: 950; letter-spacing: .035em; }
+.gcv-home-description { margin: 5px 0 0; color: #cbdce8; font-size: .88rem; }
+.gcv-resume-card {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+  padding: 11px 13px; border: 1px solid #ead18b9c; border-radius: 13px;
+  background: linear-gradient(100deg, #50472d, #263c47);
+}
+.gcv-resume-text { min-width: 0; display: flex; flex: 1 1 180px; flex-direction: column; gap: 4px; }
+.gcv-resume-text strong { font-size: .96rem; color: #ffe6a2; }
+.gcv-resume-text span { color: #e5eaf0; font-size: .78rem; }
+.gcv-menu-main { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(220px, .9fr); gap: 13px; }
+.gcv-menu-options { min-width: 0; display: grid; gap: 10px; }
+.gcv-menu-section { min-width: 0; padding: 10px; border: 1px solid #7a9db65c; border-radius: 13px; background: #17314a8f; }
+.gcv-menu-section h3 { margin: 0 0 9px; color: #f6dc9d; font-size: .84rem; letter-spacing: .04em; font-weight: 850; }
 .gcv-home-button {
-  min-height: 74px; padding: 12px; border-radius: 13px;
-  border: 1px solid #8caabf9e; background: #1d3b56;
-  color: white; font: inherit; text-align: left; cursor: pointer;
-  display: flex; flex-direction: column; justify-content: center; gap: 5px;
+  min-width: 0; min-height: 51px; padding: 8px 10px; border-radius: 10px;
+  border: 1px solid #8caabf9e; background: #24445f;
+  color: #fff; font: inherit; text-align: left; cursor: pointer;
+  display: flex; flex-direction: column; justify-content: center; gap: 4px;
+  transition: background-color .15s, border-color .15s;
 }
-.gcv-home-button strong { font-size: .99rem; }
-.gcv-home-button span { font-size: .76rem; line-height: 1.35; color: #d1e2ee; }
-.gcv-home-button.is-selected { border: 2px solid #ffe094; background: #255375; }
+.gcv-home-button strong { font-size: .92rem; }
+.gcv-home-button span { color: #d1e2ee; font-size: .76rem; line-height: 1.3; }
+.gcv-home-button.is-selected { border: 2px solid #ffe094; background: #305a79; box-shadow: inset 0 0 0 1px #ffe09455; }
+.gcv-home-button:focus-visible, .gcv-start-button:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
 .gcv-home-resume {
-  width: 100%; min-height: 46px; text-align: center;
-  align-items: center; background: #e4b64e; color: #132d41;
-  border-color: #ffe8a7; font-size: 1rem; font-weight: 850;
+  width: auto; min-height: 44px; align-items: center; padding: 9px 18px;
+  text-align: center; background: #e9bd56; border-color: #ffe9ab;
+  color: #14293b; font-weight: 900; white-space: nowrap;
 }
+.gcv-track-chooser, .gcv-mode-chooser { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; width: 100%; }
+.gcv-track-choice { text-align: center; align-items: center; font-weight: 760; }
+.gcv-vehicle-chooser { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; width: 100%; }
+.gcv-vehicle-choice { min-height: 56px; flex-direction: row; align-items: center; justify-content: flex-start; gap: 8px; padding: 6px 8px; }
+.gcv-vehicle-icon { font-size: 1.5rem !important; flex: 0 0 29px; text-align: center; line-height: 1; }
+.gcv-vehicle-label { display: flex; flex-direction: column; min-width: 0; gap: 3px; }
+.gcv-vehicle-label strong { font-size: .81rem; line-height: 1.2; }
+.gcv-vehicle-label small { color: #cbdce8; font-size: .68rem; line-height: 1.2; }
+.gcv-vehicle-choice[data-gcv-vehicle="moto"] { border-left: 3px solid #41aaf0; }
+.gcv-vehicle-choice[data-gcv-vehicle="kart"] { border-left: 3px solid #f2cc4e; }
+.gcv-vehicle-choice[data-gcv-vehicle="buggy"] { border-left: 3px solid #64c974; }
+.gcv-vehicle-choice[data-gcv-vehicle="comet"] { border-left: 3px solid #bc91e7; }
+.gcv-menu-launch {
+  min-width: 0; display: flex; flex-direction: column; align-items: stretch; justify-content: center;
+  gap: 12px; padding: clamp(12px, 2vw, 20px); border: 1px solid #e7ba5a8f;
+  border-radius: 15px; background: linear-gradient(160deg, #32485d, #192e43);
+  text-align: center;
+}
+.gcv-launch-eyebrow { margin: 0; color: #f6d581; font-size: .75rem; font-weight: 900; letter-spacing: .12em; }
+.gcv-launch-title { font-size: clamp(1.15rem, 2.2vw, 1.6rem); }
+.gcv-start-summary { margin: 0; color: #d9e5ee; font-size: .82rem; line-height: 1.5; }
+.gcv-start-button {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; min-height: 62px; padding: 12px;
+  border: 1px solid #ffe5a1; border-radius: 14px;
+  background: linear-gradient(#ffdf76, #edaf32); color: #182a3d;
+  font: inherit; font-size: 1.03rem; font-weight: 900; cursor: pointer;
+  box-shadow: 0 5px 0 #946b27, 0 11px 20px #02091065;
+}
+.gcv-start-button:active { transform: translateY(2px); box-shadow: 0 3px 0 #946b27, 0 5px 10px #02091065; }
+.gcv-start-button svg { width: 23px; height: 23px; flex: none; }
+.gcv-launch-note { margin: 0; color: #afc4d5; font-size: .73rem; line-height: 1.35; }
 .gcv-home-tools {
-  position: absolute; z-index: 1;
-  top: max(14px, env(safe-area-inset-top));
-  right: max(16px, env(safe-area-inset-right));
-  display: flex; gap: 7px; justify-content: flex-end;
-  flex-wrap: wrap; max-width: min(90%, 330px);
+  position: absolute; z-index: 10; top: max(12px, env(safe-area-inset-top));
+  right: max(13px, env(safe-area-inset-right)); display: grid;
+  grid-template-columns: repeat(2, 42px); gap: 7px;
 }
 .gcv-home-tool { cursor: pointer; pointer-events: auto; }
-.gcv-home-tools {
-  top: 14px;
-  right: 16px;
-  max-width: min(90%, 370px);
-  flex-wrap: nowrap;
-}
 .gcv-home-tools .gcv-action { min-height: 40px; }
-
+/* Never allow display:flex to override hidden when a session does not exist. */
+.gcv-race-results[hidden], .gcv-home[hidden], .gcv-home-resume[hidden],
+.gcv-resume-card[hidden], .gcv-race-overlay[hidden],
+.gcv-race-overlay-actions[hidden], .gcv-race-position[hidden] { display: none; }
+@media (max-width: 700px) {
+  .gcv-menu-main { grid-template-columns: minmax(0, 1fr); }
+  .gcv-menu-launch { gap: 7px; padding: 12px; }
+  .gcv-launch-title, .gcv-launch-note { display: none; }
+  .gcv-start-button { min-height: 54px; }
+}
+@media (max-width: 380px) {
+  .gcv-vehicle-chooser { gap: 5px; }
+  .gcv-vehicle-choice { padding: 5px; gap: 5px; }
+  .gcv-vehicle-icon { flex-basis: 25px; font-size: 1.25rem !important; }
+  .gcv-vehicle-label strong { font-size: .75rem; }
+  .gcv-resume-card { padding: 8px; }
+  .gcv-home-resume { width: 100%; }
+}
+@media (max-height: 480px) and (orientation: landscape) {
+  .gcv-home { padding: 43px 9px 9px; }
+  .gcv-home-panel { gap: 7px; width: min(920px, 100%); padding: 9px 13px; }
+  .gcv-menu-heading { padding-bottom: 5px; }
+  .gcv-home-panel h2 { font-size: 1.6rem; }
+  .gcv-menu-main { grid-template-columns: minmax(0, 1.7fr) minmax(180px, .8fr); gap: 8px; }
+  .gcv-menu-options { gap: 6px; }
+  .gcv-menu-section { padding: 7px; }
+  .gcv-menu-section h3 { margin-bottom: 5px; }
+  .gcv-vehicle-choice { min-height: 41px; }
+  .gcv-track-choice { min-height: 37px; }
+  .gcv-mode-choice { min-height: 44px; }
+  .gcv-menu-launch { padding: 9px; gap: 9px; }
+  .gcv-start-button { min-height: 48px; padding: 8px; }
+}
 .gcv-stage.gcv-in-menu .gcv-hud-left,
 .gcv-stage.gcv-in-menu .gcv-hud-right,
 .gcv-stage.gcv-in-menu .gcv-timing,
@@ -292,10 +351,6 @@
   .gcv-hud-left, .gcv-hud-right { top: 76px; }
 }
 @media (max-width: 600px) {
-  .gcv-home-panel { padding: 14px; gap: 8px; }
-  .gcv-home-button { padding: 10px; min-height: 62px; }
-  .gcv-home-button strong { font-size: .9rem; }
-  .gcv-home-button span { font-size: .7rem; }
   .gcv-race-position { padding: 4px 7px; gap: 3px; max-width: 146px; }
   .gcv-race-position strong { font-size: 2.15rem; }
   .gcv-race-position span { font-size: .75rem; }
@@ -324,16 +379,6 @@
   .gcv-race-results tr.is-player td { padding-block: 3px; }
   .gcv-race-results th { padding: 2px 6px; }
 
-  .gcv-home { padding: 44px 7px 7px; align-items: flex-start; }
-  .gcv-home-tools { top: 6px; right: max(8px, env(safe-area-inset-right)); gap: 5px; }
-  .gcv-home-tool { min-height: 30px; padding: 4px 8px; font-size: .72rem; }
-  .gcv-home-panel { padding: 7px 16px; gap: 4px;
-    width: min(540px, 100%); margin: auto; }
-  .gcv-home-panel h2 { font-size: 1.2rem; }
-  .gcv-home-description { display: none; }
-  .gcv-home-button { min-height: 46px; padding: 6px 11px; }
-  .gcv-home-button span { font-size: .68rem; }
-  .gcv-home-resume { min-height: 32px; }
   .gcv-race-position strong { font-size: 1.65rem; }
   .gcv-race-position { padding: 3px 8px; }
   .gcv-race-overlay { top: 48%; padding: 10px 16px; }
@@ -388,83 +433,11 @@
 }
 
 
-/* Circuit chooser on the in-game menu */
-.gcv-track-chooser {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.65rem;
-  margin: 0.8rem 0 1rem;
-}
-.gcv-track-choice {
-  min-width: 0;
-  padding: 0.8rem 0.45rem;
-  font-weight: 750;
-  text-align: center;
-  border: 2px solid rgba(255, 255, 255, 0.24);
-}
-.gcv-track-choice.is-selected {
-  border-color: #f5d279;
-  box-shadow: inset 0 0 0 1px rgba(245, 210, 121, 0.4);
-}
-@media (max-width: 380px) {
-  .gcv-track-chooser { gap: 0.4rem; }
-  .gcv-track-choice { padding-inline: 0.25rem; font-size: 0.85rem; }
-}
-
-@media (max-height: 480px) and (orientation: landscape) {
-  .gcv-track-chooser { margin: 2px 0 3px; gap: 5px; }
-  .gcv-track-choice { min-height: 28px; padding: 3px 8px; font-size: 0.8rem; }
-}
-
-/* Startup failures must remain visible above the home overlay. */
+/* Initialization failures remain visible in the menu, not behind the canvas. */
 .gcv-startup-error {
-  width: 100%;
-  margin: 0;
-  padding: 9px 12px;
-  border: 1px solid #f6c779;
-  border-radius: 9px;
-  color: #fff4da;
-  background: #74352c;
-  font-weight: 700;
-  text-align: center;
-}
-
-/* Five compact, touch-friendly vehicle/pilot cards. The menu scrolls rather
-   than clipping its top row on short landscape tablets and phones. */
-.gcv-vehicle-chooser {
-  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 7px; width: 100%;
-}
-.gcv-vehicle-choice {
-  min-width: 0; min-height: 61px; padding: 7px 9px;
-  display: flex; flex-direction: row; align-items: center;
-  justify-content: flex-start; gap: 9px;
-}
-.gcv-vehicle-icon {
-  font-size: 1.7rem !important; line-height: 1; flex: 0 0 32px;
-  text-align: center;
-}
-.gcv-vehicle-label {
-  min-width: 0; display: flex; flex-direction: column;
-  gap: 2px; text-align: left;
-}
-.gcv-vehicle-label strong { font-size: .85rem; line-height: 1.14; }
-.gcv-vehicle-label small { font-size: .68rem; color: #cbdce8; line-height: 1.15; }
-.gcv-vehicle-choice[data-gcv-vehicle="moto"] { border-left: 3px solid #41aaf0; }
-.gcv-vehicle-choice[data-gcv-vehicle="kart"] { border-left: 3px solid #f2cc4e; }
-.gcv-vehicle-choice[data-gcv-vehicle="buggy"] { border-left: 3px solid #64c974; }
-.gcv-vehicle-choice[data-gcv-vehicle="comet"] { border-left: 3px solid #bc91e7; }
-.gcv-track-chooser { width: 100%; margin-block: 3px; }
-@media (max-width: 380px) {
-  .gcv-vehicle-chooser { gap: 5px; }
-  .gcv-vehicle-choice { padding: 6px; gap: 5px; }
-  .gcv-vehicle-icon { flex-basis: 27px; font-size: 1.4rem !important; }
-  .gcv-vehicle-label strong { font-size: .76rem; }
-}
-@media (max-height: 480px) and (orientation: landscape) {
-  .gcv-home { padding-top: 48px; }
-  .gcv-home-panel { gap: 6px; }
-  .gcv-vehicle-choice { min-height: 43px; padding-block: 4px; }
+  width: 100%; margin: 0; padding: 9px 12px; border: 1px solid #f6c779;
+  border-radius: 9px; color: #fff4da; background: #74352c;
+  font-weight: 700; text-align: center;
 }
 
 /* In the common fullscreen launcher the entire iframe is fullscreen, not the
