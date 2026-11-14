@@ -433,15 +433,18 @@
         // Preserve the vertical state; Physics.advance only returns x/z/yaw
         // and speed. Otherwise the jump resets on every simulation frame.
         const { roadY = 0, jumpY = 0 } = driver;
-        driver = { ...Physics.advance(driver, { steer, accelerate, brake }, dt),
-          roadY, jumpY };
+        const airborne = jumpY > 0 || jumpVelocity > 0;
+        driver = { ...Physics.advance(driver,
+          { steer, accelerate, brake, airborne }, dt), roadY, jumpY };
         mudSkidIntensity = Physics.skidIntensity(driver.speed, steer);
         let nearest = closestRoad(driver.x, driver.z, lapTracker.index);
         // Slide along the barrier and progressively match its forward
         // direction, even when the player keeps steering into the wall.
-        const barrierContact = Barriers.resolve(previousPosition, driver,
-          nearest.index, positions[nearest.index], sides[nearest.index],
-          barriers, dt);
+        // Airborne vehicles may fly above the rails; ground collisions
+        // resume once the wheels actually touch down.
+        const barrierContact = airborne ? { collided: false } :
+          Barriers.resolve(previousPosition, driver, nearest.index,
+            positions[nearest.index], sides[nearest.index], barriers, dt);
         if (barrierContact.collided) {
           // Apply the speed loss returned by the collision physics, too.
           driver.x = barrierContact.x;
@@ -459,8 +462,9 @@
           };
           nearest = closestRoad(driver.x, driver.z, lapTracker.index);
         }
-        const endCap = Barriers.resolveEndCaps(driver, nearest.index,
-          positions, directions, sides, barriers);
+        const endCap = airborne ? { collided: false } :
+          Barriers.resolveEndCaps(driver, nearest.index, positions,
+            directions, sides, barriers);
         if (endCap.collided) {
           driver.x = endCap.x;
           driver.z = endCap.z;
@@ -542,17 +546,18 @@
                 trackLength, TrackLayout.HUMPS)) {
             jumpVelocity = Physics.JUMP_TAKEOFF_SPEED;
             driver.jumpY = 0.01;
-            jumpCooldown = 0.85; // No repeated takeoff on the same hump.
+            jumpCooldown = 1.0; // Prevent re-launching on one crest.
           }
           if (driver.jumpY > 0 || jumpVelocity > 0) {
-            const jump = Physics.advanceJump(driver.jumpY, jumpVelocity, dt);
+            const jump = Physics.advanceJump(driver.jumpY, jumpVelocity,
+              dt, driver.roadY - roadY);
             driver.jumpY = jump.height;
             jumpVelocity = jump.velocity;
             if (jump.landed) visualEffects.land(driver);
           }
           // Distinct automatic slalom: seven short, fast left/right
           // oscillations rather than four wide sweeps.
-          if (TrackLayout.RAINBOW && driver.speed > 8 &&
+          if (TrackLayout.RAINBOW && driver.jumpY === 0 && driver.speed > 8 &&
               nearest.index / SAMPLE_COUNT >= TrackLayout.RAINBOW[0] &&
               nearest.index / SAMPLE_COUNT <= TrackLayout.RAINBOW[1]) {
             const section = TrackLayout.RAINBOW;
