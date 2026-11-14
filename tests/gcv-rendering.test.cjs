@@ -32,6 +32,28 @@ class Mesh {
     this.visible = true;
   }
 }
+class InstancedMesh extends Mesh {
+  constructor(geometry, material, count) {
+    super(geometry, material);
+    this.count = count;
+    this.instances = [];
+    this.instanceMatrix = { needsUpdate: false };
+  }
+  setMatrixAt(index, matrix) {
+    this.instances[index] = JSON.parse(JSON.stringify(matrix));
+  }
+}
+class Object3D extends Mesh {
+  constructor() { super(); this.matrix = {}; }
+  updateMatrix() {
+    this.matrix = {
+      position: { x: this.position.x, y: this.position.y, z: this.position.z },
+      rotation: { x: this.rotation.x, y: this.rotation.y, z: this.rotation.z,
+        order: this.rotation.order },
+      scale: { x: this.scale.x, y: this.scale.y, z: this.scale.z },
+    };
+  }
+}
 class MeshBasicMaterial {
   constructor(properties) { Object.assign(this, properties); }
   clone() { return new MeshBasicMaterial({ ...this }); }
@@ -70,9 +92,10 @@ function fixture(closed = true, withMotoRider = false) {
   const curve = { getPointAt(t) { return new Vector(t * 100, 0, 20); },
     getTangentAt() { return new Vector(1, 0, 0); } };
   const THREE = { WebGLRenderer, PerspectiveCamera, Vector3: Vector,
-    Mesh, MeshBasicMaterial, PlaneGeometry: class {},
+    Mesh, InstancedMesh, Object3D, MeshBasicMaterial, PlaneGeometry: class {},
     CanvasTexture: class { constructor(canvas) { this.canvas = canvas; } },
-    LinearFilter: "linear", DoubleSide: "double", SRGBColorSpace: "srgb" };
+    LinearFilter: "linear", DoubleSide: "double", FrontSide: "front",
+    SRGBColorSpace: "srgb" };
   const motoRider = withMotoRider ? {
     body: { position: new Vector(0, 1.32, 0.22), rotation: { x: 0, y: 0, z: 0 } },
     helmet: { rotation: { x: 0, y: 0, z: 0 } },
@@ -159,12 +182,45 @@ test("soft shadows follow the road, not jump height, and fit the vehicle", () =>
   view.updatePlayer({ driver, fall: { x: 4, y: -1, z: 7, elapsed: 0.3 },
     dt: 0, brakePressed: false });
   assert.equal(playerShadow.visible, false, "no shadow hangs over a hole");
+  assert.ok(opponentShadow instanceof InstancedMesh);
+  assert.equal(opponentShadow.material.side, "front");
+  assert.equal(opponentShadow.count, 0, "no AI draws in free mode");
   view.syncOpponents([{ id: 1, progress: 250, lateral: 3 }]);
-  assert.equal(opponentShadow.visible, true);
-  assert.deepEqual([opponentShadow.position.x, opponentShadow.position.y,
-    opponentShadow.position.z], [25, Rendering.SHADOW_GROUND_OFFSET, 23]);
+  assert.equal(opponentShadow.count, 1);
+  assert.equal(opponentShadow.instanceMatrix.needsUpdate, true);
+  assert.deepEqual([opponentShadow.instances[0].position.x,
+    opponentShadow.instances[0].position.y,
+    opponentShadow.instances[0].position.z],
+  [25, Rendering.SHADOW_GROUND_OFFSET, 23]);
+  assert.equal(opponentShadow.instances[0].rotation.order, "YXZ");
+  assert.equal(playerShadow.material.side, "front");
+  assert.equal(playerShadow.visible, false, "player shadow stays hidden while falling");
   view.syncOpponents(null);
-  assert.equal(opponentShadow.visible, false, "hidden AI have no shadow");
+  assert.equal(opponentShadow.count, 0, "hidden AI have no shadows");
+});
+
+test("opponent shadows remain a single instanced batch with dense indices", () => {
+  const { view, scene, ai } = fixture();
+  const [playerShadow, batch] = scene.objects;
+  assert.equal(scene.objects.length, 2,
+    "one separate fading player shadow and one batched AI shadow draw");
+  assert.ok(batch instanceof InstancedMesh);
+  assert.notEqual(playerShadow.material, batch.material,
+    "jump fading must not affect opponent opacity");
+  assert.equal(batch.material.opacity, 0.78);
+  assert.equal(batch.frustumCulled, false,
+    "moving batches must not be culled using a stale bounding sphere");
+  view.syncOpponents([{ id: 1, progress: 250, lateral: 3 }]);
+  assert.equal(batch.count, 1);
+  assert.equal(ai.visible, true);
+  const first = batch.instances[0];
+  assert.deepEqual([first.scale.x, first.scale.y],
+    Rendering.SHADOW_FOOTPRINTS.classic);
+  view.syncOpponents([{ id: 999, progress: 300, lateral: 0 }]);
+  assert.equal(batch.count, 0);
+  assert.equal(ai.visible, false);
+  view.syncOpponents(null);
+  assert.equal(batch.count, 0);
 });
 
 test("camera has rigid cockpit view and outside view follows smoothly", () => {
