@@ -4,6 +4,26 @@
 const GcvHud = (() => {
   function create({ document, LapTimes, Race, layout = { CLOSED: true } }) {
     const closed = layout.CLOSED !== false;
+    // DOM reads are cheap compared with invalidating layout/paint every RAF.
+    // Only mutate text, attributes and CSS state when the displayed value
+    // actually changes; timing and race state stay owned by the simulation.
+    function setText(node, value) {
+      const text = String(value);
+      if (node.textContent !== text) node.textContent = text;
+    }
+    function setHidden(node, hidden) {
+      if (node.hidden !== hidden) node.hidden = hidden;
+    }
+    function setClass(node, name, enabled) {
+      if (node.classList.contains(name) !== enabled)
+        node.classList.toggle(name, enabled);
+    }
+    function setAttribute(node, name, value) {
+      if (node.getAttribute(name) !== value) node.setAttribute(name, value);
+    }
+    function setTitle(node, value) {
+      if (node.title !== value) node.title = value;
+    }
     const speedLabel = document.getElementById("speed-value");
     const gearLabel = document.getElementById("gear-value");
     const lapLabel = document.getElementById("lap-value");
@@ -16,7 +36,7 @@ const GcvHud = (() => {
     const deltaValue = document.getElementById("lap-delta-value");
     const splitLabel = document.getElementById("lap-split-label");
     const bestsTitle = document.querySelector?.(".gcv-bests-title");
-    if (!closed && bestsTitle) bestsTitle.textContent = "Meilleurs parcours";
+    if (!closed && bestsTitle) setText(bestsTitle, "Meilleurs parcours");
     const bestLabels = [1, 2, 3].map((rank) =>
       document.getElementById("best-lap-" + rank));
     const freeModeButton = document.getElementById("free-mode-button");
@@ -36,27 +56,27 @@ const GcvHud = (() => {
 
     function refreshBests(records) {
       bestLabels.forEach((label, index) => {
-        label.textContent = records[index] ? LapTimes.format(records[index].ms) : "—";
+        setText(label, records[index] ? LapTimes.format(records[index].ms) : "—");
       });
     }
     function refreshChrono(lapTimer, lapHold) {
-      chronoBox.classList.toggle("is-lap-hold", Boolean(lapHold));
-      chronoLabel.textContent = lapHold
+      setClass(chronoBox, "is-lap-hold", Boolean(lapHold));
+      setText(chronoLabel, lapHold
         ? LapTimes.format(lapHold.ms)
-        : lapTimer.running || lapTimer.finished ? LapTimes.format(lapTimer.elapsedMs) : "—";
-      chronoTitle.textContent = lapHold
+        : lapTimer.running || lapTimer.finished ? LapTimes.format(lapTimer.elapsedMs) : "—");
+      setText(chronoTitle, lapHold
         ? (closed ? "TOUR TERMINÉ" : "PARCOURS TERMINÉ")
-        : (closed ? "TOUR EN COURS" : "PARCOURS EN COURS");
-      chronoRank.textContent = lapHold?.rank
+        : (closed ? "TOUR EN COURS" : "PARCOURS EN COURS"));
+      setText(chronoRank, lapHold?.rank
         ? ["", "1er meilleur temps", "2e meilleur temps", "3e meilleur temps"][lapHold.rank]
-        : "";
-      chronoRank.hidden = !lapHold?.rank;
+        : "");
+      setHidden(chronoRank, !lapHold?.rank);
       const delta = lapTimer.delta;
-      deltaValue.textContent = LapTimes.formatDelta(delta);
-      splitLabel.textContent = "S" + (lapTimer.splitNumber || 1);
-      deltaLabel.classList.toggle("is-faster", delta !== null && delta < -10);
-      deltaLabel.classList.toggle("is-slower", delta !== null && delta > 10);
-      deltaLabel.classList.toggle("is-even", delta !== null && Math.abs(delta) <= 10);
+      setText(deltaValue, LapTimes.formatDelta(delta));
+      setText(splitLabel, "S" + (lapTimer.splitNumber || 1));
+      setClass(deltaLabel, "is-faster", delta !== null && delta < -10);
+      setClass(deltaLabel, "is-slower", delta !== null && delta > 10);
+      setClass(deltaLabel, "is-even", delta !== null && Math.abs(delta) <= 10);
     }
     function refreshClassification(raceState) {
       if (!raceState) return;
@@ -90,68 +110,68 @@ const GcvHud = (() => {
       }
       raceResultsBody.replaceChildren(fragment);
       const count = rows.filter((row) => Number.isFinite(row.finishTime)).length;
-      raceResultsStatus.textContent = count === Race.GRID_COUNT
-        ? "Les 10 voitures ont terminé." : count + " / 10 voitures à l’arrivée · les autres poursuivent la course.";
+      setText(raceResultsStatus, count === Race.GRID_COUNT
+        ? "Les 10 voitures ont terminé." : count + " / 10 voitures à l’arrivée · les autres poursuivent la course.");
     }
     function syncRace({ gameMode, raceState, lapCount, lapHold, refreshResults }) {
       let didRefreshResults = false;
       const racing = gameMode === "race" && raceState !== null;
-      freeModeButton.classList.toggle("is-selected", !racing);
-      raceModeButton.classList.toggle("is-selected", racing);
-      freeModeButton.setAttribute("aria-pressed", String(!racing));
-      raceModeButton.setAttribute("aria-pressed", String(racing));
-      racePositionBox.hidden = !racing;
-      sessionModeLabel.textContent = racing ? "Course · 10 voitures" : "Essais libres · N° 9";
-      lapCountLabel.firstChild.textContent = closed
+      setClass(freeModeButton, "is-selected", !racing);
+      setClass(raceModeButton, "is-selected", racing);
+      setAttribute(freeModeButton, "aria-pressed", String(!racing));
+      setAttribute(raceModeButton, "aria-pressed", String(racing));
+      setHidden(racePositionBox, !racing);
+      setText(sessionModeLabel, racing ? "Course · 10 voitures" : "Essais libres · N° 9");
+      setText(lapCountLabel.firstChild, closed
         ? (racing ? "Tours en course : " : "Tours chronométrés : ")
-        : "Parcours terminés : ";
+        : "Parcours terminés : ");
       // Do not replace the SVG icon with text when the game mode changes.
       const restartDescription = racing ? "Rejouer la course" : "Repartir dix mètres avant la ligne d’arrivée";
-      restartButton.setAttribute("aria-label", restartDescription);
-      restartButton.title = restartDescription;
+      setAttribute(restartButton, "aria-label", restartDescription);
+      setTitle(restartButton, restartDescription);
       if (!racing) {
-        raceOverlay.hidden = true;
+        setHidden(raceOverlay, true);
         return false;
       }
-      racePositionValue.textContent = String(Race.position(raceState)) + "ᵉ";
-      raceLapLabel.textContent = !closed
+      setText(racePositionValue, String(Race.position(raceState)) + "ᵉ");
+      setText(raceLapLabel, !closed
         ? (raceState.phase === "finished" ? "Parcours terminé" : "Départ → Arrivée")
         : raceState.phase === "finished"
-          ? Race.LAPS + " tours terminés" : "Tour " + Race.currentLap(raceState) + "/" + Race.LAPS;
+          ? Race.LAPS + " tours terminés" : "Tour " + Race.currentLap(raceState) + "/" + Race.LAPS);
       // Display validated physical lap crossings, not rounded estimated
       // distance (which can lag the finish when the samples jitter).
-      lapLabel.textContent = String(lapCount);
+      setText(lapLabel, String(lapCount));
       const phase = raceState.phase;
-      raceOverlay.classList.toggle("is-results", phase === "finished");
-      raceOverlay.hidden = phase === "racing" ||
-        (phase === "finished" && lapHold !== null);
-      raceOverlayActions.hidden = phase !== "finished";
-      raceResults.hidden = phase !== "finished";
+      setClass(raceOverlay, "is-results", phase === "finished");
+      setHidden(raceOverlay, phase === "racing" ||
+        (phase === "finished" && lapHold !== null));
+      setHidden(raceOverlayActions, phase !== "finished");
+      setHidden(raceResults, phase !== "finished");
       if (phase === "finished" && refreshResults) {
         refreshClassification(raceState);
         didRefreshResults = true;
       }
       if (phase === "staging") {
-        raceOverlayTitle.textContent = "Prépare-toi !";
-        raceOverlaySubtitle.textContent = "Les voitures se mettent en place…";
+        setText(raceOverlayTitle, "Prépare-toi !");
+        setText(raceOverlaySubtitle, "Les voitures se mettent en place…");
       } else if (phase === "countdown") {
-        raceOverlayTitle.textContent = String(Math.max(1, Math.ceil(raceState.countdown)));
-        raceOverlaySubtitle.textContent = "Départ dans " +
-          String(Math.max(1, Math.ceil(raceState.countdown))) + "…";
+        setText(raceOverlayTitle, String(Math.max(1, Math.ceil(raceState.countdown))));
+        setText(raceOverlaySubtitle, "Départ dans " +
+          String(Math.max(1, Math.ceil(raceState.countdown))) + "…");
       } else if (phase === "finished") {
-        raceOverlayTitle.textContent = "Arrivée !";
-        raceOverlaySubtitle.textContent =
+        setText(raceOverlayTitle, "Arrivée !");
+        setText(raceOverlaySubtitle,
           "Position : " + Race.position(raceState) + " / 10 · " +
-          LapTimes.format(raceState.raceTime * 1000);
+          LapTimes.format(raceState.raceTime * 1000));
       }
       return didRefreshResults;
     }
     function setLapCount(laps) {
-      lapLabel.textContent = String(laps);
+      setText(lapLabel, String(laps));
     }
     function setSpeed(metresPerSecond) {
-      speedLabel.textContent = String(Math.round(Math.abs(metresPerSecond) * 3.6));
-      gearLabel.textContent = metresPerSecond < -0.02 ? "R" : "";
+      setText(speedLabel, String(Math.round(Math.abs(metresPerSecond) * 3.6)));
+      setText(gearLabel, metresPerSecond < -0.02 ? "R" : "");
     }
     return { refreshBests, refreshChrono, syncRace, setLapCount, setSpeed };
   }
