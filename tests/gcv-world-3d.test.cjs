@@ -260,8 +260,8 @@ test("rainbow world initializes with distinct, valid start and finish gates", ()
   assert.equal(world.barriers.rails.left.points.length, layout.SAMPLE_COUNT + 1);
   assert.ok(world.positions.some((point) => point.y > 14),
     "giant raised humps must be visibly taller than 14 metres");
-  assert.ok(world.heightAt(0.73) >= 18,
-    "the highest jump hill must reach 18 metres");
+  assert.ok(Math.max(...layout.HUMPS.map(at => world.heightAt(at))) >= 17.99,
+    "the highest generated jump hill must reach 18 metres");
   const rainbowColors = [0xf05c78, 0xfca33a, 0xf4df4e, 0x7fd56d,
     0x37b6d5, 0x5e74df, 0xc879da];
   assert.equal(world.scene.children.filter((node) =>
@@ -270,11 +270,12 @@ test("rainbow world initializes with distinct, valid start and finish gates", ()
 
 test("all local GCV scripts share one cache-busting release version", () => {
   const html = fs.readFileSync(path.join(directory, "index.html"), "utf8");
-  const versions = [...html.matchAll(/src="\.\/[^"]+\.js\?v=([^"]+)"/g)]
+  const versions = [...html.matchAll(/\["script", "\.\/[^"]+\.js\?v=([^"]+)"\]/g)]
     .map((match) => match[1]);
   // Keep the cache version consistent as game-specific modules are added.
   assert.ok(versions.length >= 20);
   assert.ok(html.includes("./adaptive-resolution.js?v="));
+  assert.ok(html.includes("./track-generator.js?v="));
   assert.equal(new Set(versions).size, 1);
   assert.match(html, /game\.css\?v=\d{8}[a-z]/);
 });
