@@ -43,6 +43,7 @@ function element() {
     addEventListener(name, fn) { (listeners[name] ||= []).push(fn); },
     fire(name, event = {}) { for (const fn of listeners[name] || []) fn(event); },
     setAttribute(name, value) { this[name] = value; },
+    getAttribute(name) { return this[name] ?? null; },
     getBoundingClientRect() { return { left: 10, width: 100 }; },
     setPointerCapture() {}, append() {}, replaceChildren(...children) { this.children = children; },
   };
