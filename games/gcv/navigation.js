@@ -1,14 +1,28 @@
 "use strict";
 
-// Screen navigation, score iframe and fullscreen controls.
+// Game navigation and fullscreen. Shared pages host the game fullscreen in an
+// iframe; standalone URLs request fullscreen on the first in-game gesture.
 const GcvNavigation = (() => {
   function create({ window, document, location, stage, homePanel, resumeButton,
-    menuButton, scoresButton, menuScoresButton, scoresFrame, fullscreenButton,
-    menuFullscreenButton, clearControls, flow, onResume, changed, announce }) {
+    menuButton, homeButton, menuHomeButton, scoresButton, menuScoresButton,
+    fullscreenButton, menuFullscreenButton, clearControls, flow, onResume,
+    changed, announce }) {
     const listeners = [];
+    let enteringFullscreen = false;
+    let leaving = false;
     function listen(target, type, handler) {
       target.addEventListener(type, handler);
       listeners.push([target, type, handler]);
+    }
+    function gameHost() {
+      try {
+        return window.parent !== window ? window.parent.GmrGameHost : null;
+      } catch {
+        return null; // Standalone game embedded on another origin.
+      }
+    }
+    function isFullscreen() {
+      return document.fullscreenElement === stage || Boolean(gameHost()?.fullscreen);
     }
     function sync() {
       homePanel.hidden = !flow.menuOpen;
@@ -16,87 +30,88 @@ const GcvNavigation = (() => {
       resumeButton.hidden = !flow.hasSession;
       resumeButton.textContent = flow.mode === "race"
         ? "Reprendre la course" : "Reprendre les essais libres";
-      scoresFrame.hidden = !flow.scoresOpen;
-      stage.classList.toggle("gcv-scores-open", flow.scoresOpen);
     }
-
+    function refreshFullscreen() {
+      const full = isFullscreen();
+      for (const button of [fullscreenButton, menuFullscreenButton]) {
+        // Fullscreen is not an exit control: Home and Scores are explicit exits.
+        button.hidden = full;
+        button.title = "Passer en plein écran";
+        button.setAttribute("aria-label", "Passer en plein écran");
+      }
+    }
+    function ensureFullscreen() {
+      if (isFullscreen() || enteringFullscreen) return;
+      if (!stage.requestFullscreen) {
+        announce("Plein écran non disponible dans ce navigateur.");
+        return;
+      }
+      enteringFullscreen = true;
+      // Request before any await: this must run in the original user gesture.
+      try {
+        Promise.resolve(stage.requestFullscreen({ navigationUI: "hide" }))
+          .catch((error) => {
+            console.warn("Fullscreen failed:", error);
+            announce("Le plein écran a été refusé par le navigateur.");
+          })
+          .finally(() => {
+            enteringFullscreen = false;
+            refreshFullscreen();
+          });
+      } catch (error) {
+        enteringFullscreen = false;
+        console.warn("Fullscreen failed:", error);
+        announce("Le plein écran a été refusé par le navigateur.");
+      }
+    }
     function resume() {
+      ensureFullscreen();
       flow.resume();
       sync();
       onResume();
       changed();
     }
-
     function openMenu() {
       clearControls();
       flow.openMenu();
       sync();
       if (flow.hasSession) changed();
     }
-
-    function openScores() {
+    function navigateOutside(page) {
+      if (leaving) return;
+      leaving = true;
       clearControls();
-      if (!flow.openScores()) return;
-      sync();
-      scoresFrame.src = "../../scores.html?game=gcv&from=gcv";
-      if (flow.hasSession) changed();
-    }
-
-    function closeScores() {
-      if (!flow.closeScores()) return;
-      scoresFrame.hidden = true;
-      scoresFrame.removeAttribute("src");
-      sync();
-      onResume(); // Do not count time spent in the score iframe.
-    }
-
-    function refreshFullscreen() {
-      const full = document.fullscreenElement === stage;
-      for (const button of [fullscreenButton, menuFullscreenButton]) {
-        button.querySelector(".gcv-action-label").textContent =
-          full ? "Écran normal" : "Plein écran";
-        button.classList.toggle("is-fullscreen", full);
-        button.setAttribute("aria-label",
-          full ? "Quitter le plein écran" : "Passer en plein écran");
-        button.title = full ? "Quitter le plein écran" : "Passer en plein écran";
+      if (flow.hasSession) changed(); // Save before unloading an iframe.
+      const host = gameHost();
+      if (host?.navigate) {
+        host.navigate(page);
+        return;
+      }
+      const target = new URL(page === "scores"
+        ? "../../scores.html?game=gcv&from=gcv" : "../../", location.href);
+      const openPage = () => window.location.assign(target.href);
+      if (document.fullscreenElement && document.exitFullscreen) {
+        Promise.resolve(document.exitFullscreen()).then(openPage, openPage);
+      } else {
+        openPage();
       }
     }
-
-    async function toggleFullscreen() {
-      try {
-        if (document.fullscreenElement === stage) {
-          await document.exitFullscreen();
-        } else if (stage.requestFullscreen) {
-          await stage.requestFullscreen();
-        } else {
-          menuFullscreenButton.querySelector(".gcv-action-label").textContent =
-            "Plein écran non disponible";
-          announce("Plein écran non disponible dans ce navigateur.");
-        }
-      } catch (error) {
-        console.warn("Fullscreen failed:", error);
-        menuFullscreenButton.querySelector(".gcv-action-label").textContent =
-          "Plein écran refusé";
-        announce("Le plein écran a été refusé par le navigateur.");
-      }
-    }
+    const openScores = () => navigateOutside("scores");
+    const goHome = () => navigateOutside("home");
 
     listen(resumeButton, "click", resume);
     listen(menuButton, "click", openMenu);
+    listen(homeButton, "click", goHome);
+    listen(menuHomeButton, "click", goHome);
     listen(scoresButton, "click", openScores);
     listen(menuScoresButton, "click", openScores);
-    listen(window, "message", (event) => {
-      if (flow.scoresOpen && event.origin === location.origin &&
-          event.source === scoresFrame.contentWindow &&
-          event.data?.type === "gmr-scores-back") closeScores();
-    });
-    listen(fullscreenButton, "click", toggleFullscreen);
-    listen(menuFullscreenButton, "click", toggleFullscreen);
+    listen(fullscreenButton, "click", ensureFullscreen);
+    listen(menuFullscreenButton, "click", ensureFullscreen);
     listen(document, "fullscreenchange", refreshFullscreen);
     refreshFullscreen();
 
     return {
-      sync, resume, openMenu, openScores, closeScores,
+      sync, resume, openMenu, openScores,
       dispose() {
         for (const [target, type, handler] of listeners)
           target.removeEventListener(type, handler);
