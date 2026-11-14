@@ -2,6 +2,7 @@
 (() => {
   const games = window.GmrCatalog.games;
   const params = new URLSearchParams(location.search);
+  const refreshKey = params.get("gmr-refresh") || String(Date.now());
   const requested = params.get("game");
   const selected = games.some((game) => game.id === requested) ? requested : null;
   const nav = document.getElementById("score-filters");
@@ -13,6 +14,7 @@
     if (game.id) url.searchParams.set("game", game.id);
     const from = params.get("from");
     if (from) url.searchParams.set("from", from);
+    url.searchParams.set("gmr-refresh", refreshKey);
     link.href = url.href;
     link.textContent = game.title;
     if (game.id === selected) link.setAttribute("aria-current", "page");
@@ -44,7 +46,9 @@
       for (const source of game.scoreScripts || []) {
         await new Promise((resolve, reject) => {
           const script = document.createElement("script");
-          script.src = new URL(source, location.href).href;
+          const url = new URL(source, location.href);
+          url.searchParams.set("gmr-refresh", refreshKey);
+          script.src = url.href;
           script.onload = resolve;
           script.onerror = () => reject(new Error("Cannot load score adapter: " + source));
           document.head.append(script);
