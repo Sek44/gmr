@@ -30,6 +30,7 @@
   const Barriers = window.GcvBarriers;
   const LapTimes = window.GcvLapTimes;
   const Race = window.GcvRace;
+  const AiNavigation = window.GcvAiNavigation;
   const Vehicles = window.GcvVehicles;
   const VisualEffects = window.GcvVisualEffects;
   const Rendering = window.GcvRendering;
@@ -42,7 +43,7 @@
   const Flow = window.GcvFlow;
   const Preferences = window.GcvPreferences;
   // Bump this revision after incompatible GCV updates. Old sessions are canceled.
-  const SAVE_REVISION = 12;
+  const SAVE_REVISION = 13;
   // Keep this same fullscreen DOM element while rebuilding only the circuit.
   let disposeGame = null;
   let activeFlow = null;
@@ -140,6 +141,13 @@
       (finishIndex - startIndex) * trackLength / SAMPLE_COUNT;
     const timingSamples = closed ? SAMPLE_COUNT :
       Math.round(routeLength * SAMPLE_COUNT / trackLength);
+    // AI uses the identical centreline, tangents and distance model as
+    // World3D; only the skill changes between opponents and circuits.
+    const aiNavigation = AiNavigation.create({
+      positions, directions, sampleCount: SAMPLE_COUNT, startIndex,
+      trackLength, routeLength, closed, maxSpeed: Physics.MAX_SPEED,
+      laps: closed ? Race.LAPS : 1,
+    });
 
     // Start on a straight section, facing the road in its normal forward direction.
     const initialIndex = TrackLayout.nearestIndex(positions, TrackLayout.SPAWN);
@@ -336,7 +344,7 @@
       circuitKey, layoutVersion: TrackLayout.VERSION, positions, directions,
       startIndex, startCenter, startSide, startYaw, trackLength: routeLength,
       SAMPLE_COUNT: timingSamples, OUTER_HALF_WIDTH, Physics, TrackProgress, LapTimes, Race,
-      raceLaps: closed ? Race.LAPS : 1,
+      raceLaps: closed ? Race.LAPS : 1, aiNavigation,
       progressSamples, startOffset, closestRoad, snapBack, clearControls,
       clearLapHold, resetResultsCooldown: () => { resultRefreshCooldown = 0; },
       renderSession, setLapCount: (laps) => hud.setLapCount(laps), announce,
@@ -666,7 +674,7 @@
       if (flow.mode === "race" && raceState) {
         const wasRacing = raceState.phase === "racing";
         const previousLapCount = raceState.playerLapTimes?.length || 0;
-        raceState = Race.advance(raceState, dt, raceMotion || 0);
+        raceState = Race.advance(raceState, dt, raceMotion || 0, null, aiNavigation);
         flow.advanceRace(raceState.phase);
         lapTracker = raceState.playerMotion;
         const completedLaps = raceState.playerLapTimes?.length || 0;
