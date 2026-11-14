@@ -708,6 +708,7 @@
     for (let gridSlot = 0; gridSlot < Race.GRID_COUNT; gridSlot++) {
       if (gridSlot === Race.PLAYER_SLOT) continue;
       const group = new THREE.Group();
+      group.userData.aiWheels = [];
       const color = new THREE.MeshStandardMaterial({
         color: opponentColors.get(gridSlot),
         roughness: 0.52, metalness: 0.16,
@@ -719,9 +720,13 @@
       for (const side of [-1, 1]) {
         for (const z of [-1.18, 1.18]) {
           const tyre = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.29, 9), aiTyre);
+          // The cylinder is sideways. ZYX lets local Y spin its axle
+          // without losing the original 90-degree wheel orientation.
+          tyre.rotation.order = "ZYX";
           tyre.rotation.z = Math.PI / 2;
           tyre.position.set(side * 1.02, 0.45, z);
           group.add(tyre);
+          group.userData.aiWheels.push(tyre);
         }
       }
       group.visible = false;
