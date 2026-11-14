@@ -14,21 +14,21 @@
       const fresh = new URLSearchParams(location.search).get("gmr-refresh")
         || String(Date.now());
       const resources = [
-      ["style", "./benchmark.css?v=20261114m"],
-      ["script", "./track-generator.js?v=20261114m"],
-      ["script", "./track-layout.js?v=20261114m"],
-      ["script", "./scenery.js?v=20261114m"],
-      ["script", "./barriers.js?v=20261114m"],
-      ["script", "./track-progress.js?v=20261114m"],
-      ["script", "./race.js?v=20261114m"],
-      ["script", "./world-3d.js?v=20261114m"],
-      ["script", "./vehicles.js?v=20261114m"],
-      ["script", "./rendering.js?v=20261114m"],
-      ["script", "./visual-effects.js?v=20261114m"],
-      ["script", "./benchmark-config.js?v=20261114m"],
-      ["script", "./benchmark-display.js?v=20261114m"],
-      ["script", "./benchmark-metrics.js?v=20261114m"],
-      ["module", "./benchmark.js?v=20261114m"],
+      ["style", "./benchmark.css?v=20261114r"],
+      ["script", "./track-generator.js?v=20261114r"],
+      ["script", "./track-layout.js?v=20261114r"],
+      ["script", "./scenery.js?v=20261114r"],
+      ["script", "./barriers.js?v=20261114r"],
+      ["script", "./track-progress.js?v=20261114r"],
+      ["script", "./race.js?v=20261114r"],
+      ["script", "./world-3d.js?v=20261114r"],
+      ["script", "./vehicles.js?v=20261114r"],
+      ["script", "./rendering.js?v=20261114r"],
+      ["script", "./visual-effects.js?v=20261114r"],
+      ["script", "./benchmark-config.js?v=20261114r"],
+      ["script", "./benchmark-display.js?v=20261114r"],
+      ["script", "./benchmark-metrics.js?v=20261114r"],
+      ["module", "./benchmark.js?v=20261114r"],
       ];
       for (const [kind, file] of resources) {
         const url = new URL(file, location.href);
