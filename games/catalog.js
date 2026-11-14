@@ -14,7 +14,7 @@ window.GmrCatalog = Object.freeze({
       ]),
       title: "Super Kart",
       category: "Course 3D",
-      artwork: "./games/gcv/assets/home-circuit.svg",
+      artwork: "./games/gcv/assets/home-circuit.svg?v=20261114t",
     }),
   ]),
 });
