@@ -81,6 +81,7 @@ test("game-specific score renderers are registered without importing games into 
   vm.runInNewContext(file("games/catalog.js"), catalogContext);
   const gcv = catalogContext.window.GmrCatalog.games.find((game) => game.id === "gcv");
   assert.deepEqual(Array.from(gcv.scoreScripts), [
+    "./games/gcv/track-generator.js",
     "./games/gcv/track-layout.js",
     "./games/gcv/lap-times.js",
     "./games/gcv/scores-adapter.js",
