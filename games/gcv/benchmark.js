@@ -259,9 +259,13 @@
       "Écran CSS " + report.viewport.width + "×" + report.viewport.height +
       " · DPR " + numeric(report.devicePixelRatio, 2) +
       " · " + report.device.platform;
+    const classicReference = baseline.find((item) => item.id === "classic-race");
+    const msaaDescription = classicReference?.msaaActive == null
+      ? (classicReference?.msaaRequested ? "demandé" : "désactivé (demandé)")
+      : (classicReference.msaaActive ? "activé" : "désactivé");
     byId("benchmark-capture-mode").textContent =
       "Mesure : " + (report.display.fullscreen ? "plein écran" : "fenêtre navigateur") +
-      " · " + report.display.orientation;
+      " · " + report.display.orientation + " · MSAA classique : " + msaaDescription;
     for (const item of baseline) {
       tableRow("benchmark-overview-rows", [
         item.name, numeric(item.fps), numeric(item.frameP95Ms),
@@ -315,7 +319,9 @@
       "Mode mesuré : " + (report.display.fullscreen ? "plein écran" : "fenêtre") +
       " · " + report.display.orientation +
       " · " + (report.fullscreenRequested ? "plein écran demandé" :
-        "mode fenêtre choisi");
+        "mode fenêtre choisi") +
+      " · MSAA classique : " + msaaDescription +
+      (classicReference?.lowEndDevice ? " · matériel classé modeste" : "");
     byId("benchmark-setup").textContent = setup;
     byId("benchmark-method").textContent =
       report.scenarios.length + " tests · " + (report.warmupMs / 1000) +
