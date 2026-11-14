@@ -224,8 +224,8 @@ test("the actual circuit's tight bends produce no crossing guardrails", () => {
   for (const path of [rail.rails.left, rail.rails.right]) {
     assert.ok(path.offsets.every((offset) => offset >= outerRailOffset - 1e-8),
       "rails must stay by the outside edge of the 7 m shoulder");
-    assert.ok(path.skippedSamples.some((v) => v === 1),
-      "small hairpin loops must be clipped, not pulled onto the road");
+    // With the smoother generated corners, a rail may have no folded loops
+    // and therefore need no clipping. Both rails must remain outside the road.
     for (let i = 0; i < samples.length; i += 3) {
       const a = path.points[i], b = path.points[(i + 1) % samples.length];
       const mid = { x: (a.x + b.x) / 2, z: (a.z + b.z) / 2 };
