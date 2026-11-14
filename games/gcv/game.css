@@ -22,7 +22,7 @@
   min-width: 0; padding: 48px 12px 18px;
   text-align: left; background: none; border: 0; border-radius: 0; box-shadow: none;
 }
-.gcv-title-kart {
+.gcv-title-artwork {
   width: clamp(92px, 12vw, 132px); height: auto; flex: 0 0 auto;
   overflow: visible;
   filter: drop-shadow(0 6px 7px #030B1DAA);
@@ -153,7 +153,7 @@
   .gcv-home { padding: max(8px, env(safe-area-inset-top)) 9px 9px; }
   .gcv-home-panel { gap: 6px; width: min(920px, 100%); }
   .gcv-menu-heading { justify-content: flex-start; gap: 9px; padding: 4px 108px 5px 10px; }
-  .gcv-title-kart { width: 64px; }
+  .gcv-title-artwork { width: 64px; }
   .gcv-home-panel h2 { font-size: 1.95rem; }
   .gcv-home-description { display: none; }
   .gcv-menu-main { padding: 7px 10px; gap: 5px; }
@@ -529,7 +529,7 @@ html.gcv-embedded .gcv-stage {
     min-height: 0; gap: 13px;
     padding: 58px 8px 13px;
   }
-  .gcv-title-kart { width: clamp(94px, 27vw, 120px); }
+  .gcv-title-artwork { width: clamp(94px, 27vw, 120px); }
   .gcv-home-eyebrow { margin-bottom: 4px; font-size: .67rem; letter-spacing: .11em; }
   .gcv-home-panel h2 {
     max-width: 6.8ch;
@@ -586,7 +586,7 @@ html.gcv-embedded .gcv-stage {
 @media (orientation: portrait) and (max-width: 700px) and (max-height: 630px) {
   .gcv-home-panel { gap: 6px; }
   .gcv-menu-heading { min-height: 0; padding: 54px 6px 9px; gap: 9px; }
-  .gcv-title-kart { width: 76px; }
+  .gcv-title-artwork { width: 76px; }
   .gcv-home-panel h2 { font-size: clamp(2rem, 8.7vw, 2.6rem); }
   .gcv-home-description { display: none; }
   .gcv-menu-main { padding: 7px; gap: 5px; }
