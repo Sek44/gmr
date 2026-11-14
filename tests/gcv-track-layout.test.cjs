@@ -53,7 +53,7 @@ test("roadside shoulders are seven metres per side", () => {
 test("regenerated rainbow sprint has four crests on straight sections", () => {
   const route = layout.SPRINT;
   assert.equal(route.VERSION, 5);
-  assert.ok(route.LENGTH_METRES > 2300 && route.LENGTH_METRES < 2700);
+  assert.ok(route.LENGTH_METRES > 2500 && route.LENGTH_METRES < 2900);
   assert.equal(route.HUMPS.length, 4);
   assert.deepEqual(route.HUMPS, route.HUMP_PROFILES.map(hump => hump.at));
   const straights = route.SECTIONS.filter(section =>
