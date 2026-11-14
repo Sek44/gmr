@@ -4,6 +4,7 @@
 // iframe; standalone URLs request fullscreen on the first in-game gesture.
 const GcvNavigation = (() => {
   function create({ window, document, location, stage, homePanel, resumeButton,
+    resumeCard, resumeDetails, describeSession = () => "",
     menuButton, menuHomeButton, scoresButton, menuScoresButton,
     clearControls, flow, onResume,
     changed, announce }) {
@@ -27,9 +28,12 @@ const GcvNavigation = (() => {
     function sync() {
       homePanel.hidden = !flow.menuOpen;
       stage.classList.toggle("gcv-in-menu", flow.menuOpen);
+      if (resumeCard) resumeCard.hidden = !flow.hasSession;
       resumeButton.hidden = !flow.hasSession;
-      resumeButton.textContent = flow.mode === "race"
-        ? "Reprendre la course" : "Reprendre les essais libres";
+      resumeButton.textContent = flow.activity === "finished"
+        ? "Voir les résultats"
+        : flow.mode === "race" ? "Reprendre la course" : "Reprendre les essais";
+      if (resumeDetails && flow.hasSession) resumeDetails.textContent = describeSession();
     }
     function ensureFullscreen() {
       if (isFullscreen() || enteringFullscreen) return;
