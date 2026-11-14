@@ -374,23 +374,25 @@ const GcvTrackProgress = (() => {
       sectorProgress: progress };
   }
 
-  // Detect a true forward crossing of the VISIBLE line in world coordinates.
-  // Sample indices alone may jump or skip the line at high speed, which used to
-  // leave the stopwatch inactive despite the car passing the finish tiles.
+  // Detect a true forward crossing of a geometric timing gate, independent of
+  // its visible checkered tiles. Gates include the shoulders and barriers.
+  // Keep the old (centre, forward, halfWidth) signature for existing callers.
   // Return the crossing fraction of the frame, or null.
-  function finishCrossing(before, after, line, forward, halfWidth) {
+  function finishCrossing(before, after, line, forward = line?.forward,
+      halfWidth = line?.halfWidth) {
+    const center = line?.center || line;
     if (![before?.x, before?.z, after?.x, after?.z,
-      line?.x, line?.z, forward?.x, forward?.z, halfWidth]
+      center?.x, center?.z, forward?.x, forward?.z, halfWidth]
       .every(Number.isFinite) || halfWidth <= 0) return null;
     const length = Math.hypot(forward.x, forward.z);
     if (length < 1e-8) return null;
     const dx = forward.x / length, dz = forward.z / length;
-    const previousDistance = (before.x - line.x) * dx + (before.z - line.z) * dz;
-    const nextDistance = (after.x - line.x) * dx + (after.z - line.z) * dz;
+    const previousDistance = (before.x - center.x) * dx + (before.z - center.z) * dz;
+    const nextDistance = (after.x - center.x) * dx + (after.z - center.z) * dz;
     if (!(previousDistance <= 0 && nextDistance > 0)) return null;
     const fraction = -previousDistance / (nextDistance - previousDistance);
-    const x = before.x + (after.x - before.x) * fraction - line.x;
-    const z = before.z + (after.z - before.z) * fraction - line.z;
+    const x = before.x + (after.x - before.x) * fraction - center.x;
+    const z = before.z + (after.z - before.z) * fraction - center.z;
     const sideways = -dz * x + dx * z;
     return Math.abs(sideways) <= halfWidth ? fraction : null;
   }
