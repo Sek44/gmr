@@ -49,12 +49,12 @@ test("top-aligned menu keeps the three sections ordered and has SVG mode icons",
     assert.match(button, /<span class="gcv-mode-content"><strong>/);
     assert.match(button, /<small>/);
   }
-  const cssPanel = css.match(/\\.gcv-home-panel\\s*\\{([^}]*)\\}/)?.[1] || "";
-  assert.match(cssPanel, /margin:\\s*0;/, "the menu must not center vertically");
-  assert.doesNotMatch(cssPanel, /margin-block:\\s*auto/);
-  assert.match(css, /\\.gcv-mode-content small\\s*\\{\\s*display:\\s*none;/);
-  assert.match(css, /\\.gcv-mode-icon\\s*\\{/);
-  assert.match(html, /\\.\\/game\\.css\\?v=20261114o/);
+  const cssPanel = css.slice(css.indexOf(".gcv-home-panel {"), css.indexOf(".gcv-menu-heading {"));
+  assert.ok(cssPanel.includes("margin: 0;"), "the menu must not center vertically");
+  assert.ok(!cssPanel.includes("margin-block: auto"));
+  assert.ok(css.includes(".gcv-mode-content small { display: none; }"));
+  assert.ok(css.includes(".gcv-mode-icon {"));
+  assert.ok(html.includes("./game.css?v=20261114o"));
 });
 
 test("choosing options does not start or delete an in-progress race", () => {
