@@ -316,3 +316,71 @@ test("hills give shallow speed-dependent airtime instead of huge leaps", () => {
       "flight must be short, not a fixed multi-second jump");
   }
 });
+
+test("first crowned crest stays airborne in the actual sampled-road loop", () => {
+  const layout = require("../games/gcv/track-layout.js").SPRINT;
+  const progress = require("../games/gcv/track-progress.js");
+  const length = layout.WAYPOINTS.slice(1).reduce((sum, point, i) =>
+    sum + Math.hypot(point[0] - layout.WAYPOINTS[i][0],
+      point[1] - layout.WAYPOINTS[i][1]), 0);
+  const count = layout.SAMPLE_COUNT;
+  const positions = Array.from({ length: count + 1 }, (_, i) =>
+    ({ x: 0, z: -length * i / count }));
+  const first = layout.HUMP_PROFILES[0];
+
+  for (const dt of [1 / 60, 0.05]) {
+    const from = first.at - 0.035;
+    let car = { x: 0, z: -from * length, yaw: 0, speed: 69,
+      roadY: layout.heightAt(from), jumpY: 0 };
+    let velocity = 0, cooldown = 0;
+    let index = Math.floor(from * count);
+    let takeoffs = 0, landings = 0, peak = 0;
+    for (let i = 0; i < 250; i++) {
+      const before = { x: car.x, z: car.z };
+      const roadBefore = car.roadY;
+      const airborne = car.jumpY > 0 || velocity > 0;
+      car = { ...physics.advance(car, { accelerate: true, airborne }, dt),
+        roadY: roadBefore, jumpY: car.jumpY };
+      let nearest = progress.nearestOpenSample(
+        positions, count, car.x, car.z, index, 12, 16);
+      if (airborne) {
+        const guided = progress.guideAirborne(positions, count,
+          before, car, index, 9, 0, dt);
+        assert.ok(guided);
+        car.x = guided.x;
+        car.z = guided.z;
+        nearest = { index: guided.index };
+      }
+      const projection = progress.projectOpenRoad(
+        positions, count, car.x, car.z, nearest.index);
+      index = nearest.index;
+      car.roadY = layout.heightAt(projection.fraction);
+      cooldown = Math.max(0, cooldown - dt);
+      let launched = false;
+      if (!airborne && cooldown === 0) {
+        const lift = physics.takeoffVelocity(projection.fraction,
+          car.speed, length, layout.heightAt, projection.lateral, 7.2);
+        if (lift !== null) {
+          velocity = lift;
+          car.jumpY = physics.JUMP_CLEARANCE;
+          cooldown = 1;
+          launched = true;
+          takeoffs++;
+        }
+      }
+      if (!launched && (car.jumpY > 0 || velocity > 0)) {
+        const flight = physics.advanceJump(
+          car.jumpY, velocity, dt, car.roadY - roadBefore);
+        car.jumpY = flight.height;
+        velocity = flight.velocity;
+        if (flight.landed) landings++;
+      }
+      peak = Math.max(peak, car.jumpY);
+      if (projection.fraction > first.at + 0.065) break;
+    }
+    assert.equal(takeoffs, 1, "max-speed car must jump at " + dt + " s/frame");
+    assert.equal(landings, 1, "flight must finish normally at " + dt + " s/frame");
+    assert.ok(peak > 1 && peak < 5,
+      "lift must be visible but modest; got " + peak + " m");
+  }
+});
