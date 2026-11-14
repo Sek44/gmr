@@ -4,8 +4,8 @@
 // iframe; standalone URLs request fullscreen on the first in-game gesture.
 const GcvNavigation = (() => {
   function create({ window, document, location, stage, homePanel, resumeButton,
-    menuButton, homeButton, menuHomeButton, scoresButton, menuScoresButton,
-    fullscreenButton, menuFullscreenButton, clearControls, flow, onResume,
+    menuButton, menuHomeButton, scoresButton, menuScoresButton,
+    clearControls, flow, onResume,
     changed, announce }) {
     const listeners = [];
     let enteringFullscreen = false;
@@ -31,15 +31,6 @@ const GcvNavigation = (() => {
       resumeButton.textContent = flow.mode === "race"
         ? "Reprendre la course" : "Reprendre les essais libres";
     }
-    function refreshFullscreen() {
-      const full = isFullscreen();
-      for (const button of [fullscreenButton, menuFullscreenButton]) {
-        // Fullscreen is not an exit control: Home and Scores are explicit exits.
-        button.hidden = full;
-        button.title = "Passer en plein écran";
-        button.setAttribute("aria-label", "Passer en plein écran");
-      }
-    }
     function ensureFullscreen() {
       if (isFullscreen() || enteringFullscreen) return;
       if (!stage.requestFullscreen) {
@@ -54,10 +45,7 @@ const GcvNavigation = (() => {
             console.warn("Fullscreen failed:", error);
             announce("Le plein écran a été refusé par le navigateur.");
           })
-          .finally(() => {
-            enteringFullscreen = false;
-            refreshFullscreen();
-          });
+          .finally(() => { enteringFullscreen = false; });
       } catch (error) {
         enteringFullscreen = false;
         console.warn("Fullscreen failed:", error);
@@ -102,19 +90,14 @@ const GcvNavigation = (() => {
     // Direct links cannot fullscreen on page load. Use the first eligible
     // click in the stage (including selecting a vehicle or circuit) instead.
     listen(stage, "click", (event) => {
-      if (event.target.closest?.("#home-button, #menu-home-button, #scores-button, #menu-scores-button")) return;
+      if (event.target.closest?.("#menu-home-button, #scores-button, #menu-scores-button")) return;
       ensureFullscreen();
     });
     listen(resumeButton, "click", resume);
     listen(menuButton, "click", openMenu);
-    listen(homeButton, "click", goHome);
     listen(menuHomeButton, "click", goHome);
     listen(scoresButton, "click", openScores);
     listen(menuScoresButton, "click", openScores);
-    listen(fullscreenButton, "click", ensureFullscreen);
-    listen(menuFullscreenButton, "click", ensureFullscreen);
-    listen(document, "fullscreenchange", refreshFullscreen);
-    refreshFullscreen();
 
     return {
       sync, resume, openMenu, openScores,
