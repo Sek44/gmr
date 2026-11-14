@@ -275,11 +275,25 @@ const GcvRendering = (() => {
         const center = curve.getPointAt(t);
         const forward = curve.getTangentAt(t).normalize();
         const sideX = -forward.z, sideZ = forward.x;
+        const flight = shadowFlightAppearance(ai.jumpY);
         mesh.position.set(center.x + sideX * ai.lateral,
-          heightAt(t) + 0.14, center.z + sideZ * ai.lateral);
-        mesh.rotation.y = Math.atan2(-forward.x, -forward.z);
+          heightAt(t) + 0.14 + (ai.jumpY || 0),
+          center.z + sideZ * ai.lateral);
+        // The driver looks slightly into corners while the body slips
+        // sideways. Pitch follows the road and airborne vertical velocity.
+        mesh.rotation.set(ai.pitch || 0,
+          Math.atan2(-forward.x, -forward.z) + (ai.yawOffset || 0),
+          ai.roll || 0, "YXZ");
+        // Brief suspension squat on landing, without extra draw calls.
+        mesh.scale.y = 1 - 0.07 * (ai.landing || 0);
+        for (const wheel of mesh.userData.aiWheels || []) {
+          wheel.rotation.y = ((ai.progress - (ai.startProgress || 0)) /
+            0.42) % (Math.PI * 2);
+        }
+        // Stay projected on the road while the car is airborne.
         placeShadow(opponentShadowTransform, mesh.position.x, heightAt(t),
-          mesh.position.z, mesh.rotation.y, SHADOW_FOOTPRINTS.classic);
+          mesh.position.z, mesh.rotation.y, SHADOW_FOOTPRINTS.classic,
+          flight.scale);
         opponentShadowTransform.updateMatrix();
         opponentShadows.setMatrixAt(shadowCount++, opponentShadowTransform.matrix);
       }
