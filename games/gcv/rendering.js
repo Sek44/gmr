@@ -17,6 +17,23 @@ const GcvRendering = (() => {
   });
   const SHADOW_GROUND_OFFSET = 0.16; // Above the 0.125 m rainbow ribbons.
   const SHADOW_OPACITY = 0.78;
+
+  // Antialiasing is fixed when WebGL context is created. Use the available
+  // coarse memory/CPU hints to avoid MSAA on weaker hardware on BOTH tracks.
+  // These browser hints are optional and do not expose exact GPU capability.
+  function isLowEndDevice(navigator) {
+    const memory = navigator?.deviceMemory;
+    const cores = navigator?.hardwareConcurrency;
+    return (typeof memory === "number" && Number.isFinite(memory) &&
+        memory > 0 && memory <= 4) ||
+      (typeof cores === "number" && Number.isFinite(cores) &&
+        cores > 0 && cores <= 4);
+  }
+  function wantsMSAA(closed, navigator) {
+    // The longer open circuit continues to disable MSAA on all devices.
+    return Boolean(closed) && !isLowEndDevice(navigator);
+  }
+
   function shadowFlightAppearance(height) {
     const lift = Math.max(0, Math.min(1, (Number(height) || 0) / 1.5));
     return { opacity: SHADOW_OPACITY * (1 - 0.3 * lift),
@@ -40,15 +57,16 @@ const GcvRendering = (() => {
     brakeLights, rearBrakeGlows, opponentMeshes, extraWheelPivots = [], curve, startIndex,
     SAMPLE_COUNT, trackLength, closed = true, heightAt = () => 0,
     motoRider = null, onCameraVisibility = () => {} }) {
-    // Limit framebuffer allocations for the longer open route. On older
-    // tablet GPUs, MSAA at 1.7x pixel ratio can exhaust WebGL memory during
-    // initialization, leaving the menu apparently frozen.
+    // Select MSAA before allocating the WebGL context; it cannot be
+    // toggled mid-race. Low-end devices disable it even on classic.
     const compact = !closed;
+    const msaaRequested = wantsMSAA(closed, window.navigator);
     const MAX_OPEN_TRACK_PIXELS = 750000;
-    // Benchmark-only override; default 1 leaves the existing game unchanged.
+    // Benchmark and live adaptive quality may independently scale the DPR.
     let resolutionScale = 1;
     const renderer = new THREE.WebGLRenderer({
-      antialias: !compact, alpha: false, powerPreference: "high-performance",
+      antialias: msaaRequested, alpha: false,
+      powerPreference: "high-performance",
     });
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     sceneHost.append(renderer.domElement);
@@ -424,6 +442,9 @@ const GcvRendering = (() => {
         textures: renderer.info?.memory?.textures ?? null,
         pixelRatio: renderer.getPixelRatio?.() ?? null,
         resolutionScale,
+        msaaRequested,
+        msaaActive: renderer.getContext?.()?.getContextAttributes?.()?.antialias ?? null,
+        lowEndDevice: isLowEndDevice(window.navigator),
         framebufferWidth: renderer.domElement.width ?? null,
         framebufferHeight: renderer.domElement.height ?? null,
       };
@@ -461,7 +482,8 @@ const GcvRendering = (() => {
   }
 
   return { create, GRID_INTRO_DURATION, introFractions,
-    SHADOW_FOOTPRINTS, SHADOW_GROUND_OFFSET, shadowFlightAppearance };
+    SHADOW_FOOTPRINTS, SHADOW_GROUND_OFFSET, shadowFlightAppearance,
+    isLowEndDevice, wantsMSAA };
 })();
 
 if (typeof window !== "undefined") window.GcvRendering = GcvRendering;
