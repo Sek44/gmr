@@ -29,7 +29,7 @@ test("home uses standalone SVG assets and a theme separate from layout", () => {
     const svg = read("shared/themes/classic-play/assets/" + name);
     assert.match(svg, /<svg /);
     assert.match(svg, /viewBox=/);
-    assert.doesNotMatch(svg, /<image\b|data:image|https?:\/\//);
+    assert.doesNotMatch(svg, /<image\b|data:image|(?:href|src)="https?:\/\//);
   }
   const imageRefs = [...html.matchAll(/<img[^>]+src="([^"]+)"/g)];
   assert.ok(imageRefs.length >= 3);

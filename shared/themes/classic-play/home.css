@@ -65,9 +65,9 @@
 .hero-orbit { border-radius: 50%; background: #ffffff17; }
 .hero-orbit-one { width: 210px; height: 210px; }
 .hero-orbit-two { width: 168px; height: 168px; border: 2px dashed #ffffff44; background: transparent; }
-.hero-star { color: #ffe18b; font-size: 34px; font-weight: 900; }
+.home-hero-visual .hero-star { position: absolute; width: 34px; height: 34px; z-index: 2; }
 .hero-star-one { top: 0; right: 4px; }
-.hero-star-two { bottom: -10px; left: 4px; font-size: 21px; }
+.home-hero-visual .hero-star-two { bottom: -10px; left: 4px; width: 22px; height: 22px; }
 
 .gmr-daily-panel {
   background: #fff;

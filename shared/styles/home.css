@@ -46,7 +46,7 @@
   height: 180px;
   justify-self: center;
 }
-.home-hero-visual img { position: relative; z-index: 1; width: 146px; height: 146px; }
+.home-hero-visual > img:not(.hero-star) { position: relative; z-index: 1; width: 146px; height: 146px; }
 .hero-orbit, .hero-star { position: absolute; }
 
 .gmr-daily-panel { margin-top: 22px; padding: 22px 27px; }
