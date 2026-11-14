@@ -67,7 +67,7 @@ The source points, tangents, sample count and `heightAt(t)` remain fully control
 
 ## How to measure
 
-Open the dedicated **[mobile benchmark](../benchmark.html)** on the device being evaluated. It executes deterministic, **rendering-focused** camera/vehicle passes without modifying game credit, scores or preferences. Version `gcv-render-v5` automatically performs **seven passes** (1.5 s warmup + 8 s measurement each):
+Open the dedicated **[mobile benchmark](../benchmark.html)** on the device being evaluated. It executes deterministic, **rendering-focused** camera/vehicle passes without modifying game credit, scores or preferences. Version `gcv-render-v6` automatically performs **seven passes** (1.5 s warmup + 8 s measurement each):
 
 1. Classic solo; classic race with nine AI cars; motorcycle solo (three baseline workloads).
 2. The **same classic race** at 75% and 55% of its normal rendering pixel ratio.
