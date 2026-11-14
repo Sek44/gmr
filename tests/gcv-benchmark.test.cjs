@@ -61,9 +61,13 @@ test("benchmark is separate from the paid play-time and race state", () => {
 
 test("standalone benchmark browser scripts load in dependency order", () => {
   const html = fs.readFileSync(path.join(game, "benchmark.html"), "utf8");
-  const scriptPaths = [...html.matchAll(/<script defer src="\.\/([^"?]+\.js)(?:\?[^"]+)?"><\/script>/g)]
+  const scriptPaths = [...html.matchAll(/\["script", "\.\/([^"?]+\.js)(?:\?[^"]+)?"\]/g)]
     .map((match) => match[1]);
   assert.ok(scriptPaths.indexOf("track-progress.js") >= 0);
+  assert.ok(scriptPaths.indexOf("track-generator.js") >= 0);
+  assert.ok(scriptPaths.indexOf("track-generator.js") <
+    scriptPaths.indexOf("track-layout.js"),
+    "Generator must initialize before the layout registry");
   assert.ok(scriptPaths.indexOf("track-progress.js") < scriptPaths.indexOf("race.js"),
     "Race depends on TrackProgress and must load after it");
 
@@ -75,7 +79,8 @@ test("standalone benchmark browser scripts load in dependency order", () => {
       filename: file, timeout: 1000,
     });
   }
-  for (const name of ["GcvTrackProgress", "GcvRace", "GcvTrackLayout",
+  for (const name of ["GcvTrackProgress", "GcvRace", "GcvTrackGenerator",
+    "GcvTrackLayout",
     "GcvBarriers", "GcvScenery", "GcvWorld3D", "GcvVehicles",
     "GcvRendering", "GcvVisualEffects", "GcvBenchmarkConfig",
     "GcvBenchmarkDisplay", "GcvBenchmarkMetrics"]) {
