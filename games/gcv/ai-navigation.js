@@ -68,8 +68,8 @@ const GcvAiNavigation = (() => {
       // Speed peaks at the same physical upper bound as the player's car.
       for (let i = 0; i <= count; i++) {
         const progress = ai.startProgress + i * ds;
-        speeds[i] = Math.max(1, curveLimit(progress) *
-          clamp(ai.strength, 0.35, 1.05));
+        speeds[i] = clamp(curveLimit(progress) *
+          clamp(ai.strength, 0.35, 1.05), 1, maxSpeed);
       }
       speeds[0] = 0; // All drivers launch from the grid at rest.
       for (let i = 1; i <= count; i++) {
