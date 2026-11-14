@@ -9,6 +9,9 @@
   const restartButton = document.getElementById("restart-button");
   const homePanel = document.getElementById("gcv-home");
   const resumeButton = document.getElementById("resume-button");
+  const startButton = document.getElementById("start-button");
+  const startButtonLabel = document.getElementById("start-button-label");
+  const startSummary = document.getElementById("start-summary");
   const menuButton = document.getElementById("menu-button");
   const menuHomeButton = document.getElementById("menu-home-button");
   const scoresButton = document.getElementById("scores-button");
@@ -45,6 +48,7 @@
   let activeFlow = null;
   let activeNavigation = null;
   let preferences = null;
+  let deepLinkApplied = false;
 
   function announce(message) {
     notice.textContent = message;
@@ -77,14 +81,30 @@
     homePanel.querySelector(".gcv-home-panel")?.append(message);
   }
 
-  function start(THREE) {
-    const url = new URL(window.location.href);
-    const savedPreferences = preferences.get();
-    const TrackLayout = Tracks.select(url.searchParams.get("track") ?? savedPreferences.track);
-    const initialVehicle = Vehicles.normalize(
-      url.searchParams.get("vehicle") ?? savedPreferences.vehicle);
-    // A deep link takes precedence over saved defaults; it becomes the latest choice.
-    preferences.set({ track: TrackLayout.ID, vehicle: initialVehicle });
+  function start(THREE, { launch = false } = {}) {
+    // On a direct link, apply URL defaults once. Subsequent selections belong
+    // to the menu and must not silently change the active saved race.
+    if (!deepLinkApplied) {
+      const url = new URL(window.location.href);
+      const previous = preferences.get();
+      preferences.set({
+        track: Tracks.select(url.searchParams.get("track") ?? previous.track).ID,
+        vehicle: Vehicles.normalize(url.searchParams.get("vehicle") ?? previous.vehicle),
+      });
+      deepLinkApplied = true;
+    }
+    const selected = preferences.get();
+    // Build the previous circuit to allow Resume even when the selected
+    // circuit has changed. Only Start commits the new selection.
+    const saved = launch ? null : window.GameState.create("gcv").load();
+    const resumableTrack = saved?.saveRevision === SAVE_REVISION
+      ? Tracks.CIRCUITS.find((entry) => {
+        const layout = Tracks.select(entry.id);
+        return saved.layoutVersion === layout.VERSION &&
+          LapTimes.sameCircuitRoute(saved.circuitKey, LapTimes.circuitKey(layout));
+      })?.id : null;
+    const TrackLayout = Tracks.select(launch ? selected.track : (resumableTrack ?? selected.track));
+    const initialVehicle = selected.vehicle;
     const listeners = new AbortController();
     const { signal } = listeners;
     const {
@@ -292,7 +312,15 @@
     let session = null;
     const navigation = Navigation.create({
       window, document, location: window.location, stage, homePanel,
-      resumeButton, menuButton, menuHomeButton,
+      resumeButton,
+      resumeCard: document.getElementById("resume-card"),
+      resumeDetails: document.getElementById("resume-details"),
+      describeSession: () => {
+        const track = TrackLayout.ID === "rainbow" ? "Route Arc-en-ciel" : "Circuit classique";
+        const vehicle = document.querySelector(`[data-gcv-vehicle="${vehicleId}"] strong`)?.textContent ?? "Véhicule";
+        return `${track} · ${vehicle}`;
+      },
+      menuButton, menuHomeButton,
       scoresButton, menuScoresButton, clearControls,
       flow,
       onResume: () => {
@@ -318,89 +346,113 @@
       },
       resume: navigation.resume,
     });
-    function chooseVehicle(id, updateUrl = false) {
-      vehicleId = Vehicles.normalize(id);
-      setVehicle(vehicleId);
-      rendering.setVehicle(vehicleId);
+    function syncMenuSelections() {
+      const choices = preferences.get();
       document.querySelectorAll("[data-gcv-vehicle]").forEach((button) => {
-        const selected = button.dataset.gcvVehicle === vehicleId;
+        const selected = button.dataset.gcvVehicle === choices.vehicle;
         button.classList.toggle("is-selected", selected);
         button.setAttribute("aria-pressed", String(selected));
       });
-      if (updateUrl) {
-        preferences.set({ vehicle: vehicleId });
-        // Keep explicit URLs shareable without making them the preference store.
-        const url = new URL(window.location.href);
-        if (vehicleId === Vehicles.DEFAULT_ID) url.searchParams.delete("vehicle");
-        else url.searchParams.set("vehicle", vehicleId);
-        window.history.replaceState(null, "", url.href);
-        session?.changed();
-      }
-    }
-    document.querySelectorAll("[data-gcv-vehicle]").forEach((button) => {
-      button.addEventListener("click", () => {
-        if (vehicleId !== button.dataset.gcvVehicle)
-          chooseVehicle(button.dataset.gcvVehicle, true);
-      }, { signal });
-    });
-    function syncModeButtons() {
-      const isRace = preferences.get().mode === "race";
+      document.querySelectorAll("[data-gcv-track]").forEach((button) => {
+        const selected = button.dataset.gcvTrack === choices.track;
+        button.classList.toggle("is-selected", selected);
+        button.setAttribute("aria-pressed", String(selected));
+      });
+      const isRace = choices.mode === "race";
       freeModeButton.classList.toggle("is-selected", !isRace);
       freeModeButton.setAttribute("aria-pressed", String(!isRace));
       raceModeButton.classList.toggle("is-selected", isRace);
       raceModeButton.setAttribute("aria-pressed", String(isRace));
+      raceModeButton.querySelector("strong").textContent =
+        choices.track === "rainbow" ? "Course · parcours unique" : "Course · 3 tours";
+      startButtonLabel.textContent = isRace ? "Démarrer la course" : "Démarrer les essais";
+      const track = choices.track === "rainbow" ? "Route Arc-en-ciel" : "Circuit classique";
+      const vehicle = document.querySelector(`[data-gcv-vehicle="${choices.vehicle}"] strong`)?.textContent ?? "Véhicule";
+      startSummary.textContent = `${track} · ${vehicle} · ${isRace ? "Course" : "Essais libres"}`;
     }
-    function startMode(mode, action) {
-      preferences.set({ mode });
-      syncModeButtons();
-      action();
-    }
-    document.querySelectorAll("[data-gcv-track]").forEach((button) => {
-      const active = button.dataset.gcvTrack === TrackLayout.ID;
-      button.classList.toggle("is-selected", active);
-      button.setAttribute("aria-pressed", String(active));
+    document.querySelectorAll("[data-gcv-vehicle]").forEach((button) => {
       button.addEventListener("click", () => {
-        if (active) return;
-        // Retain fullscreen: rebuilding in this document does not leave the
-        // fullscreen stage, unlike location.assign (which exits fullscreen).
-        const url = new URL(window.location.href);
-        if (button.dataset.gcvTrack === "classic") url.searchParams.delete("track");
-        else url.searchParams.set("track", button.dataset.gcvTrack);
-        url.searchParams.delete("rev");
-        // A previous circuit's session must not overwrite the chosen crew.
-        preferences.set({ track: button.dataset.gcvTrack,
-          vehicle: vehicleId, camera: cameraMode });
-        if (vehicleId === Vehicles.DEFAULT_ID) url.searchParams.delete("vehicle");
-        else url.searchParams.set("vehicle", vehicleId);
-        disposeGame?.();
-        window.GameState.create("gcv").clear();
-        window.history.replaceState(null, "", url.href);
-        disposeGame = start(THREE);
+        preferences.set({ vehicle: button.dataset.gcvVehicle });
+        syncMenuSelections();
       }, { signal });
     });
-    const raceModeCaption = raceModeButton.querySelector("strong");
-    raceModeCaption.textContent = closed ? "Course · 3 tours" : "Course · parcours unique";
-    freeModeButton.addEventListener("click", () =>
-      startMode("free", session.chooseFree), { signal });
-    raceModeButton.addEventListener("click", () =>
-      startMode("race", session.startRace), { signal });
-    replayButton.addEventListener("click", () =>
-      startMode("race", session.startRace), { signal });
-    raceFreeButton.addEventListener("click", () =>
-      startMode("free", session.chooseFree), { signal });
+    document.querySelectorAll("[data-gcv-track]").forEach((button) => {
+      button.addEventListener("click", () => {
+        // Merely selecting a circuit never discards the current game.
+        preferences.set({ track: button.dataset.gcvTrack });
+        syncMenuSelections();
+      }, { signal });
+    });
+    freeModeButton.addEventListener("click", () => {
+      preferences.set({ mode: "free" });
+      syncMenuSelections();
+    }, { signal });
+    raceModeButton.addEventListener("click", () => {
+      preferences.set({ mode: "race" });
+      syncMenuSelections();
+    }, { signal });
+
+    function launchNewGame() {
+      const choices = preferences.get();
+      // Keep deep links shareable, but don't update the URL until Start.
+      const url = new URL(window.location.href);
+      if (choices.track === "classic") url.searchParams.delete("track");
+      else url.searchParams.set("track", choices.track);
+      if (choices.vehicle === Vehicles.DEFAULT_ID) url.searchParams.delete("vehicle");
+      else url.searchParams.set("vehicle", choices.vehicle);
+      url.searchParams.delete("rev");
+      window.history.replaceState(null, "", url.href);
+      if (choices.track !== TrackLayout.ID) {
+        // Rebuild inside the same fullscreen element; no document navigation.
+        disposeGame?.();
+        disposeGame = start(THREE, { launch: true });
+        return;
+      }
+      vehicleId = choices.vehicle;
+      cameraMode = choices.camera;
+      setVehicle(vehicleId);
+      rendering.setVehicle(vehicleId);
+      refreshCameraButton();
+      if (choices.mode === "race") session.startRace();
+      else session.startFree();
+    }
+    startButton.addEventListener("click", launchNewGame, { signal });
+    replayButton.addEventListener("click", () => {
+      preferences.set({ mode: "race" });
+      syncMenuSelections();
+      session.startRace();
+    }, { signal });
+    raceFreeButton.addEventListener("click", () => {
+      preferences.set({ mode: "free" });
+      syncMenuSelections();
+      session.chooseFree();
+    }, { signal });
     restartButton.addEventListener("click", session.restartNearFinish, { signal });
 
     session.bind();
-    // Session snapshots are resumable gameplay, not menu preferences. Their
-    // vehicle/camera must not silently replace the last explicit selections.
-    vehicleId = initialVehicle;
-    cameraMode = preferences.get().camera;
-    chooseVehicle(vehicleId);
-    syncModeButtons();
+    // The restored session owns the active vehicle and camera. Menu selections
+    // are independent and must never overwrite the saved run.
+    if (!flow.hasSession) {
+      vehicleId = initialVehicle;
+      cameraMode = preferences.get().camera;
+    }
+    setVehicle(vehicleId);
+    rendering.setVehicle(vehicleId);
+    syncMenuSelections();
     syncRaceCars();
     syncRaceHud();
     navigation.sync(); // Always open on home, including after restoration.
     refreshCameraButton();
+    if (launch) {
+      // Starting again replaces any compatible old session, without affecting
+      // lap records or shared scores.
+      vehicleId = preferences.get().vehicle;
+      cameraMode = preferences.get().camera;
+      setVehicle(vehicleId);
+      rendering.setVehicle(vehicleId);
+      if (preferences.get().mode === "race") session.startRace();
+      else session.startFree();
+    }
 
     function updateCar(dt, fallDt = dt) {
       if (navigation.paused && dt > 0) return;
