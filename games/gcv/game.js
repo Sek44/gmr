@@ -438,6 +438,20 @@
           { steer, accelerate, brake, airborne }, dt), roadY, jumpY };
         mudSkidIntensity = Physics.skidIntensity(driver.speed, steer);
         let nearest = closestRoad(driver.x, driver.z, lapTracker.index);
+        let airTravel = null;
+        if (airborne && !closed) {
+          const guided = TrackProgress.guideAirborne(positions, SAMPLE_COUNT,
+            previousPosition, driver, lapTracker.index, ROAD_HALF_WIDTH, steer, dt);
+          if (guided) {
+            driver.x = guided.x;
+            driver.z = guided.z;
+            driver.yaw = guided.yaw;
+            // This is actual forward travel along the road during flight,
+            // not a grant of progress for a sample-index change.
+            airTravel = guided.travel;
+            nearest = { index: guided.index, distanceSquared: 0 };
+          }
+        }
         // Slide along the barrier and progressively match its forward
         // direction, even when the player keeps steering into the wall.
         // Airborne vehicles may fly above the rails; ground collisions
@@ -485,8 +499,10 @@
         } else {
           // Longitudinal motion is measured once for both the chrono and
           // the live classification. Road samples only locate the tangent.
-          const travel = TrackProgress.alongTrackTravel(
-            previousPosition, driver, directions[nearest.index]);
+          const travel = airTravel === null
+            ? TrackProgress.alongTrackTravel(
+              previousPosition, driver, directions[nearest.index])
+            : airTravel;
           const startCrossing = TrackProgress.finishCrossing(
             previousPosition, driver, startCenter, directions[startIndex],
             ROAD_HALF_WIDTH);
