@@ -50,8 +50,9 @@ tire une variation bornée à partir de la graine. La même graine et le même
 template produisent **exactement le même parcours** (sans `Math.random`).
 Changer l'ordre, le nombre ou les paramètres des sections produit des
 parcours plus différents encore. Dans l'état actuel, la fonction
-`GcvTrackLayout.generateSprint(seed)` expose les variantes de la Route
-Arc-en-ciel, mais **le menu utilise encore une seule graine fixe**. Aucun
+`GcvTrackLayout.generateClassic(seed)` et
+`GcvTrackLayout.generateSprint(seed)` exposent les variantes des deux circuits,
+mais **le menu utilise encore une graine fixe par circuit**. Aucun
 tirage aléatoire ne modifie une course déjà lancée.
 
 ## Règles de conception et vérifications
