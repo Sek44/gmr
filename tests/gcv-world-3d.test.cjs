@@ -115,7 +115,7 @@ const THREE = {
   DodecahedronGeometry: Geometry, BufferGeometry: Geometry,
   Float32BufferAttribute: class { constructor(array) { this.array = array; } },
   MeshStandardMaterial: Material, MeshBasicMaterial: Material,
-  Color: Material, Fog: Material, DoubleSide: 2,
+  Color: Material, Fog: Material, DoubleSide: 2, FrontSide: 0,
 };
 
 test("static world shares its track samples with barriers and gameplay", () => {
@@ -219,6 +219,27 @@ test("rainbow start and finish remain differently colored and need only four ins
     assert.ok(mesh.instances.every((instance) =>
       instance.position.y === center.y + 0.14));
   }
+});
+
+test("horizontal transparent mud and water use front-facing single passes", () => {
+  const Barriers = require("../games/gcv/barriers.js");
+  const world = World3D.create({ THREE, TrackLayout, Barriers, Scenery });
+  const expected = new Map([
+    [0x614a37, 0.42],
+    [0x527d89, 0.77],
+    [0xadd6e0, 0.23],
+  ]);
+  for (const [color, opacity] of expected) {
+    const mesh = world.scene.children.find((item) =>
+      item.material?.color === color && item instanceof InstancedMesh);
+    assert.ok(mesh, "missing instanced transparent surface " + color.toString(16));
+    assert.equal(mesh.material.transparent, true);
+    assert.equal(mesh.material.opacity, opacity);
+    assert.equal(mesh.material.side, THREE.FrontSide,
+      "upward decal should not render its back face");
+    assert.equal(mesh.material.depthWrite, false);
+  }
+  assert.equal(expected.size, 3);
 });
 
 test("rainbow world initializes with distinct, valid start and finish gates", () => {
