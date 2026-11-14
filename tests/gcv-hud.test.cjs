@@ -210,3 +210,13 @@ test("game refreshes normal chrono once after the simulation and lap-hold update
   assert.match(frameFunction, /updateCar\(dt, realDt\);[\s\S]*tickLapHold\(realDt\);[\s\S]*refreshChrono\(\)/);
   assert.equal((frameFunction.match(/refreshChrono\(\)/g) || []).length, 1);
 });
+
+test("completed open-route timer keeps its finished title without a record", () => {
+  const { hud, get } = setup(false);
+  const timer = { running: false, finished: true, elapsedMs: 57000,
+    delta: null, splitNumber: 2 };
+  hud.refreshChrono(timer, null);
+  assert.equal(get("lap-chrono").textContent, "57.00 s");
+  assert.equal(get("lap-chrono-title").textContent, "PARCOURS TERMINÉ");
+  assert.equal(get("lap-chrono-rank").hidden, true);
+});
