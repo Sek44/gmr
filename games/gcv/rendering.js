@@ -395,6 +395,19 @@ const GcvRendering = (() => {
     }
 
     function render() { renderer.render(scene, camera); }
+    // Snapshot the renderer's per-frame counters after render(). No profiler
+    // dependencies or extra GPU synchronization in the normal game loop.
+    function getMetrics() {
+      return {
+        drawCalls: renderer.info?.render?.calls ?? null,
+        triangles: renderer.info?.render?.triangles ?? null,
+        geometries: renderer.info?.memory?.geometries ?? null,
+        textures: renderer.info?.memory?.textures ?? null,
+        pixelRatio: renderer.getPixelRatio?.() ?? null,
+        framebufferWidth: renderer.domElement.width ?? null,
+        framebufferHeight: renderer.domElement.height ?? null,
+      };
+    }
     function dispose() {
       window.removeEventListener("resize", resize);
       resizeObserver?.disconnect();
@@ -421,7 +434,7 @@ const GcvRendering = (() => {
     }
     return {
       syncOpponents, updatePlayer, setView, setVehicle,
-      startGridIntro, cancelGridIntro, updateCamera, render, dispose,
+      startGridIntro, cancelGridIntro, updateCamera, render, getMetrics, dispose,
       get gridIntroActive() { return gridIntroElapsed !== null; },
     };
   }
