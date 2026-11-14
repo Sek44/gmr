@@ -74,6 +74,8 @@ const GcvTrackGenerator = (() => {
     for (const [i, instruction] of template.sections.entries()) {
       if (!instruction || !["straight", "turn"].includes(instruction.type))
         throw new TypeError("Unknown circuit section " + i);
+      if (instruction.hump && instruction.rainbow)
+        throw new RangeError("A hump and the rainbow zone need separate straights");
       const start = metres;
       const startHeading = heading;
       if (instruction.type === "straight") {
