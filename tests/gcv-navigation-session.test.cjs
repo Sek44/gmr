@@ -25,20 +25,31 @@ function element() {
   };
 }
 
-test("navigation: menu, session resume, score iframe, same-origin close and fullscreen", async () => {
+test("navigation: resume, menu, external scores and fullscreen", async () => {
   const win = element(), doc = element(), stage = element();
-  const homePanel = element(), resumeButton = element(), scoresFrame = element();
-  scoresFrame.contentWindow = {};
-  const menuButton = element(), scoresButton = element();
-  const menuScoresButton = element(), fullscreenButton = element();
-  const menuFullscreenButton = element();
+  const homePanel = element(), resumeButton = element();
+  const menuButton = element(), menuHomeButton = element();
+  const scoresButton = element(), menuScoresButton = element();
+  const navigations = [];
+  win.parent = win; // Standalone game, not embedded in GMR host.
+  win.location = { assign(href) { navigations.push(href); } };
+  const location = {
+    origin: "https://example.org",
+    href: "https://example.org/gmr/games/gcv/index.html",
+  };
+  let fullscreenRequests = 0;
+  stage.requestFullscreen = async () => {
+    fullscreenRequests++;
+    doc.fullscreenElement = stage;
+    doc.fire("fullscreenchange");
+  };
   const flow = Flow.create();
-  let clearCount = 0, saved = 0, resumes = 0;
+  let clears = 0, saved = 0, resumes = 0;
   const nav = Navigation.create({
-    window: win, document: doc, location: { origin: "https://example.org" },
-    stage, homePanel, resumeButton, menuButton, scoresButton,
-    menuScoresButton, scoresFrame, fullscreenButton, menuFullscreenButton,
-    clearControls: () => { clearCount++; },
+    window: win, document: doc, location, stage, homePanel,
+    resumeButton, menuButton, menuHomeButton,
+    scoresButton, menuScoresButton,
+    clearControls: () => { clears++; },
     flow,
     onResume: () => { resumes++; }, changed: () => { saved++; }, announce() {},
   });
@@ -46,6 +57,9 @@ test("navigation: menu, session resume, score iframe, same-origin close and full
   assert.equal(nav.paused, true);
   assert.equal(resumeButton.hidden, true);
   resumeButton.fire("click");
+  await Promise.resolve();
+  assert.equal(fullscreenRequests, 1);
+  assert.equal(doc.fullscreenElement, stage);
   assert.equal(nav.paused, false);
   assert.equal(flow.hasSession, true);
   assert.equal(homePanel.hidden, true);
@@ -55,31 +69,16 @@ test("navigation: menu, session resume, score iframe, same-origin close and full
   assert.equal(nav.paused, true);
   assert.equal(resumeButton.textContent, "Reprendre la course");
   assert.equal(saved, 2);
+  assert.equal(clears, 1);
   menuScoresButton.fire("click");
-  assert.equal(scoresFrame.hidden, false);
-  assert.equal(scoresFrame.src, "../../scores.html?game=gcv&from=gcv");
-  win.fire("message", { origin: "https://attacker.org",
-    source: scoresFrame.contentWindow, data: { type: "gmr-scores-back" } });
-  assert.equal(nav.scoresOpen, true);
-  win.fire("message", { origin: "https://example.org",
-    source: {}, data: { type: "gmr-scores-back" } });
-  assert.equal(nav.scoresOpen, true);
-  win.fire("message", { origin: "https://example.org",
-    source: scoresFrame.contentWindow, data: { type: "gmr-scores-back" } });
-  assert.equal(nav.scoresOpen, false);
-  assert.equal(nav.paused, true); // Still at the menu after closing scores.
-  assert.equal(scoresFrame.src, undefined);
-  assert.equal(resumes, 2);
-  assert.equal(clearCount, 2);
-  stage.requestFullscreen = async () => { doc.fullscreenElement = stage; doc.fire("fullscreenchange"); };
-  doc.exitFullscreen = async () => { doc.fullscreenElement = null; doc.fire("fullscreenchange"); };
-  await nav.closeScores();
-  fullscreenButton.fire("click");
-  await Promise.resolve();
-  assert.equal(fullscreenButton["aria-label"], "Quitter le plein écran");
-  menuFullscreenButton.fire("click");
-  await Promise.resolve();
-  assert.equal(menuFullscreenButton["aria-label"], "Passer en plein écran");
+  assert.equal(navigations.length, 1);
+  assert.equal(navigations[0],
+    "https://example.org/gmr/scores.html?game=gcv&from=gcv");
+  assert.equal(saved, 3, "session saved before navigating away");
+  assert.equal(clears, 2);
+  assert.equal(resumes, 1);
+  assert.equal(nav.scoresOpen, false,
+    "scores are now an external route, not an in-game iframe");
 });
 
 function vector(x, z) {
