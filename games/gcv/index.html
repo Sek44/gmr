@@ -16,7 +16,7 @@
         || String(Date.now());
       const resources = [
       ["style", "../../shared/site.css"],
-      ["style", "./game.css?v=20261114m"],
+      ["style", "./game.css?v=20261114n"],
       ["script", "../../shared/game-state.js"],
       ["script", "../../shared/play-time.js?v=20261111-seconds2"],
       ["script", "./physics.js?v=20261114m"],
@@ -84,8 +84,12 @@
             </div>
             <button type="button" id="resume-button" class="gcv-home-button gcv-home-resume">Reprendre la course</button>
           </section>
-          <div class="gcv-menu-main">
-            <div class="gcv-menu-options">
+          <section class="gcv-menu-main" aria-labelledby="gcv-new-game-title">
+            <header class="gcv-new-game-heading">
+              <h3 id="gcv-new-game-title">Nouvelle partie</h3>
+            </header>
+            <div class="gcv-new-game-content">
+              <div class="gcv-menu-options">
               <section class="gcv-menu-section" aria-labelledby="gcv-track-title">
                 <h3 id="gcv-track-title">1 · Circuit</h3>
                 <div class="gcv-track-chooser" role="group" aria-label="Choisir le circuit">
@@ -115,17 +119,17 @@
                 </div>
               </section>
             </div>
-            <aside class="gcv-menu-launch" aria-label="Démarrer une nouvelle partie">
-              <p class="gcv-launch-eyebrow">NOUVELLE PARTIE</p>
-              <strong class="gcv-launch-title">À toi de jouer !</strong>
+              <aside class="gcv-menu-launch" aria-label="Démarrer une nouvelle partie">
+                <strong class="gcv-launch-title">À toi de jouer !</strong>
               <p id="start-summary" class="gcv-start-summary"></p>
               <button type="button" id="start-button" class="gcv-start-button">
                 <svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M8 4.5v15l12-7.5L8 4.5Z"/></svg>
                 <span id="start-button-label">Démarrer les essais</span>
               </button>
-              <p class="gcv-launch-note">Une nouvelle partie démarre avec les réglages choisis.</p>
-            </aside>
-          </div>
+                <p class="gcv-launch-note">Une nouvelle partie démarre avec les réglages choisis.</p>
+              </aside>
+            </div>
+          </section>
         </div>
       </div>
 
