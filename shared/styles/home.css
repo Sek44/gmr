@@ -44,22 +44,12 @@
 .games-heading { margin-bottom: 17px; }
 .games-heading h2 { margin: 2px 0 0; }
 .games-heading p { margin: 0; }
-.game-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 390px), 1fr)); gap: 18px; }
-.game-card { display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
-.game-artwork { display: grid; place-items: center; min-width: 0; overflow: hidden; }
-.game-picture { display: block; width: min(100%, 430px); height: auto; max-height: 240px; object-fit: contain; }
-.game-content { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; padding: 25px; }
-.game-action { gap: 9px; margin-top: 23px; }
-.game-card:only-child { flex-direction: row; }
-.game-card:only-child .game-artwork { flex: 1 1 50%; }
-.game-card:only-child .game-content { flex: 1 1 50%; justify-content: center; padding: 30px; }
-.game-card:only-child .game-picture { max-height: 280px; }
-
-@media (max-width: 700px) {
-  .game-card:only-child { flex-direction: column; }
-  .game-card:only-child .game-artwork, .game-card:only-child .game-content { flex: auto; }
-  .game-card:only-child .game-picture { max-height: 220px; }
-}
+.game-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap: 16px; }
+.game-card { display: flex; flex-direction: row; width: 100%; max-width: 540px; min-height: 154px; min-width: 0; overflow: hidden; }
+.game-artwork { display: grid; place-items: center; flex: 0 0 42%; min-width: 0; overflow: hidden; }
+.game-picture { display: block; width: 100%; height: auto; max-height: 168px; object-fit: contain; }
+.game-content { display: flex; flex: 1 1 0; flex-direction: column; align-items: flex-start; justify-content: center; min-width: 0; padding: 18px; }
+.game-action { gap: 9px; margin-top: 14px; }
 @media (max-width: 520px) {
   .home-page { width: min(calc(100% - 24px), 1000px); padding-top: 12px; }
   .home-topbar { margin-bottom: 14px; }
@@ -68,7 +58,8 @@
   .daily-stats { gap: 6px; }
   .daily-stat { padding: 11px 6px; }
   .home-games { margin-top: 28px; }
-  .game-content, .game-card:only-child .game-content { padding: 20px; }
+  .game-artwork { flex-basis: 40%; }
+  .game-content { padding: 13px 12px; }
 }
 @media (max-width: 360px) {
   .daily-heading { flex-wrap: wrap; }

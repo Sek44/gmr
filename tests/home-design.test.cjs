@@ -21,7 +21,12 @@ test("home uses standalone SVG assets and a theme separate from layout", () => {
   assert.doesNotMatch(theme, /\.home-hero/);
   assert.match(entry, /themes\/classic-play\/theme\.css/);
   assert.match(entry, /themes\/classic-play\/home\.css/);
-  assert.match(layout, /\.game-card/);
+  assert.match(layout, /\.game-card\s*\{[^}]*flex-direction:\s*row/);
+  assert.match(layout, /\.game-card\s*\{[^}]*max-width:\s*540px/);
+  assert.match(layout, /\.game-artwork\s*\{[^}]*flex:\s*0 0 42%/);
+  assert.match(layout, /@media \(max-width: 520px\)[\s\S]*\.game-artwork\s*\{\s*flex-basis:\s*40%/);
+  assert.doesNotMatch(layout, /\.game-card:only-child/);
+  assert.doesNotMatch(theme, /\.game-card:only-child/);
   assert.match(theme, /\.game-artwork/);
   assert.doesNotMatch(layout, /background-color:|#[a-fA-F0-9]{3,8}/);
   const assets = path.join(root, "shared/themes/classic-play/assets");

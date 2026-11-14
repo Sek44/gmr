@@ -4,7 +4,7 @@
 
 ## Sources de vérité
 
-- `shared/styles/home.css` : disposition responsive de l’accueil, indépendante de toute palette ; conserver ici les grilles et espacements.
+- `shared/styles/home.css` : disposition responsive de l’accueil, indépendante de toute palette ; conserver ici les grilles et espacements. Les cartes ont une largeur limitée à 540 px avec un SVG à gauche et le contenu à droite, y compris sur mobile et lorsqu’un seul jeu est disponible.
 - `shared/themes/classic-play/theme.css` : palette et fond du thème, limités aux pages portant `home-body` / `home-page`.
 - `shared/themes/classic-play/home.css` : apparence des composants de l’accueil (temps de jeu et cartes, sans bandeau d’introduction).
 - `shared/styles/components.css` : boutons, cadres et navigation communs, indépendants du thème de l’accueil.
