@@ -134,7 +134,7 @@ function navigationFixture(hosted) {
     ...buttons, clearControls() {}, flow, onResume() {},
     changed() { saves++; }, announce() {},
   });
-  return { nav, buttons, pages, hostedPages, flow,
+  return { nav, buttons, stage, pages, hostedPages, flow,
     get fullscreenCalls() { return fullscreenCalls; },
     get saves() { return saves; } };
 }
@@ -150,6 +150,16 @@ test("Direct GCV start requests fullscreen, scores save and leave fullscreen", a
   assert.equal(f.pages[0],
     "https://sek44.github.io/gmr/scores.html?game=gcv&from=gcv");
   assert.ok(f.saves >= 2);
+  f.nav.dispose();
+});
+
+
+test("First direct-game selection requests fullscreen, but exit buttons do not", () => {
+  const f = navigationFixture(false);
+  f.stage.fire("click", { target: { closest() { return true; } } });
+  assert.equal(f.fullscreenCalls, 0); // Home/Scores are not an entry gesture.
+  f.stage.fire("click", { target: { closest() { return null; } } });
+  assert.equal(f.fullscreenCalls, 1);
   f.nav.dispose();
 });
 
