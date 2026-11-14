@@ -12,7 +12,7 @@ const GcvWorld3D = (() => {
     const rainbow = TrackLayout.RAINBOW || null;
     function heightAt(t) {
       // Shared continuous height profile for sampled road, AI and player.
-      // Broad crests let the car launch clear of the descending roadway.
+      // Wide, rounded crests produce modest speed-dependent lift-off.
       return (TrackLayout.HUMP_PROFILES || []).reduce((height, hump) =>
         height + hump.height * Math.exp(-Math.pow((t - hump.at) / hump.width, 2)), 0);
     }
