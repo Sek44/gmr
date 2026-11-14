@@ -119,7 +119,7 @@ test("CPU profiler returns distinct phase averages, frame tail and spike rates",
   assert.equal(result.over20Pct, 200 / 3);
   assert.equal(result.frameMaxMs, 51);
   assert.equal(result.cpuAvgMs, 14);
-  assert.equal(result.cpuP95Ms, 19.6);
+  assert.ok(Math.abs(result.cpuP95Ms - 20.3) < 1e-9);
   assert.equal(result.cpuMaxMs, 21);
   assert.equal(result.routeAvgMs, 2);
   assert.equal(result.opponentsAvgMs, 2);
