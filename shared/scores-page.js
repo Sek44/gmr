@@ -22,7 +22,9 @@
   const origin = games.find((game) => game.id === params.get("from"));
   if (origin) {
     const back = document.getElementById("scores-back");
-    back.href = "./games/" + encodeURIComponent(origin.id) + "/";
+    const gameUrl = new URL("./games/" + encodeURIComponent(origin.id) + "/", location.href);
+    gameUrl.searchParams.set("gmr-refresh", String(Date.now()));
+    back.href = gameUrl.href;
     back.setAttribute("aria-label", "Retour au jeu");
   }
   if (window.parent !== window) {
