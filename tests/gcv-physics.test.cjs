@@ -196,22 +196,21 @@ test("fall begins descending immediately, without any initial floating arc", () 
   assert.ok(fall.remaining < physics.FALL_SECONDS);
 });
 
-test("giant ramp jump stays airborne almost three seconds and lands once", () => {
-  let jump = { height: 0.01, velocity: physics.JUMP_TAKEOFF_SPEED };
-  let peak = 0, landed = 0, firstLanding = null;
-  for (let frame = 0; frame < 300; frame++) {
+test("normal-gravity jumps have no artificial upward boost", () => {
+  let jump = { height: 0.001, velocity: 4 };
+  let peak = 0, landed = 0, duration = 0;
+  for (let frame = 0; frame < 100; frame++) {
     jump = physics.advanceJump(jump.height, jump.velocity, 1 / 60);
     peak = Math.max(peak, jump.height);
-    if (jump.landed) { landed++; firstLanding = frame / 60; }
+    if (jump.landed) { landed++; duration = frame / 60; }
   }
-  assert.ok(peak > 13 && peak < 15, "substantial aerial height");
-  assert.ok(firstLanding > 2.7 && firstLanding < 3);
+  assert.ok(peak > 0.7 && peak < 0.9);
+  assert.ok(duration > 0.75 && duration < 0.9);
   assert.equal(landed, 1);
   assert.equal(jump.height, 0);
   assert.equal(jump.velocity, 0);
-  assert.equal(physics.GRAVITY, 9.81, "off-road falls remain unchanged");
+  assert.equal(physics.JUMP_GRAVITY, physics.GRAVITY);
 });
-
 test("airborne steering and braking are gentle and cannot reverse", () => {
   const moving = { x: 0, z: 0, yaw: 0, speed: 40 };
   const ground = physics.advance(moving, { steer: 1, brake: true }, 0.05);
@@ -235,56 +234,83 @@ test("jump altitude stays ballistic when the road rises or descends", () => {
   assert.equal(physics.advanceJump(0, 0, 0.05).landed, false);
 });
 
-test("a hump launches the vehicle just before its crest, not after the descent", () => {
-  const humps = [0.23, 0.39, 0.81];
-  const takeoff = (progress, speed = 30, dt = 1 / 60) =>
-    physics.shouldLaunchAtCrest(progress, speed, dt, 1000, humps);
-  assert.equal(takeoff(0.227), false, "too far from the first crest");
-  assert.equal(takeoff(0.228), true, "takeoff begins two metres before the top");
-  assert.equal(takeoff(0.389), true, "every crest is considered");
-  assert.equal(takeoff(0.811), false, "must not take off down the slope");
-  assert.equal(takeoff(0.228, 20), false, "slow vehicles remain on the ground");
-  assert.equal(takeoff(0.228, -30), false, "reverse never triggers a jump");
-  assert.equal(takeoff(0.225, 65, 0.05), false);
-  assert.equal(takeoff(0.227, 65, 0.05), true,
-    "high speed anticipates more than a single frame of travel");
+test("takeoff depends on speed, upward road slope and crest curvature", () => {
+  const layout = require("../games/gcv/track-layout.js").SPRINT;
+  const hill = layout.HUMP_PROFILES[0];
+  const length = layout.WAYPOINTS.slice(1).reduce((total, point, i) =>
+    total + Math.hypot(point[0] - layout.WAYPOINTS[i][0],
+      point[1] - layout.WAYPOINTS[i][1]), 0);
+  const heightAt = (t) =>
+    hill.height * Math.exp(-Math.pow((t - hill.at) / hill.width, 2));
+  const approaching = hill.at - 30 / length;
+  const fast = physics.takeoffVelocity(approaching, 69, length, heightAt);
+  assert.ok(fast > 0 && fast < 10, "velocity comes from the road slope");
+  assert.equal(physics.takeoffVelocity(approaching, 35, length, heightAt), null,
+    "a slow car stays on the road");
+  assert.equal(physics.takeoffVelocity(hill.at + 20 / length, 69, length, heightAt), null,
+    "already descending the hill must not trigger a jump");
+  assert.equal(physics.takeoffVelocity(approaching, -69, length, heightAt), null);
+  assert.equal(physics.takeoffVelocity(approaching, 69, length, () => 0), null);
 });
-
-test("jump touchdown is detected once even at low frame rates", () => {
-  let jump = { height: 0.01, velocity: physics.JUMP_TAKEOFF_SPEED };
+test("jump touchdown is detected once at a low frame rate", () => {
+  let jump = { height: 0.001, velocity: 4 };
   let landingCount = 0;
-  for (let i = 0; i < 100; i++) {
+  for (let i = 0; i < 50; i++) {
     jump = physics.advanceJump(jump.height, jump.velocity, 0.05);
     if (jump.landed) landingCount++;
   }
   assert.equal(landingCount, 1);
 });
-
-test("all four giant hills give sustained airtime over their descending slopes", () => {
+test("hills give shallow speed-dependent airtime instead of huge leaps", () => {
   const layout = require("../games/gcv/track-layout.js").SPRINT;
   const profiles = layout.HUMP_PROFILES;
-  const distance = layout.WAYPOINTS.slice(1).reduce((length, point, index) =>
-    length + Math.hypot(point[0] - layout.WAYPOINTS[index][0],
-      point[1] - layout.WAYPOINTS[index][1]), 0);
+  const distance = layout.WAYPOINTS.slice(1).reduce((length, point, i) =>
+    length + Math.hypot(point[0] - layout.WAYPOINTS[i][0],
+      point[1] - layout.WAYPOINTS[i][1]), 0);
   const ground = (t) => profiles.reduce((y, hill) =>
     y + hill.height * Math.exp(-Math.pow((t - hill.at) / hill.width, 2)), 0);
-  const step = 1 / 60, speed = 45;
-  for (const hill of profiles) {
-    let position = hill.at - 2 / distance;
-    let priorGround = ground(position);
-    let flight = { height: 0.01, velocity: physics.JUMP_TAKEOFF_SPEED };
-    let landingCount = 0, duration = 0;
-    for (let frame = 0; frame < 360; frame++) {
-      position += speed * step / distance;
-      const roadY = ground(position);
-      flight = physics.advanceJump(flight.height, flight.velocity, step,
-        roadY - priorGround);
-      priorGround = roadY;
-      duration += step;
-      if (flight.landed) { landingCount++; break; }
+
+  function crossHill(hill, speed) {
+    const step = 1 / 60;
+    let t = hill.at - 2 * hill.width;
+    let height = 0, velocity = 0, cooldown = 0;
+    let takeoffs = 0, landings = 0, peak = 0, framesInAir = 0;
+    while (t < hill.at + 2 * hill.width) {
+      const previousRoad = ground(t);
+      t += speed * step / distance;
+      cooldown = Math.max(0, cooldown - step);
+      if (height === 0 && velocity === 0 && cooldown === 0) {
+        const launch = physics.takeoffVelocity(t, speed, distance, ground);
+        if (launch !== null) {
+          height = 0.001; velocity = launch; cooldown = 1;
+          takeoffs++;
+          // Takeoff begins on the current surface; the ballistic integration
+          // starts on the next frame, just as in game.js.
+          continue;
+        }
+      }
+      if (height > 0 || velocity > 0) {
+        const next = physics.advanceJump(height, velocity, step,
+          ground(t) - previousRoad);
+        height = next.height;
+        velocity = next.velocity;
+        peak = Math.max(peak, height);
+        framesInAir++;
+        if (next.landed) landings++;
+      }
     }
-    assert.ok(duration > 3.2 && duration < 4,
-      "sustained flight at crest " + hill.at + ": " + duration);
-    assert.equal(landingCount, 1);
+    return { takeoffs, landings, peak, seconds: framesInAir * step };
+  }
+
+  for (const hill of profiles) {
+    const slow = crossHill(hill, 40);
+    const fast = crossHill(hill, 69);
+    assert.equal(slow.takeoffs, 0, "slow car hugs the surface");
+    assert.equal(fast.takeoffs, 1);
+    assert.equal(fast.landings, 1);
+    assert.ok(fast.peak > 0.2 && fast.peak < 4,
+      "fast car lifts only slightly above hill " + hill.at + ": " + fast.peak);
+    assert.ok(fast.seconds > 1 && fast.seconds < 3,
+      "flight must be short, not a fixed multi-second jump");
   }
 });
