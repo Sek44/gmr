@@ -6,13 +6,10 @@
   const stage = document.getElementById("gcv-stage");
   const sceneHost = document.getElementById("gcv-scene");
   const cameraButton = document.getElementById("camera-button");
-  const fullscreenButton = document.getElementById("fullscreen-button");
   const restartButton = document.getElementById("restart-button");
   const homePanel = document.getElementById("gcv-home");
   const resumeButton = document.getElementById("resume-button");
   const menuButton = document.getElementById("menu-button");
-  const menuFullscreenButton = document.getElementById("menu-fullscreen-button");
-  const homeButton = document.getElementById("home-button");
   const menuHomeButton = document.getElementById("menu-home-button");
   const scoresButton = document.getElementById("scores-button");
   const menuScoresButton = document.getElementById("menu-scores-button");
@@ -295,8 +292,8 @@
     let session = null;
     const navigation = Navigation.create({
       window, document, location: window.location, stage, homePanel,
-      resumeButton, menuButton, homeButton, menuHomeButton,
-      scoresButton, menuScoresButton, fullscreenButton, menuFullscreenButton, clearControls,
+      resumeButton, menuButton, menuHomeButton,
+      scoresButton, menuScoresButton, clearControls,
       flow,
       onResume: () => {
         lastFrame = performance.now();
