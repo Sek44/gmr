@@ -13,25 +13,42 @@
   touch-action: pan-y;
 }
 .gcv-home-panel {
-  width: min(900px, 100%); margin-block: auto; padding: clamp(14px, 2vw, 22px);
-  display: flex; flex-direction: column; gap: 14px;
-  border: 1px solid #aecbd58c; border-radius: 22px;
-  background: #0b2036f2; color: white;
-  box-shadow: 0 16px 54px #0009;
+  width: min(900px, 100%); margin-block: auto;
+  display: flex; flex-direction: column; gap: 13px;
+  color: white;
 }
-.gcv-menu-heading { text-align: left; border-bottom: 1px solid #8daec347; padding: 0 3px 10px; }
+.gcv-menu-heading {
+  text-align: left; padding: 16px 20px;
+  border: 1px solid #aecbd58c; border-radius: 18px;
+  background: #0b2036eb; box-shadow: 0 9px 28px #0005;
+}
 .gcv-home-eyebrow { margin: 0 0 4px; color: #f6d581; font-size: .72rem; font-weight: 900; letter-spacing: .17em; }
 .gcv-home-panel h2 { margin: 0; font-size: clamp(1.8rem, 4.6vw, 2.9rem); line-height: 1.05; font-weight: 950; letter-spacing: .035em; }
 .gcv-home-description { margin: 5px 0 0; color: #cbdce8; font-size: .88rem; }
 .gcv-resume-card {
   display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
-  padding: 11px 13px; border: 1px solid #ead18b9c; border-radius: 13px;
+  padding: 12px 16px; border: 1px solid #ead18b9c; border-radius: 17px;
   background: linear-gradient(100deg, #50472d, #263c47);
+  box-shadow: 0 9px 28px #0004;
 }
 .gcv-resume-text { min-width: 0; display: flex; flex: 1 1 180px; flex-direction: column; gap: 4px; }
 .gcv-resume-text strong { font-size: .96rem; color: #ffe6a2; }
 .gcv-resume-text span { color: #e5eaf0; font-size: .78rem; }
-.gcv-menu-main { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(220px, .9fr); gap: 13px; }
+.gcv-menu-main {
+  min-width: 0; display: flex; flex-direction: column; gap: 12px;
+  padding: 16px 18px;
+  border: 1px solid #aecbd58c; border-radius: 18px;
+  background: #0b2036f2; box-shadow: 0 11px 35px #0005;
+}
+.gcv-new-game-heading { padding: 0 2px 8px; border-bottom: 1px solid #aecbd54f; }
+.gcv-new-game-heading h3 {
+  margin: 0; color: #f6dc9d; font-size: 1.12rem;
+  font-weight: 900; letter-spacing: .025em;
+}
+.gcv-new-game-content {
+  min-width: 0; display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(220px, .9fr); gap: 13px;
+}
 .gcv-menu-options { min-width: 0; display: grid; gap: 10px; }
 .gcv-menu-section { min-width: 0; padding: 10px; border: 1px solid #7a9db65c; border-radius: 13px; background: #17314a8f; }
 .gcv-menu-section h3 { margin: 0 0 9px; color: #f6dc9d; font-size: .84rem; letter-spacing: .04em; font-weight: 850; }
@@ -95,7 +112,7 @@
 .gcv-resume-card[hidden], .gcv-race-overlay[hidden],
 .gcv-race-overlay-actions[hidden], .gcv-race-position[hidden] { display: none; }
 @media (max-width: 700px) {
-  .gcv-menu-main { grid-template-columns: minmax(0, 1fr); }
+  .gcv-new-game-content { grid-template-columns: minmax(0, 1fr); }
   .gcv-menu-launch { gap: 7px; padding: 12px; }
   .gcv-launch-title, .gcv-launch-note { display: none; }
   .gcv-start-button { min-height: 54px; }
@@ -110,10 +127,13 @@
 }
 @media (max-height: 480px) and (orientation: landscape) {
   .gcv-home { padding: 43px 9px 9px; }
-  .gcv-home-panel { gap: 7px; width: min(920px, 100%); padding: 9px 13px; }
-  .gcv-menu-heading { padding-bottom: 5px; }
+  .gcv-home-panel { gap: 6px; width: min(920px, 100%); }
+  .gcv-menu-heading { padding: 7px 12px; }
   .gcv-home-panel h2 { font-size: 1.6rem; }
-  .gcv-menu-main { grid-template-columns: minmax(0, 1.7fr) minmax(180px, .8fr); gap: 8px; }
+  .gcv-menu-main { padding: 7px 10px; gap: 5px; }
+  .gcv-new-game-heading { padding-bottom: 3px; }
+  .gcv-new-game-heading h3 { font-size: .9rem; }
+  .gcv-new-game-content { grid-template-columns: minmax(0, 1.7fr) minmax(180px, .8fr); gap: 8px; }
   .gcv-menu-options { gap: 6px; }
   .gcv-menu-section { padding: 7px; }
   .gcv-menu-section h3 { margin-bottom: 5px; }
@@ -465,9 +485,9 @@ html.gcv-embedded .gcv-stage {
 .gcv-actions #restart-button { grid-column: 1; grid-row: 2; }
 .gcv-actions #camera-button { grid-column: 2; grid-row: 2; }
 
-/* Compact portrait launcher: the title shares its top row with the two
-   navigation icons, and the five vehicles use two rows instead of three.
-   The entire menu remains scrollable on exceptionally short displays. */
+/* Three distinct portrait blocks: title, resume and new game. The new-game
+   options and start action share a single card, with five vehicles in two rows.
+   The overlay remains scrollable on very short screens. */
 @media (orientation: portrait) and (max-width: 700px) {
   .gcv-home {
     padding: max(7px, env(safe-area-inset-top))
@@ -476,18 +496,20 @@ html.gcv-embedded .gcv-stage {
   }
   .gcv-home-panel {
     width: 100%;
-    padding: 9px;
-    gap: 7px;
-    border-radius: 15px;
+    gap: 9px;
   }
   .gcv-menu-heading {
-    min-height: 41px;
-    padding: 0 100px 4px 1px;
+    min-height: 44px;
+    padding: 9px 100px 9px 13px;
+    border-radius: 13px;
   }
   .gcv-home-eyebrow { margin-bottom: 2px; font-size: .58rem; letter-spacing: .11em; }
   .gcv-home-panel h2 { font-size: clamp(1.28rem, 5.8vw, 1.55rem); line-height: 1; }
   .gcv-home-description { display: none; }
-  .gcv-menu-main { gap: 6px; }
+  .gcv-menu-main { padding: 9px; gap: 8px; border-radius: 13px; }
+  .gcv-new-game-heading { padding: 0 3px 6px; }
+  .gcv-new-game-heading h3 { font-size: .91rem; }
+  .gcv-new-game-content { gap: 8px; }
   .gcv-menu-options { gap: 5px; }
   .gcv-menu-section { padding: 5px 7px; border-radius: 9px; }
   .gcv-menu-section h3 { margin-bottom: 4px; font-size: .73rem; }
@@ -507,7 +529,7 @@ html.gcv-embedded .gcv-stage {
   .gcv-vehicle-label { align-items: center; gap: 0; text-align: center; }
   .gcv-vehicle-label strong { font-size: .69rem; line-height: 1.1; }
   .gcv-vehicle-label small { display: none; }
-  .gcv-resume-card { flex-wrap: nowrap; gap: 6px; padding: 6px 8px; }
+  .gcv-resume-card { flex-wrap: nowrap; gap: 6px; padding: 9px 12px; border-radius: 13px; }
   .gcv-resume-text { flex: 1 1 95px; gap: 2px; }
   .gcv-resume-text strong { font-size: .76rem; }
   .gcv-resume-text span { font-size: .67rem; line-height: 1.17; }
@@ -515,7 +537,11 @@ html.gcv-embedded .gcv-stage {
     width: auto; flex: 0 0 auto; min-height: 35px;
     padding: 5px 8px; font-size: .77rem; white-space: nowrap;
   }
-  .gcv-menu-launch { padding: 7px 9px; gap: 4px; border-radius: 10px; }
+  .gcv-menu-launch {
+    padding: 8px 1px 0; gap: 5px; border: 0;
+    border-top: 1px solid #aecbd54f; border-radius: 0;
+    background: transparent;
+  }
   .gcv-launch-eyebrow { display: none; }
   .gcv-start-summary { font-size: .68rem; line-height: 1.23; }
   .gcv-start-button {
@@ -525,8 +551,11 @@ html.gcv-embedded .gcv-stage {
   .gcv-start-button svg { width: 19px; height: 19px; }
 }
 @media (orientation: portrait) and (max-width: 700px) and (max-height: 630px) {
-  .gcv-home-panel { gap: 5px; padding: 7px; }
-  .gcv-menu-heading { min-height: 35px; padding-bottom: 2px; }
+  .gcv-home-panel { gap: 6px; }
+  .gcv-menu-heading { min-height: 35px; padding: 6px 100px 6px 10px; }
+  .gcv-menu-main { padding: 7px; gap: 5px; }
+  .gcv-new-game-heading { padding-bottom: 4px; }
+  .gcv-new-game-content { gap: 5px; }
   .gcv-home-eyebrow { display: none; }
   .gcv-menu-section { padding-block: 4px; }
   .gcv-menu-section h3 { margin-bottom: 3px; }
