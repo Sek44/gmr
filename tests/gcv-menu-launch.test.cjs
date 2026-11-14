@@ -38,6 +38,25 @@ test("launcher has distinct resume and start actions after its options", () => {
   assert.match(css, /@media \(orientation: portrait\) and \(max-width: 700px\)/);
 });
 
+test("top-aligned menu keeps the three sections ordered and has SVG mode icons", () => {
+  const html = file("index.html");
+  const css = file("game.css");
+  const menu = html.slice(html.indexOf('class="gcv-home-panel"'), html.indexOf('class="gcv-hud-left"'));
+  for (const id of ["free-mode-button", "race-mode-button"]) {
+    const button = menu.match(new RegExp('<button[^>]+id="' + id + '"[\\s\\S]*?<\\/button>'))?.[0];
+    assert.ok(button, id + " must exist");
+    assert.match(button, /<svg class="gcv-mode-icon"[^>]+aria-hidden="true">/);
+    assert.match(button, /<span class="gcv-mode-content"><strong>/);
+    assert.match(button, /<small>/);
+  }
+  const cssPanel = css.match(/\\.gcv-home-panel\\s*\\{([^}]*)\\}/)?.[1] || "";
+  assert.match(cssPanel, /margin:\\s*0;/, "the menu must not center vertically");
+  assert.doesNotMatch(cssPanel, /margin-block:\\s*auto/);
+  assert.match(css, /\\.gcv-mode-content small\\s*\\{\\s*display:\\s*none;/);
+  assert.match(css, /\\.gcv-mode-icon\\s*\\{/);
+  assert.match(html, /\\.\\/game\\.css\\?v=20261114o/);
+});
+
 test("choosing options does not start or delete an in-progress race", () => {
   const js = file("game.js");
   const choices = js.slice(js.indexOf('function syncMenuSelections()'), js.indexOf('function launchNewGame()'));
