@@ -8,17 +8,17 @@
 .gcv-home {
   position: absolute; inset: 0; z-index: 9;
   display: flex; justify-content: center; align-items: flex-start;
-  padding: max(62px, calc(env(safe-area-inset-top) + 50px)) 14px max(14px, env(safe-area-inset-bottom));
+  padding: max(12px, env(safe-area-inset-top)) 14px max(14px, env(safe-area-inset-bottom));
   overflow-y: auto; background: linear-gradient(145deg, #071626, #142e43);
   touch-action: pan-y;
 }
 .gcv-home-panel {
-  width: min(900px, 100%); margin-block: auto;
+  width: min(900px, 100%); margin: 0;
   display: flex; flex-direction: column; gap: 13px;
   color: white;
 }
 .gcv-menu-heading {
-  text-align: left; padding: 16px 20px;
+  text-align: left; padding: 16px 112px 16px 20px;
   border: 1px solid #aecbd58c; border-radius: 18px;
   background: #0b2036eb; box-shadow: 0 9px 28px #0005;
 }
@@ -69,6 +69,20 @@
   color: #14293b; font-weight: 900; white-space: nowrap;
 }
 .gcv-track-chooser, .gcv-mode-chooser { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; width: 100%; }
+.gcv-mode-choice {
+  flex-direction: row; justify-content: flex-start; align-items: center;
+  gap: 9px; text-align: left;
+}
+.gcv-mode-icon {
+  flex: 0 0 27px; width: 27px; height: 27px;
+  color: #ffe09b; overflow: visible;
+}
+.gcv-mode-content {
+  display: flex; flex-direction: column; justify-content: center;
+  min-width: 0; gap: 3px; text-align: left;
+}
+.gcv-mode-content strong { color: #fff; font-size: .91rem; line-height: 1.2; }
+.gcv-mode-content small { color: #d1e2ee; font-size: .73rem; line-height: 1.2; }
 .gcv-track-choice { text-align: center; align-items: center; font-weight: 760; }
 .gcv-vehicle-chooser { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; width: 100%; }
 .gcv-vehicle-choice { min-height: 56px; flex-direction: row; align-items: center; justify-content: flex-start; gap: 8px; padding: 6px 8px; }
@@ -126,9 +140,9 @@
   .gcv-home-resume { width: 100%; }
 }
 @media (max-height: 480px) and (orientation: landscape) {
-  .gcv-home { padding: 43px 9px 9px; }
+  .gcv-home { padding: max(8px, env(safe-area-inset-top)) 9px 9px; }
   .gcv-home-panel { gap: 6px; width: min(920px, 100%); }
-  .gcv-menu-heading { padding: 7px 12px; }
+  .gcv-menu-heading { padding: 7px 108px 7px 12px; }
   .gcv-home-panel h2 { font-size: 1.6rem; }
   .gcv-menu-main { padding: 7px 10px; gap: 5px; }
   .gcv-new-game-heading { padding-bottom: 3px; }
@@ -485,13 +499,13 @@ html.gcv-embedded .gcv-stage {
 .gcv-actions #restart-button { grid-column: 1; grid-row: 2; }
 .gcv-actions #camera-button { grid-column: 2; grid-row: 2; }
 
-/* Three distinct portrait blocks: title, resume and new game. The new-game
-   options and start action share a single card, with five vehicles in two rows.
-   The overlay remains scrollable on very short screens. */
+/* The menu stays at the top: title alongside navigation, then resume
+   and new-game sections, with five vehicles arranged in two rows.
+   The overlay scrolls only when the screen is too short. */
 @media (orientation: portrait) and (max-width: 700px) {
   .gcv-home {
-    /* Keep the top-right navigation in its own row above the three cards. */
-    padding: max(63px, calc(env(safe-area-inset-top) + 55px))
+    /* Put the title at the top beside Scores/Home, not below them. */
+    padding: max(8px, env(safe-area-inset-top))
       7px max(7px, env(safe-area-inset-bottom));
     overscroll-behavior: contain;
   }
@@ -501,7 +515,7 @@ html.gcv-embedded .gcv-stage {
   }
   .gcv-menu-heading {
     min-height: 44px;
-    padding: 9px 13px;
+    padding: 9px 104px 9px 13px;
     border-radius: 13px;
   }
   .gcv-home-eyebrow { margin-bottom: 2px; font-size: .58rem; letter-spacing: .11em; }
@@ -518,8 +532,10 @@ html.gcv-embedded .gcv-stage {
   .gcv-home-button { min-height: 35px; padding: 4px 6px; gap: 2px; border-radius: 8px; }
   .gcv-home-button strong { font-size: .76rem; line-height: 1.13; }
   .gcv-track-choice { font-size: .75rem; }
-  .gcv-mode-choice { min-height: 36px; text-align: center; align-items: center; }
-  .gcv-mode-choice span { display: none; }
+  .gcv-mode-choice { min-height: 42px; text-align: left; align-items: center; gap: 5px; }
+  .gcv-mode-icon { flex-basis: 20px; width: 20px; height: 20px; }
+  .gcv-mode-content strong { font-size: .75rem; line-height: 1.14; }
+  .gcv-mode-content small { display: none; }
   .gcv-vehicle-chooser { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
   .gcv-vehicle-choice {
     min-height: 49px; padding: 4px 2px;
@@ -553,7 +569,7 @@ html.gcv-embedded .gcv-stage {
 }
 @media (orientation: portrait) and (max-width: 700px) and (max-height: 630px) {
   .gcv-home-panel { gap: 6px; }
-  .gcv-menu-heading { min-height: 35px; padding: 6px 10px; }
+  .gcv-menu-heading { min-height: 35px; padding: 6px 104px 6px 10px; }
   .gcv-menu-main { padding: 7px; gap: 5px; }
   .gcv-new-game-heading { padding-bottom: 4px; }
   .gcv-new-game-content { gap: 5px; }
@@ -561,7 +577,8 @@ html.gcv-embedded .gcv-stage {
   .gcv-menu-section { padding-block: 4px; }
   .gcv-menu-section h3 { margin-bottom: 3px; }
   .gcv-vehicle-choice { min-height: 43px; }
-  .gcv-track-choice, .gcv-mode-choice { min-height: 32px; }
+  .gcv-track-choice { min-height: 32px; }
+  .gcv-mode-choice { min-height: 38px; }
   .gcv-menu-launch { padding-block: 5px; }
   .gcv-start-button { min-height: 39px; }
 }
