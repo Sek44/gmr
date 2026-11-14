@@ -13,7 +13,7 @@ Reviewed `rendering.js`, `vehicles.js`, `world-3d.js`, `visual-effects.js`, `gam
 - Mud and spark effects use small batched `THREE.Points` buffers (240 and 48 particles respectively).
 - The road sample density (840 classic, 720 open course) is moderate and is also used by gameplay and collisions: do not lower it blindly.
 - Only one player vehicle model is visible at a time; there is no post-processing or realtime shadow mapping.
-- The open course already has an MSAA/framebuffer budget to protect older mobile GPUs; the renderer skips drawing while the menu covers the stage.
+- MSAA is disabled on every track when the browser reports ≤ 4 GB of device memory or ≤ 4 logical CPU cores. Rainbow always disables MSAA. The renderer skips drawing while the menu covers the stage.
 - Scenes, materials, geometries and WebGL contexts are explicitly disposed when a circuit changes.
 
 ## Opportunities, ordered by priority
@@ -41,6 +41,12 @@ Reviewed `rendering.js`, `vehicles.js`, `world-3d.js`, `visual-effects.js`, `gam
 - The player and opponent shadows reuse a tiny 64×64 radial alpha canvas texture. A standalone fading player plane and a single instanced opponent batch share the plane geometry; both materials are front-facing.
 - Pebbles, water decals, muddy patches and posts are instances; retaining those structures is preferable to premature refactoring.
 
+## MSAA selection
+
+MSAA is now selected **once at WebGL context creation**, using a conservative low-end heuristic: any browser reporting at most **4 GiB-ish** via `navigator.deviceMemory` or at most **4 logical CPU threads** via `navigator.hardwareConcurrency` gets `antialias: false` on both circuits. Rainbow continues to request no MSAA for all devices; classic can request it on higher-end or unknown hardware. These are approximate, privacy-limited browser hints, **not** an exact GPU classification.
+
+`renderer.getMetrics()` includes `msaaRequested`, `lowEndDevice`, and, where the browser reports it, `msaaActive`. Benchmark v5 displays classic MSAA state on pages 1 and 3 and includes it in exported JSON. When comparing v4 and v5 tablet results, distinguish MSAA effects from any later shading or geometry optimizations.
+
 ## Current rendering strategy
 
 - Transparent decals parallel to the road and their procedural alpha shadows are rendered front-facing only, to avoid a redundant second transparency pass. The bike windshield is still visible from both sides but rendered with a single transparent draw pass.
@@ -51,7 +57,7 @@ Reviewed `rendering.js`, `vehicles.js`, `world-3d.js`, `visual-effects.js`, `gam
 
 ## How to measure
 
-Open the dedicated **[mobile benchmark](../benchmark.html)** on the device being evaluated. It executes deterministic, **rendering-focused** camera/vehicle passes without modifying game credit, scores or preferences. Version `gcv-render-v4` automatically performs **seven passes** (1.5 s warmup + 8 s measurement each):
+Open the dedicated **[mobile benchmark](../benchmark.html)** on the device being evaluated. It executes deterministic, **rendering-focused** camera/vehicle passes without modifying game credit, scores or preferences. Version `gcv-render-v5` automatically performs **seven passes** (1.5 s warmup + 8 s measurement each):
 
 1. Classic solo; classic race with nine AI cars; motorcycle solo (three baseline workloads).
 2. The **same classic race** at 75% and 55% of its normal rendering pixel ratio.
