@@ -463,3 +463,30 @@ test("the moto chase camera frames the rider closer", () => {
   assert.ok(camera.position.z < 8, "the rider is larger in the chase view");
   assert.ok(camera.position.y < 4, "camera stays above the motorcycle");
 });
+
+test("benchmark-only resolution scale persists across resize and rejects unsafe values", () => {
+  const { view, window, stage, renderer } = fixture(false);
+  // Open circuit has a DPR cap of 1.15, independent of the display DPR.
+  assert.equal(renderer.pixelRatio, 1.15);
+  view.setResolutionScale(0.75);
+  assert.ok(Math.abs(renderer.pixelRatio - 0.8625) < 1e-9);
+  stage.clientWidth = 600;
+  stage.clientHeight = 600;
+  window.listeners.resize();
+  assert.ok(Math.abs(renderer.pixelRatio - 0.8625) < 1e-9);
+  view.setResolutionScale(1);
+  assert.equal(renderer.pixelRatio, 1.15);
+  assert.throws(() => view.setResolutionScale(0.49), RangeError);
+  assert.throws(() => view.setResolutionScale(1.1), RangeError);
+  assert.throws(() => view.setResolutionScale(NaN), RangeError);
+  assert.equal(renderer.pixelRatio, 1.15);
+});
+
+test("default classic resolution is unchanged unless benchmark overrides it", () => {
+  const { view, renderer } = fixture();
+  assert.equal(renderer.pixelRatio, 1.7);
+  view.setResolutionScale(0.55);
+  assert.ok(Math.abs(renderer.pixelRatio - 0.935) < 1e-9);
+  view.setResolutionScale(1);
+  assert.equal(renderer.pixelRatio, 1.7);
+});
