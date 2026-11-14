@@ -347,7 +347,9 @@
         const windscreen = new THREE.MeshStandardMaterial({
           color: 0x243746, roughness: 0.16, metalness: 0.16,
           transparent: true, opacity: 0.68, depthWrite: false,
-          side: THREE.DoubleSide,
+          // Both cockpit and chase camera see this single thin panel.
+          // Keep both faces, but avoid separate transparent front/back passes.
+          side: THREE.DoubleSide, forceSinglePass: true,
         });
 
         // Eight-point cross-sections give fairings a curved, tapered outline
