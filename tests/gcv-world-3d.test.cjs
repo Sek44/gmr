@@ -6,6 +6,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const World3D = require("../games/gcv/world-3d.js");
+const Progress = require("../games/gcv/track-progress.js");
 const TrackLayout = require("../games/gcv/track-layout.js");
 const Scenery = require("../games/gcv/scenery.js");
 
@@ -158,6 +159,47 @@ test("static world shares its track samples with barriers and gameplay", () => {
   assert.ok(world.scene.children.some((node) => node instanceof InstancedMesh),
     "decor uses instancing");
   assert.ok(Array.isArray(world.islands));
+});
+
+test("every generated circuit gets full-width invisible start and finish gates", () => {
+  const Barriers = require("../games/gcv/barriers.js");
+  const layouts = [
+    TrackLayout.CLASSIC, TrackLayout.SPRINT,
+    TrackLayout.generateClassic(13), TrackLayout.generateSprint(13),
+  ];
+  for (const layout of layouts) {
+    const world = World3D.create({ THREE, TrackLayout: layout, Barriers, Scenery });
+    assert.equal(world.startGate.center, world.startCenter);
+    assert.equal(world.finishGate.center, world.finishCenter);
+    assert.equal(world.startGate.forward, world.directions[world.startIndex]);
+    assert.equal(world.finishGate.forward, world.directions[world.finishIndex]);
+    assert.equal(world.startGate.halfWidth, world.OUTER_HALF_WIDTH);
+    assert.equal(world.finishGate.halfWidth, world.OUTER_HALF_WIDTH);
+    assert.equal(world.closed, layout.CLOSED);
+    assert.equal(world.startGate === world.finishGate, world.closed);
+    for (const gate of [world.startGate, world.finishGate]) {
+      const { center, forward, halfWidth } = gate;
+      const length = Math.hypot(forward.x, forward.z);
+      const fx = forward.x / length, fz = forward.z / length;
+      const sx = -fz, sz = fx;
+      function crossing(offset, reverse = false) {
+        const start = { x: center.x + sx * offset - fx * 4,
+          z: center.z + sz * offset - fz * 4 };
+        const end = { x: center.x + sx * offset + fx * 4,
+          z: center.z + sz * offset + fz * 4 };
+        return Progress.finishCrossing(reverse ? end : start,
+          reverse ? start : end, gate);
+      }
+      for (const sign of [-1, 1]) {
+        assert.ok(Math.abs(crossing(sign * (halfWidth - 0.2)) - 0.5) < 1e-7,
+          "crossing on the shoulder must count on " + layout.ID);
+        assert.equal(crossing(sign * (halfWidth + 0.2)), null,
+          "outside the barrier must not count on " + layout.ID);
+        assert.equal(crossing(sign * (halfWidth - 0.2), true), null,
+          "reverse crossing must not count on " + layout.ID);
+      }
+    }
+  }
 });
 
 test("road and terrain use low-cost Lambert materials without changing finish visuals", () => {
