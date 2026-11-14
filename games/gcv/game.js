@@ -111,7 +111,7 @@
       scene, ROAD_HALF_WIDTH, OUTER_HALF_WIDTH, SAMPLE_COUNT, curve,
       trackLength, positions, directions, sides, barriers,
       startIndex, finishIndex, startCenter, finishCenter, startSide, startYaw,
-      islands, closed, heightAt,
+      startGate, finishGate, islands, closed, heightAt,
     } = World3D.create({ THREE, TrackLayout, Barriers, Scenery });
     const {
       car, wheelPivots, extraWheelPivots, brakeLights, rearBrakeGlows,
@@ -554,11 +554,9 @@
               previousPosition, driver, directions[nearest.index])
             : airTravel;
           const startCrossing = TrackProgress.finishCrossing(
-            previousPosition, driver, startCenter, directions[startIndex],
-            ROAD_HALF_WIDTH);
+            previousPosition, driver, startGate);
           const finishCrossing = closed ? startCrossing :
-            TrackProgress.finishCrossing(previousPosition, driver,
-              finishCenter, directions[finishIndex], ROAD_HALF_WIDTH);
+            TrackProgress.finishCrossing(previousPosition, driver, finishGate);
           const progressBefore = lapTracker.progress;
           const motion = closed
             ? TrackProgress.move(lapTracker, routeLength, travel, finishCrossing,
