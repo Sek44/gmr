@@ -530,6 +530,10 @@
                 fallDt * 1000, timingSamples, progressSamples(event.progress));
             lapTimer = finish.state;
             timing.events.push(...finish.events);
+            // Every real open-course arrival is announced, even if missing
+            // split checkpoints prevent it from becoming a record.
+            if (!closed && event.type === "lap" && flow.mode === "free" &&
+                lapTimer.finished) holdFinishedLap(lapTimer.elapsedMs);
             session?.changed();
           }
           for (const event of timing.events) {
