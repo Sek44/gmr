@@ -6,7 +6,7 @@ GMR est un monorepo de petits jeux jouables directement dans le navigateur, publ
 
 ## Points d'entrée
 
-- `index.html` charge la page d'accueil ; `games/catalog.js` contient la liste explicite des jeux publiés, avec leur identifiant, leur illustration SVG `artwork` facultative, leur catégorie et leur `saveRevision` éventuelle.
+- `index.html` charge la page d'accueil ; `games/catalog.js` contient la liste explicite des jeux publiés, avec leur identifiant, leur illustration SVG `artwork` facultative, leur catégorie, leur `saveRevision` éventuelle et l'option `fullscreen` pour ouvrir le jeu dans un hôte plein écran.
 - `scores.html` affiche les résultats et records à partir des services communs.
 - `games/<id>/index.html` est la page autonome d'un jeu ; les ressources partagées sont référencées par des chemins relatifs pour fonctionner sous GitHub Pages.
 - `games/_template/` fournit une base pour créer un jeu sans l'inscrire automatiquement au catalogue.
@@ -16,6 +16,7 @@ GMR est un monorepo de petits jeux jouables directement dans le navigateur, publ
 | Module | Responsabilité |
 | --- | --- |
 | `shared/home.js` | Construction des cartes accessibles depuis le catalogue (illustrations SVG, catégorie et actions Jouer/Reprendre, sans description) |
+| `shared/game-host.js` | Intercepte les liens des jeux déclarés `fullscreen` depuis Accueil et Scores, demande le plein écran dans le clic, charge une iframe même origine et quitte le plein écran avant de naviguer vers Accueil/Scores |
 | `shared/site.css` et `shared/styles/` | Entrée CSS stable ; structure indépendante du thème, composants communs, scores et temps de jeu |
 | `shared/themes/classic-play/` | Thème visuel du seul accueil : palette, décor et icônes SVG. Les illustrations des jeux restent dans leurs propres dossiers |
 | `games/<id>/game.css` | Présentation spécifique au jeu (scène, HUD, commandes, animations), hors couche commune |
@@ -27,7 +28,7 @@ GMR est un monorepo de petits jeux jouables directement dans le navigateur, publ
 | `shared/game-ui.js` (`GameUI`) | Composants d'interface réutilisables, dont le pavé numérique |
 | `shared/play-time.js` (`GmrPlayTime`) | Lecture du crédit xfr1, temps de jeu partagé, affichage et verrouillage |
 
-Le mode d'affichage des scores de GCV dispose encore de sa propre navigation/iframe ; l'unification avec `ScoreView` est dans le [backlog global](BACKLOG.md). Le rendu des records chronométriques appartient maintenant à `games/gcv/scores-adapter.js`, enregistré par `GameScores.registerRenderer("gcv", render)` ; `games/catalog.js` déclare les scripts de chaque adaptateur dans `scoreScripts` ; `shared/scores-page.js` les charge en ordre après le service commun, avant d'afficher les résultats. Les autres jeux peuvent enregistrer leur propre vue sans introduire d'import de jeu dans `shared/scores.js`.
+GCV consulte désormais les scores par navigation de page après fermeture du plein écran, au lieu d'une iframe de scores interne au jeu. Le lien Retour au jeu réactive à son tour l'hôte plein écran. Les autres jeux peuvent toujours utiliser `ScoreView` pour une consultation de scores dans leur jeu. Le rendu des records chronométriques appartient maintenant à `games/gcv/scores-adapter.js`, enregistré par `GameScores.registerRenderer("gcv", render)` ; `games/catalog.js` déclare les scripts de chaque adaptateur dans `scoreScripts` ; `shared/scores-page.js` les charge en ordre après le service commun, avant d'afficher les résultats. Les autres jeux peuvent enregistrer leur propre vue sans introduire d'import de jeu dans `shared/scores.js`.
 
 ## Stockage et données
 
