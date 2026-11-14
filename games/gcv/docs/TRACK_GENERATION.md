@@ -2,7 +2,7 @@
 
 ## Principe
 
-Le tracé est défini comme une suite de **sections** au lieu d'une liste de
+Les deux tracés sont définis comme une suite de **sections** au lieu d'une liste de
 coordonnées écrites à la main. Le module pur `track-generator.js` transforme
 cette description et une **graine** numérique en un centre de chaussée,
 ses points de départ/arrivée et ses éléments de jeu.
@@ -16,7 +16,7 @@ Une section est de l'un de ces deux types :
 
 Le générateur discrétise les lignes droites (environ 28 m entre points) et
 les virages (environ 15 m), puis `world-3d.js` crée la spline Catmull-Rom,
-les 720 échantillons de chaussée, les barrières et les bandes colorées à
+les 840 échantillons du classique ou les 720 de l'ouvert, les barrières et les bandes colorées à
 partir de ce centre commun. La physique et le rendu réutilisent la
 **même fonction `heightAt(t)`** pour les bosses.
 
@@ -62,15 +62,13 @@ tirage aléatoire ne modifie une course déjà lancée.
 - Les bosses combinent une longue montée/descente et une couronne plus
   courte au sommet. Leur amplitude physique dépend de la courbure et de
   la vitesse du véhicule, non d'une impulsion de saut fixe.
-- Le départ, la grille et l'arrivée sont calculés sur les portions droites,
-  loin des extrémités. La route est actuellement **ouverte**, orientée
-  principalement vers l'avant ; la validation interdit les replis extrêmes
-  pour préserver les collisions et la progression chronométrée.
+- Les marqueurs sont calculés sur des portions droites. Pour un tracé ouvert, départ et arrivée sont distincts, éloignés des extrémités ; le parcours avance principalement vers l'avant. Pour le classique fermé, la ligne de départ/arrivée est **unique**, la zone de grille comprend les dix emplacements et le point de départ en essais est placé après cette ligne.
+- Une boucle fermée exige un **raccord de position et de tangente**, sans point de contrôle dupliqué en bout de spline. Les portions de piste éloignées doivent rester séparées : le générateur refuse les croisements et les espacements insuffisants. Une répétition de demi-tour géométriquement identique garantit la fermeture même avec des variations de graine.
 - La zone Arc-en-ciel est désormais **courte (environ 145 m)** et comporte
   les mêmes sept bandes et l'assistance de zigzag existante.
 - Le générateur n'alloue ni mesh ni contexte WebGL et ne s'exécute
-  **qu'à la construction du circuit**. On conserve le budget de 720
-  échantillons et les optimisations de rendu mobile.
+  **qu'à la construction du circuit**. On conserve les budgets de 840
+  échantillons pour le classique et 720 pour la Route Arc-en-ciel, ainsi que les optimisations mobiles.
 - Les tests `tests/gcv-track-generator.test.cjs` vérifient les graines,
   les caractéristiques des sections, les contraintes de placement et
   les erreurs de configuration. Un lot de 500 graines a également été
@@ -80,8 +78,8 @@ tirage aléatoire ne modifie une course déjà lancée.
 
 - `track-generator.js` : algorithme générique, graine, contrôles de
   validité et calcul des marqueurs/caractéristiques ;
-- `track-layout.js` : `SPRINT_TEMPLATE` (contenu de la Route Arc-en-ciel),
-  `generateSprint(seed)` et registre des circuits existants ;
+- `track-layout.js` : `CLASSIC_TEMPLATE` (boucle) et `SPRINT_TEMPLATE` (route ouverte),
+  `generateClassic(seed)`, `generateSprint(seed)` et registre des circuits existants ;
 - `world-3d.js` : conversion de la définition en scène 3D ;
 - `physics.js` : décollage et gravité ;
 - `track-progress.js` : progression, contrôle aérien et détection des
@@ -91,5 +89,10 @@ tirage aléatoire ne modifie une course déjà lancée.
 Ajouter plus tard un choix de graine au menu imposera de conserver cette
 graine et la version du générateur dans la session et les clés de records,
 ainsi que de reconstruire la scène seulement au clic sur « Démarrer ».
-Le circuit classique existant reste volontairement indépendant du nouveau
-générateur jusqu'à une éventuelle refonte de son tracé.
+Le circuit classique est désormais issu du même générateur. `CLASSIC_TEMPLATE`
+déclare **un demi-parcours**, puis `repeat: 2` le reproduit à l'identique :
+les deux chicanes en S, les deux paires de virages à 90° et les deux lignes
+droites se raccordent en une boucle d'environ 865 m. Le circuit utilise une
+graine fixe par défaut ; `generateClassic(seed)` produit des variantes fermées.
+Les deux circuits conservent leurs identifiants de sélection et leur mode de
+course respectif (trois tours ou une traversée).
