@@ -16,6 +16,9 @@ test("home uses standalone SVG assets and a theme separate from layout", () => {
   assert.match(html, /class="page home-page"/);
   assert.match(html, /id="game-grid"/);
   assert.match(html, /id="gmr-daily-summary"/);
+  assert.doesNotMatch(html, /home-hero|À toi de/);
+  assert.doesNotMatch(layout, /\.home-hero/);
+  assert.doesNotMatch(theme, /\.home-hero/);
   assert.match(entry, /themes\/classic-play\/theme\.css/);
   assert.match(entry, /themes\/classic-play\/home\.css/);
   assert.match(layout, /\.game-card/);
@@ -48,7 +51,13 @@ test("catalog artwork belongs to its game and is a local SVG", () => {
     assert.ok(game.artwork.startsWith("./games/" + game.id + "/assets/"));
     const filename = path.resolve(root, game.artwork);
     assert.ok(fs.existsSync(filename), "missing artwork " + filename);
-    assert.match(fs.readFileSync(filename, "utf8"), /viewBox=/);
+    const svg = fs.readFileSync(filename, "utf8");
+    assert.match(svg, /viewBox=/);
+    if (game.id === "gcv") {
+      assert.match(svg, /id="circuit"/);
+      assert.match(svg, /id="finish-flag"/);
+      assert.doesNotMatch(svg, /kart|vehicle|moto|pilote/i);
+    }
   }
 });
 
@@ -70,8 +79,8 @@ test("home rendering retains playable links and session compatibility", () => {
     document, window: {
       GmrPlayTime: { mountSummary(node) { assert.equal(node, nodes["gmr-daily-summary"]); } },
       GmrCatalog: { games: [
-        { id: "first", title: "Premier", description: "Course", category: "Course", saveRevision: 3 },
-        { id: "second", title: "Second", description: "Défi" },
+        { id: "first", title: "Premier", category: "Course", saveRevision: 3 },
+        { id: "second", title: "Second" },
       ] },
       GameState: { create(id) { return { load: () => id === "first" ? { saveRevision: 3 } : null }; } },
     },
@@ -83,7 +92,19 @@ test("home rendering retains playable links and session compatibility", () => {
   const [first, second] = nodes["game-grid"].children;
   assert.equal(first.href, "./games/first/");
   assert.equal(second.href, "./games/second/");
-  assert.equal(first.children[1].children[3].children[0].textContent, "Reprendre");
-  assert.equal(second.children[1].children[3].children[0].textContent, "Jouer");
+  assert.equal(first.children[1].children[2].children[0].textContent, "Reprendre");
+  assert.equal(second.children[1].children[2].children[0].textContent, "Jouer");
   assert.ok(second.children[0].children[0].src.endsWith("gamepad.svg"));
+  assert.equal(first.children[1].children.length, 3);
+  assert.equal(second.children[1].children.length, 3);
+  assert.doesNotMatch(read("shared/home.js"), /game-description|game\.description/);
+});
+
+test("the daily summary displays gained, used and remaining time in that order", () => {
+  const source = read("shared/play-time.js");
+  const gained = source.indexOf('makeStat("Gagné"');
+  const used = source.indexOf('makeStat("Utilisé"');
+  const remaining = source.indexOf('makeStat("Restant"');
+  assert.ok(gained >= 0 && gained < used && used < remaining);
+  assert.match(source, /format\(state\.remainingMs, true\), true/);
 });

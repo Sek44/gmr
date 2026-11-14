@@ -29,9 +29,6 @@
     category.textContent = game.category || "Jeu";
     const title = document.createElement("h3");
     title.textContent = game.title;
-    const description = document.createElement("span");
-    description.className = "game-description";
-    description.textContent = game.description || "";
     const action = document.createElement("span");
     action.className = "game-action";
     const saved = window.GameState.create(game.id).load();
@@ -45,7 +42,7 @@
     arrow.width = 20;
     arrow.height = 20;
     action.append(actionText, arrow);
-    content.append(category, title, description, action);
+    content.append(category, title, action);
     link.append(artwork, content);
     grid.append(link);
   }

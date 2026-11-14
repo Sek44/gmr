@@ -25,50 +25,6 @@
 }
 .home-scores-link:hover { background: #f1f5ff; }
 
-.home-hero {
-  position: relative;
-  overflow: hidden;
-  isolation: isolate;
-  border-radius: 28px;
-  background: linear-gradient(115deg, #315bd5, #4f79e1);
-  border: 1px solid #3158c4;
-  box-shadow: 0 10px 28px #1c3b9a2b, inset 0 -4px 0 #173ca63d;
-  color: #fff;
-}
-.home-hero::before {
-  content: "";
-  position: absolute; width: 380px; height: 380px; right: -90px; bottom: -265px;
-  border-radius: 50%; border: 60px solid #ffffff0c; pointer-events: none;
-}
-.home-hero::after {
-  content: "";
-  position: absolute; width: 250px; height: 250px; left: -170px; top: -165px;
-  border-radius: 50%; border: 48px solid #ffffff0d; pointer-events: none;
-}
-.home-kicker {
-  display: inline-block;
-  font-size: .76rem;
-  font-weight: 800;
-  letter-spacing: .055em;
-  text-transform: uppercase;
-  color: #eaf0ff;
-  margin-bottom: 14px;
-}
-.home-hero h1 {
-  margin: 0; max-width: 620px;
-  font-size: clamp(2.4rem, 5.3vw, 4rem);
-  font-weight: 900; letter-spacing: -.055em; line-height: 1.08;
-}
-.home-hero h1 span { color: #ffe187; }
-.home-hero p { max-width: 550px; margin: 18px 0 0; line-height: 1.55; color: #f1f4ff; font-size: clamp(.98rem, 1.8vw, 1.13rem); }
-.home-hero-visual { transform: rotate(-13deg); }
-.hero-orbit { border-radius: 50%; background: #ffffff17; }
-.hero-orbit-one { width: 210px; height: 210px; }
-.hero-orbit-two { width: 168px; height: 168px; border: 2px dashed #ffffff44; background: transparent; }
-.home-hero-visual .hero-star { position: absolute; width: 34px; height: 34px; z-index: 2; }
-.hero-star-one { top: 0; right: 4px; }
-.home-hero-visual .hero-star-two { bottom: -10px; left: 4px; width: 22px; height: 22px; }
-
 .gmr-daily-panel {
   background: #fff;
   border: 1px solid var(--home-line);
@@ -120,8 +76,7 @@
   border-radius: 999px; padding: 6px 12px;
   font-size: .72rem; letter-spacing: .04em; text-transform: uppercase; font-weight: 850;
 }
-.game-content h3 { margin: 13px 0 9px; color: var(--home-ink); font-size: clamp(1.45rem, 3vw, 1.85rem); line-height: 1.12; letter-spacing: -.035em; font-weight: 900; }
-.game-description { color: var(--home-muted); font-size: .94rem; line-height: 1.55; }
+.game-content h3 { margin: 13px 0 0; color: var(--home-ink); font-size: clamp(1.45rem, 3vw, 1.85rem); line-height: 1.12; letter-spacing: -.035em; font-weight: 900; }
 .game-action {
   border-radius: 12px;
   background: var(--home-blue); color: #fff;
@@ -134,16 +89,11 @@
 .empty-state { padding: 22px; border-radius: var(--home-radius); background: #fff; color: var(--home-muted); }
 .home-page .site-footer { color: #7b8599; font-size: .78rem; margin-top: 27px; }
 @media (max-width: 700px) {
-  .hero-orbit-one { width: 140px; height: 140px; }
-  .hero-orbit-two { width: 120px; height: 120px; }
   .game-card:only-child .game-artwork { border-radius: var(--home-radius) var(--home-radius) 0 0; }
 }
 @media (max-width: 520px) {
   .home-scores-link { padding: 10px 12px; font-size: .81rem; }
   .home-scores-link img { width: 21px; }
-  .home-hero h1 { font-size: clamp(2.2rem, 9vw, 2.8rem); }
-  .home-hero p { margin-top: 12px; }
-  .home-kicker { margin-bottom: 10px; font-size: .68rem; }
   .daily-heading h2 { font-size: 1.05rem; }
   .daily-link { font-size: .76rem; }
   .daily-stat-label { font-size: .68rem; }

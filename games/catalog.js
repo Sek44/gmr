@@ -12,9 +12,8 @@ window.GmrCatalog = Object.freeze({
         "./games/gcv/scores-adapter.js",
       ]),
       title: "Super Kart",
-      description: "Choisis parmi cinq véhicules et leurs pilotes sur deux circuits 3D, contre neuf concurrents.",
       category: "Course 3D",
-      artwork: "./games/gcv/assets/home-illustration.svg",
+      artwork: "./games/gcv/assets/home-circuit.svg",
     }),
   ]),
 });

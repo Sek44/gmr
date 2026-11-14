@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 330" fill="none" role="img" aria-labelledby="title">
+  <title id="title">Circuit de course et drapeau à damier</title>
+  <defs>
+    <linearGradient id="asphalt" x1="70" y1="80" x2="406" y2="271" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4D5C79"/>
+      <stop offset="1" stop-color="#263754"/>
+    </linearGradient>
+    <filter id="trackShadow" x="0" y="0" width="480" height="330" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="5"/>
+    </filter>
+    <clipPath id="flagShape">
+      <path d="M372 44C393 31 418 55 453 39V113C420 128 397 101 372 116Z"/>
+    </clipPath>
+  </defs>
+
+  <!-- One winding, closed race circuit seen from above. -->
+  <g id="circuit" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M110 236C68 223 56 163 92 124C126 88 172 101 205 135C236 167 267 136 299 110C340 76 399 90 413 139C430 192 403 248 354 261C298 274 262 238 224 218C179 194 159 248 110 236Z"
+      stroke="#344D76" stroke-opacity=".18" stroke-width="82" filter="url(#trackShadow)"/>
+    <path d="M110 236C68 223 56 163 92 124C126 88 172 101 205 135C236 167 267 136 299 110C340 76 399 90 413 139C430 192 403 248 354 261C298 274 262 238 224 218C179 194 159 248 110 236Z"
+      stroke="#F8F9FF" stroke-width="70"/>
+    <path d="M110 236C68 223 56 163 92 124C126 88 172 101 205 135C236 167 267 136 299 110C340 76 399 90 413 139C430 192 403 248 354 261C298 274 262 238 224 218C179 194 159 248 110 236Z"
+      stroke="#EF7780" stroke-width="70" stroke-dasharray="23 25"/>
+    <path d="M110 236C68 223 56 163 92 124C126 88 172 101 205 135C236 167 267 136 299 110C340 76 399 90 413 139C430 192 403 248 354 261C298 274 262 238 224 218C179 194 159 248 110 236Z"
+      stroke="url(#asphalt)" stroke-width="56"/>
+    <path d="M110 236C68 223 56 163 92 124C126 88 172 101 205 135C236 167 267 136 299 110C340 76 399 90 413 139C430 192 403 248 354 261C298 274 262 238 224 218C179 194 159 248 110 236Z"
+      stroke="#D6DEEF" stroke-opacity=".8" stroke-width="3.5" stroke-dasharray="8 15"/>
+  </g>
+
+  <!-- Checkered finishing flag by the circuit. -->
+  <g id="finish-flag">
+    <path d="M364 41V152" stroke="#20334F" stroke-width="8" stroke-linecap="round"/>
+    <circle cx="364" cy="38" r="7" fill="#F3BF57" stroke="#20334F" stroke-width="2"/>
+    <g clip-path="url(#flagShape)">
+      <path d="M372 35H457V123H372Z" fill="#FFFFFF"/>
+      <path d="M372 35H393V55H372ZM414 35H435V55H414ZM393 55H414V75H393ZM435 55H456V75H435ZM372 75H393V95H372ZM414 75H435V95H414ZM393 95H414V115H393ZM435 95H456V115H435Z" fill="#273753"/>
+      <path d="M372 44C393 31 418 55 453 39V113C420 128 397 101 372 116Z" stroke="#273753" stroke-width="3" stroke-linejoin="round"/>
+    </g>
+  </g>
+</svg>

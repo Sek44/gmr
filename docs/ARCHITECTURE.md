@@ -15,7 +15,7 @@ GMR est un monorepo de petits jeux jouables directement dans le navigateur, publ
 
 | Module | Responsabilité |
 | --- | --- |
-| `shared/home.js` | Construction des cartes accessibles depuis le catalogue (illustrations SVG et actions Jouer/Reprendre) |
+| `shared/home.js` | Construction des cartes accessibles depuis le catalogue (illustrations SVG, catégorie et actions Jouer/Reprendre, sans description) |
 | `shared/site.css` et `shared/styles/` | Entrée CSS stable ; structure indépendante du thème, composants communs, scores et temps de jeu |
 | `shared/themes/classic-play/` | Thème visuel du seul accueil : palette, décor et icônes SVG. Les illustrations des jeux restent dans leurs propres dossiers |
 | `games/<id>/game.css` | Présentation spécifique au jeu (scène, HUD, commandes, animations), hors couche commune |
@@ -50,7 +50,7 @@ Cette séparation est motivée par l'[ADR-0001](adr/0001-frontiere-hote-jeux.md)
 
 L'architecture propre au moteur 3D, au chronométrage, à la course et aux sauvegardes GCV figure dans [l'architecture GCV](../games/gcv/docs/ARCHITECTURE.md).
 
-L’accueil présente le temps de jeu sous forme de trois valeurs (« Restant », « Gagné », « Utilisé ») et conserve le nombre d’exercices. `shared/play-time.js` reste propriétaire des données et du calcul, l’accueil ne faisant que les afficher. Les nouveaux visuels d’interface sont exclusivement des SVG statiques, sans polices externes.
+L’accueil affiche directement le temps de jeu (sans bandeau d’introduction) sous forme de trois valeurs (« Gagné », « Utilisé », « Restant ») et conserve le nombre d’exercices. `shared/play-time.js` reste propriétaire des données et du calcul, l’accueil ne faisant que les afficher. Les nouveaux visuels d’interface sont exclusivement des SVG statiques, sans polices externes.
 
 ## Vérification et livraison
 

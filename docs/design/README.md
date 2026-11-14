@@ -6,16 +6,16 @@
 
 - `shared/styles/home.css` : disposition responsive de l’accueil, indépendante de toute palette ; conserver ici les grilles et espacements.
 - `shared/themes/classic-play/theme.css` : palette et fond du thème, limités aux pages portant `home-body` / `home-page`.
-- `shared/themes/classic-play/home.css` : apparence des composants de l’accueil (bandeau, temps de jeu, cartes).
+- `shared/themes/classic-play/home.css` : apparence des composants de l’accueil (temps de jeu et cartes, sans bandeau d’introduction).
 - `shared/styles/components.css` : boutons, cadres et navigation communs, indépendants du thème de l’accueil.
 - `shared/site.css` : ordre d’importation des couches ; ne pas définir de sélecteurs métier ici.
-- `shared/home.js` : création des cartes depuis le catalogue ; ne contient aucune logique spécifique à GCV.
+- `shared/home.js` : création des cartes depuis le catalogue (catégorie, titre, action, sans description) ; ne contient aucune logique spécifique à GCV.
 
 ## Assets
 
 - **SVG uniquement** pour les nouvelles ressources de l’interface (pas de PNG, WebP, JPEG, GIF ni police téléchargée).
 - `shared/themes/classic-play/assets/` : pictogrammes génériques : manette, trophée, horloge et flèche.
-- `games/<id>/assets/` : illustrations SVG propres à chaque jeu ; l’entrée `artwork` de `games/catalog.js` contient le chemin relatif à l’accueil.
+- `games/<id>/assets/` : illustrations SVG propres à chaque jeu ; l’entrée `artwork` de `games/catalog.js` contient le chemin relatif à l’accueil. Super Kart est représenté par un circuit et un drapeau à damier dans `games/gcv/assets/home-circuit.svg`.
 - Les SVG sont des fichiers autonomes avec `viewBox`, sans dépendances externes ni image raster embarquée. Les pictogrammes redondants avec le texte ont `alt=""`.
 - Un jeu sans `artwork` utilise `gamepad.svg` comme illustration de repli.
 

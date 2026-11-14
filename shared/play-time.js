@@ -112,9 +112,9 @@ const GmrPlayTime = (() => {
       const stats = document.createElement("div");
       stats.className = "daily-stats";
       stats.append(
-        makeStat("Restant", format(state.remainingMs, true), true),
         makeStat("Gagné", formatCredit(state.seconds)),
         makeStat("Utilisé", format(state.elapsedMs)),
+        makeStat("Restant", format(state.remainingMs, true), true),
       );
       const caption = document.createElement("p");
       caption.className = "daily-caption";
