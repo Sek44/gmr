@@ -77,11 +77,18 @@ class Node {
     this.children = [];
     this.position = new Vector3();
     this.scale = new Vector3(1, 1, 1);
-    this.rotation = { set() {}, y: 0, x: 0 };
+    this.rotation = { x: 0, y: 0, z: 0,
+      set(x, y, z) { Object.assign(this, { x, y, z }); } };
     this.matrix = {};
   }
   add(...nodes) { this.children.push(...nodes); }
-  updateMatrix() { this.matrix = {}; }
+  updateMatrix() {
+    this.matrix = {
+      position: { x: this.position.x, y: this.position.y, z: this.position.z },
+      rotation: { x: this.rotation.x, y: this.rotation.y, z: this.rotation.z },
+      scale: { x: this.scale.x, y: this.scale.y, z: this.scale.z },
+    };
+  }
 }
 class Mesh extends Node {
   constructor(geometry, material) { super(); this.geometry = geometry; this.material = material; }
@@ -147,6 +154,71 @@ test("static world shares its track samples with barriers and gameplay", () => {
   assert.ok(world.scene.children.some((node) => node instanceof InstancedMesh),
     "decor uses instancing");
   assert.ok(Array.isArray(world.islands));
+});
+
+test("classic checkered line is batched into two instanced draws without altering tile positions", () => {
+  const Barriers = require("../games/gcv/barriers.js");
+  const world = World3D.create({ THREE, TrackLayout, Barriers, Scenery });
+  const colors = [0x322b35, 0xf5ede6];
+  const tiles = world.scene.children.filter((node) =>
+    node instanceof InstancedMesh && colors.includes(node.material?.color));
+  assert.equal(tiles.length, 2, "one instanced draw per checker color");
+  assert.equal(tiles[0].geometry, tiles[1].geometry,
+    "both checker colors share their small box geometry");
+  const actualPositions = [];
+  for (const tileGroup of tiles) {
+    assert.equal(tileGroup.count, 12);
+    assert.equal(tileGroup.instances.length, 12);
+    assert.equal(tileGroup.instanceMatrix.needsUpdate, true);
+    for (const matrix of tileGroup.instances) {
+      assert.equal(matrix.position.y, world.startCenter.y + 0.14);
+      assert.ok(Math.abs(matrix.rotation.y - world.startYaw) < 1e-9);
+      actualPositions.push(matrix.position.x.toFixed(4) + "," +
+        matrix.position.z.toFixed(4));
+    }
+  }
+  assert.equal(new Set(actualPositions).size, 24,
+    "all 24 tile locations remain distinct");
+  const expected = [];
+  for (let row = 0; row < 2; row++) {
+    for (let col = 0; col < 12; col++) {
+      const center = world.positions[world.startIndex];
+      const direction = world.directions[world.startIndex];
+      const side = world.sides[world.startIndex];
+      const longitudinal = (row - 0.5) * 1.35;
+      const lateral = (col - 5.5) * 1.47;
+      expected.push((center.x + direction.x * longitudinal +
+        side.x * lateral).toFixed(4) + "," +
+        (center.z + direction.z * longitudinal +
+        side.z * lateral).toFixed(4));
+    }
+  }
+  assert.deepEqual(actualPositions.sort(), expected.sort());
+});
+
+test("rainbow start and finish remain differently colored and need only four instanced draws", () => {
+  const Barriers = require("../games/gcv/barriers.js");
+  const world = World3D.create({
+    THREE, TrackLayout: TrackLayout.select("rainbow"), Barriers, Scenery,
+  });
+  const startColors = [0xf9d966, 0xd9e0ed];
+  const finishColors = [0xf5ede6, 0x322b35];
+  const tileMeshes = world.scene.children.filter((node) =>
+    node instanceof InstancedMesh &&
+    [...startColors, ...finishColors].includes(node.material?.color));
+  assert.equal(tileMeshes.length, 4);
+  assert.deepEqual(tileMeshes.map((node) => node.material.color).sort((a, b) => a - b),
+    [...startColors, ...finishColors].sort((a, b) => a - b));
+  assert.equal(tileMeshes.reduce((sum, node) => sum + node.count, 0), 48);
+  assert.equal(new Set(tileMeshes.map((node) => node.geometry)).size, 1);
+  const startCenter = world.positions[world.startIndex];
+  const finishCenter = world.positions[world.finishIndex];
+  for (const mesh of tileMeshes) {
+    const center = startColors.includes(mesh.material.color) ? startCenter : finishCenter;
+    assert.equal(mesh.count, 12);
+    assert.ok(mesh.instances.every((instance) =>
+      instance.position.y === center.y + 0.14));
+  }
 });
 
 test("rainbow world initializes with distinct, valid start and finish gates", () => {
