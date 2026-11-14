@@ -570,7 +570,9 @@
               projection?.lateral ?? 0, ROAD_HALF_WIDTH - 1.8);
             if (launch !== null) {
               jumpVelocity = launch;
-              driver.jumpY = 0.001;
+              // Small suspension clearance prevents frame-to-frame road
+              // projection error from cancelling the jump immediately.
+              driver.jumpY = 0.06;
               jumpCooldown = 1.0; // One launch per crest.
               launched = true;
             }
