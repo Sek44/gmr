@@ -202,9 +202,45 @@ const GcvTrackProgress = (() => {
     const yawError = Math.atan2(Math.sin(targetYaw - candidate.yaw),
       Math.cos(targetYaw - candidate.yaw));
     const blend = 1 - Math.exp(-7 * Math.max(0, dt));
+    let x = a.x + t * dx + sideX * lateral;
+    let z = a.z + t * dz + sideZ * lateral;
+    // At a sharp bend, even a smoothly rotating road normal can shift a
+    // vehicle sideways too far in one frame. Limit any correction to the
+    // travelled distance plus a small steering allowance.
+    const movement = Math.hypot(x - before.x, z - before.z);
+    const maxMovement = Math.hypot(
+      candidate.x - before.x, candidate.z - before.z) + 0.45;
+    if (movement > maxMovement && maxMovement > 0) {
+      const ratio = maxMovement / movement;
+      const limitedX = before.x + (x - before.x) * ratio;
+      const limitedZ = before.z + (z - before.z) * ratio;
+      const projected = projectOpenRoad(positions, sampleCount,
+        limitedX, limitedZ, hintIndex, 8);
+      if (projected && Math.abs(projected.lateral) <= maxSide + 0.1) {
+        x = limitedX;
+        z = limitedZ;
+        // Only award physical forward progress, never the distance of the
+        // intended (but clipped) move beyond this frame's actual position.
+        let nextIndex = best.index;
+        let nextT = best.t;
+        let realTravel = 0;
+        while (nextIndex < projected.index && nextIndex < limit) {
+          const p = positions[nextIndex], q = positions[nextIndex + 1];
+          realTravel += (1 - nextT) * Math.hypot(q.x - p.x, q.z - p.z);
+          nextIndex++;
+          nextT = 0;
+        }
+        if (nextIndex === projected.index) {
+          const p = positions[nextIndex], q = positions[nextIndex + 1];
+          realTravel += Math.max(0, projected.t - nextT) *
+            Math.hypot(q.x - p.x, q.z - p.z);
+        }
+        travel = Math.min(travel, Math.max(0, realTravel));
+        index = projected.index;
+      }
+    }
     return {
-      x: a.x + t * dx + sideX * lateral,
-      z: a.z + t * dz + sideZ * lateral,
+      x, z,
       yaw: candidate.yaw + yawError * blend,
       index, travel,
     };
