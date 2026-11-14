@@ -50,26 +50,29 @@ test("roadside shoulders are seven metres per side", () => {
   assert.equal(layout.ROAD_HALF_WIDTH + layout.SHOULDER_WIDTH, 16);
 });
 
-test("extended rainbow sprint has four oversized launch hills", () => {
-  const points = layout.SPRINT.WAYPOINTS;
-  const length = points.slice(1).reduce((distance, [x, z], index) =>
-    distance + Math.hypot(x - points[index][0], z - points[index][1]), 0);
-  assert.ok(length > 2500, "route must be substantially longer than 1.6 km");
-  assert.equal(layout.SPRINT.VERSION, 4);
-  assert.equal(layout.SPRINT.HUMPS.length, 4);
-  assert.deepEqual(layout.SPRINT.HUMPS,
-    layout.SPRINT.HUMP_PROFILES.map((hump) => hump.at));
-  assert.ok(layout.SPRINT.HUMP_PROFILES.every((hump) =>
-    hump.height >= 14 && hump.width >= 0.04 &&
-    hump.crown >= 0.9 && hump.crownWidth < hump.width / 2));
-  for (const hill of layout.SPRINT.HUMP_PROFILES) {
-    assert.ok(Math.abs(layout.SPRINT.heightAt(hill.at) - hill.height) < 0.01,
-      "crown preserves the peak height");
-    const shoulder = layout.SPRINT.heightAt(hill.at - hill.width / 2);
-    assert.ok(shoulder < hill.height && shoulder > hill.height / 2,
-      "bump retains its gradual approach ramp");
+test("regenerated rainbow sprint has four crests on straight sections", () => {
+  const route = layout.SPRINT;
+  assert.equal(route.VERSION, 5);
+  assert.ok(route.LENGTH_METRES > 2300 && route.LENGTH_METRES < 2700);
+  assert.equal(route.HUMPS.length, 4);
+  assert.deepEqual(route.HUMPS, route.HUMP_PROFILES.map(hump => hump.at));
+  const straights = route.SECTIONS.filter(section =>
+    section.type === "straight" && section.hump);
+  assert.equal(straights.length, 4, "a hump belongs only to a long straight");
+  for (const hump of route.HUMP_PROFILES) {
+    const metres = hump.at * route.LENGTH_METRES;
+    assert.ok(metres >= hump.sectionStart + 150,
+      "crest must be at least 150 metres from the preceding turn");
+    assert.ok(metres <= hump.sectionEnd - 150,
+      "crest must be at least 150 metres before the next turn");
+    assert.ok(hump.height >= 14 && hump.crown >= 0.9);
+    assert.ok(Math.abs(route.heightAt(hump.at) - hump.height) < 0.1);
+    const approach = route.heightAt(hump.at - hump.width / 2);
+    assert.ok(approach < hump.height && approach > hump.height * 0.65,
+      "bumps retain their gradual approach");
   }
-  assert.ok(layout.SPRINT.HUMP_PROFILES[0].at < 0.17,
-    "first crest should be positioned before the abrupt bend");
-  assert.ok(layout.SPRINT.FINISH.z < layout.SPRINT.START.z);
+  const colouredMetres = (route.RAINBOW[1] - route.RAINBOW[0]) *
+    route.LENGTH_METRES;
+  assert.ok(colouredMetres > 100 && colouredMetres < 190);
+  assert.ok(route.FINISH.z < route.START.z);
 });
