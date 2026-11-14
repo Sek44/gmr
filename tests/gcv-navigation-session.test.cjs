@@ -241,10 +241,12 @@ test("navigation and session modules are valid globals loaded before the GCV ent
   const dir = path.join(__dirname, "../games/gcv");
   const html = fs.readFileSync(path.join(dir, "index.html"), "utf8")
     .replace(/\?v=\d{8}[a-z]/g, "");
-  const entry = html.indexOf('src="./game.js"');
-  const flowScript = html.indexOf('src="./flow.js"');
-  const nav = html.indexOf('src="./navigation.js"');
-  const sessions = html.indexOf('src="./session.js"');
+  const scripts = [...html.matchAll(/\["(?:script|module)", "\.\/([^"?]+\.js)(?:\?[^"]*)?"\]/g)]
+    .map((match) => match[1]);
+  const entry = scripts.indexOf("game.js");
+  const flowScript = scripts.indexOf("flow.js");
+  const nav = scripts.indexOf("navigation.js");
+  const sessions = scripts.indexOf("session.js");
   assert.ok(flowScript >= 0 && nav > flowScript && sessions > nav && entry > sessions);
   const sandbox = { window: {} };
   for (const file of ["flow.js", "navigation.js", "session.js"]) {

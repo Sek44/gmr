@@ -47,10 +47,10 @@ test("benchmark is separate from the paid play-time and race state", () => {
   const html = fs.readFileSync(path.join(game, "benchmark.html"), "utf8");
   const script = fs.readFileSync(path.join(game, "benchmark.js"), "utf8");
   assert.match(html, /benchmark-metrics\.js/);
-  assert.match(html, /src="\.\/rendering\.js\?v=/);
-  assert.match(html, /src="\.\/vehicles\.js\?v=/);
-  assert.match(html, /src="\.\/world-3d\.js\?v=/);
-  assert.match(html, /src="\.\/benchmark\.js\?v=/);
+  assert.match(html, /\["(?:script|module)", "\.\/rendering\.js\?v=/);
+  assert.match(html, /\["(?:script|module)", "\.\/vehicles\.js\?v=/);
+  assert.match(html, /\["(?:script|module)", "\.\/world-3d\.js\?v=/);
+  assert.match(html, /\["(?:script|module)", "\.\/benchmark\.js\?v=/);
   assert.doesNotMatch(html, /play-time|game-state|session\.js|game\.js/);
   assert.doesNotMatch(script, /localStorage|sessionStorage|GmrPlayTime/);
   assert.match(script, /requestAnimationFrame/);
@@ -191,8 +191,8 @@ test("three report pages provide readable screenshot sections", () => {
   ]) {
     assert.match(html, new RegExp('id="' + id + '"'));
   }
-  assert.match(html, /src="\.\/benchmark-config\.js\?v=/);
-  assert.match(html, /src="\.\/benchmark-display\.js\?v=/);
+  assert.match(html, /\["(?:script|module)", "\.\/benchmark-config\.js\?v=/);
+  assert.match(html, /\["(?:script|module)", "\.\/benchmark-display\.js\?v=/);
   assert.match(code, /setResolutionScale\(scenario\.scale\)/);
   assert.match(code, /performance\.now\(\)/);
   assert.match(code, /metrics\.resolutionComparison\(output\)/);

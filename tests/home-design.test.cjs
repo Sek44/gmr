@@ -52,9 +52,10 @@ test("catalog artwork belongs to its game and is a local SVG", () => {
   vm.runInNewContext(read("games/catalog.js"), context);
   for (const game of context.window.GmrCatalog.games) {
     if (!game.artwork) continue;
-    assert.match(game.artwork, /\.svg$/);
-    assert.ok(game.artwork.startsWith("./games/" + game.id + "/assets/"));
-    const filename = path.resolve(root, game.artwork);
+    const artworkPath = game.artwork.split(/[?#]/, 1)[0];
+    assert.match(artworkPath, /\.svg$/);
+    assert.ok(artworkPath.startsWith("./games/" + game.id + "/assets/"));
+    const filename = path.resolve(root, artworkPath);
     assert.ok(fs.existsSync(filename), "missing artwork " + filename);
     const svg = fs.readFileSync(filename, "utf8");
     assert.match(svg, /viewBox=/);
@@ -76,9 +77,13 @@ test("home rendering retains playable links and session compatibility", () => {
   nodes["game-grid"] = make("div");
   nodes["empty-games"] = make("p");
   nodes["gmr-daily-summary"] = make("div");
+  const scoresLink = { href: "https://example.test/gmr/scores.html" };
   const document = {
     getElementById(id) { return nodes[id]; },
     createElement: make,
+    querySelector(selector) {
+      return selector === ".home-scores-link" ? scoresLink : null;
+    },
   };
   const context = {
     document, window: {
@@ -89,17 +94,26 @@ test("home rendering retains playable links and session compatibility", () => {
       ] },
       GameState: { create(id) { return { load: () => id === "first" ? { saveRevision: 3 } : null }; } },
     },
-    encodeURIComponent,
+    encodeURIComponent, URL,
+    location: { href: "https://example.test/gmr/" },
+    Date: { now: () => 123456789 },
   };
   vm.runInNewContext(read("shared/home.js"), context);
+  assert.equal(scoresLink.href,
+    "https://example.test/gmr/scores.html?gmr-refresh=123456789");
   assert.equal(nodes["empty-games"].hidden, true);
   assert.equal(nodes["game-grid"].children.length, 2);
   const [first, second] = nodes["game-grid"].children;
-  assert.equal(first.href, "./games/first/");
-  assert.equal(second.href, "./games/second/");
+  assert.equal(first.href,
+    "https://example.test/gmr/games/first/?gmr-refresh=123456789");
+  assert.equal(second.href,
+    "https://example.test/gmr/games/second/?gmr-refresh=123456789");
   assert.equal(first.children[1].children[2].children[0].textContent, "Reprendre");
   assert.equal(second.children[1].children[2].children[0].textContent, "Jouer");
-  assert.ok(second.children[0].children[0].src.endsWith("gamepad.svg"));
+  assert.equal(new URL(second.children[0].children[0].src).pathname,
+    "/gmr/shared/themes/classic-play/assets/gamepad.svg");
+  assert.equal(new URL(second.children[0].children[0].src).searchParams.get("gmr-refresh"),
+    "123456789");
   assert.equal(first.children[1].children.length, 3);
   assert.equal(second.children[1].children.length, 3);
   assert.doesNotMatch(read("shared/home.js"), /game-description|game\.description/);

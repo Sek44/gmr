@@ -61,8 +61,17 @@ test("static pages reference existing local styles and scripts", () => {
   }
   for (const page of pages) {
     const html = file(page);
+    // Inline document.write templates contain HTML fragments which are not
+    // literal asset references. Validate their resource list separately.
+    const withoutInlineCode = html.replace(/(<script\b[^>]*>)[\s\S]*?(<\/script>)/gi,
+      "$1$2");
     const tags = /<(?:script|link)\b[^>]*\b(?:src|href)="([^"]+)"/g;
-    for (const match of html.matchAll(tags)) {
+    const declared = /\["(?:style|script|module)",\s*"([^"]+)"\]/g;
+    const resources = [
+      ...withoutInlineCode.matchAll(tags),
+      ...html.matchAll(declared),
+    ];
+    for (const match of resources) {
       const source = match[1].split(/[?#]/, 1)[0];
       if (/^(?:https?:|\/\/|\/|data:)/.test(source)) continue;
       const target = path.resolve(root, path.dirname(page), source);

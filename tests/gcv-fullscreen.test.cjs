@@ -57,7 +57,8 @@ function launchHost({ supportsFullscreen = true, rejectFullscreen = false } = {}
     },
   };
   const source = fs.readFileSync(path.join(__dirname, "../shared/game-host.js"), "utf8");
-  vm.runInNewContext(source, { document, window, URL, Promise, console });
+  vm.runInNewContext(source, { document, window, URL, Promise, console,
+    Date: { now: () => 123456789 } });
   const host = body.child;
   const click = (href) => {
     let prevented = false;
@@ -74,14 +75,15 @@ test("Home click enters fullscreen synchronously before loading GCV", async () =
   const h = launchHost();
   assert.equal(h.click("https://sek44.github.io/gmr/games/gcv/"), true);
   assert.equal(h.document.fullscreenElement, h.host);
-  assert.equal(h.host.child.src, "https://sek44.github.io/gmr/games/gcv/");
+  assert.equal(h.host.child.src,
+    "https://sek44.github.io/gmr/games/gcv/?gmr-refresh=123456789");
   assert.equal(h.host.hidden, false);
   assert.deepEqual(h.assigned, []);
   h.window.GmrGameHost.navigate("scores");
   await Promise.resolve();
   await Promise.resolve();
   assert.equal(h.assigned[0],
-    "https://sek44.github.io/gmr/scores.html?game=gcv&from=gcv");
+    "https://sek44.github.io/gmr/scores.html?game=gcv&from=gcv&gmr-refresh=123456789");
   assert.equal(h.reloads, 0); // Exit was intentional, not browser's Esc.
 });
 
@@ -99,7 +101,8 @@ test("Denied fullscreen falls back to a standalone navigable game", async () => 
   assert.equal(h.click("https://sek44.github.io/gmr/games/gcv/"), true);
   await Promise.resolve();
   await Promise.resolve();
-  assert.equal(h.assigned[0], "https://sek44.github.io/gmr/games/gcv/");
+  assert.equal(h.assigned[0],
+    "https://sek44.github.io/gmr/games/gcv/?gmr-refresh=123456789");
 });
 
 function navigationFixture(hosted) {

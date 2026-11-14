@@ -61,7 +61,7 @@ test("preference IDs match available circuits and vehicles", () => {
   const entry = fs.readFileSync(path.join(root, "game.js"), "utf8");
   const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
   const css = fs.readFileSync(path.join(root, "game.css"), "utf8");
-  assert.match(html, /src="\.\/preferences\.js/);
+  assert.match(html, /\["script", "\.\/preferences\.js(?:\?[^"]*)?"\]/);
   assert.match(entry, /if \(!navigation\.paused\) rendering\.render\(\)/);
   assert.match(css, /\.gcv-stage\.gcv-in-menu \.gcv-scene \{ visibility: hidden; \}/);
 });

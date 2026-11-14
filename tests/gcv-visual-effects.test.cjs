@@ -12,9 +12,11 @@ const gameDirectory = path.join(__dirname, "../games/gcv");
 test("visual effects are loaded before the game entry point", () => {
   const html = fs.readFileSync(path.join(gameDirectory, "index.html"), "utf8")
     .replace(/\?v=\d{8}[a-z]/g, "");
-  const world = html.indexOf('<script defer src="./world-3d.js"></script>');
-  const effects = html.indexOf('<script defer src="./visual-effects.js"></script>');
-  const game = html.indexOf('<script type="module" src="./game.js"></script>');
+  const scripts = [...html.matchAll(/\["(?:script|module)", "\.\/([^"?]+\.js)(?:\?[^"]*)?"\]/g)]
+    .map((match) => match[1]);
+  const world = scripts.indexOf("world-3d.js");
+  const effects = scripts.indexOf("visual-effects.js");
+  const game = scripts.indexOf("game.js");
   assert.ok(world >= 0 && effects > world && game > effects);
   for (const file of ["visual-effects.js", "game.js"]) {
     assert.doesNotThrow(() =>
