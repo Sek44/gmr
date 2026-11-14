@@ -49,35 +49,59 @@
           <button type="button" id="menu-home-button" class="gcv-action gcv-home-tool" aria-label="Retour à l’accueil" title="Accueil"><svg class="gcv-action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1V10Z"/></svg></button>
         </div>
         <div class="gcv-home-panel">
-          <p class="gcv-home-eyebrow">SUPER KART</p>
-          <h2>Choisis ton véhicule et ton circuit</h2>
-          <p class="gcv-home-description">Cinq équipages originaux, une même course !</p>
-          <button type="button" id="resume-button" class="gcv-home-button gcv-home-resume" hidden>Reprendre</button>
-          <div class="gcv-vehicle-chooser" role="group" aria-label="Véhicule et pilote">
-            <button type="button" class="gcv-home-button gcv-vehicle-choice is-selected"
-              data-gcv-vehicle="classic" aria-pressed="true"><span class="gcv-vehicle-icon" aria-hidden="true">🏎️</span><span class="gcv-vehicle-label"><strong>Voiture n° 9</strong><small>Pilote classique</small></span></button>
-            <button type="button" class="gcv-home-button gcv-vehicle-choice"
-              data-gcv-vehicle="moto" aria-pressed="false"><span class="gcv-vehicle-icon" aria-hidden="true">🏍️</span><span class="gcv-vehicle-label"><strong>Moto Turbo</strong><small>Milo le motard</small></span></button>
-            <button type="button" class="gcv-home-button gcv-vehicle-choice"
-              data-gcv-vehicle="kart" aria-pressed="false"><span class="gcv-vehicle-icon" aria-hidden="true">🏁</span><span class="gcv-vehicle-label"><strong>Kart Citron</strong><small>Luna la pilote</small></span></button>
-            <button type="button" class="gcv-home-button gcv-vehicle-choice"
-              data-gcv-vehicle="buggy" aria-pressed="false"><span class="gcv-vehicle-icon" aria-hidden="true">🚙</span><span class="gcv-vehicle-label"><strong>Buggy Dragon</strong><small>Bongo l'aventurier</small></span></button>
-            <button type="button" class="gcv-home-button gcv-vehicle-choice"
-              data-gcv-vehicle="comet" aria-pressed="false"><span class="gcv-vehicle-icon" aria-hidden="true">🚀</span><span class="gcv-vehicle-label"><strong>Comète Violette</strong><small>Nova l'astronaute</small></span></button>
-          </div>
-          <div class="gcv-track-chooser" role="group" aria-label="Circuit">
-            <button type="button" class="gcv-home-button gcv-track-choice is-selected"
-              data-gcv-track="classic" aria-pressed="true">Circuit classique</button>
-            <button type="button" class="gcv-home-button gcv-track-choice"
-              data-gcv-track="rainbow" aria-pressed="false">Route Arc-en-ciel</button>
-          </div>
-          <div class="gcv-mode-chooser" aria-label="Mode de jeu">
-            <button type="button" id="free-mode-button" class="gcv-home-button gcv-mode-choice is-selected" aria-pressed="true">
-              <strong>Essais libres</strong><span>Conduire et battre ses records</span>
-            </button>
-            <button type="button" id="race-mode-button" class="gcv-home-button gcv-mode-choice" aria-pressed="false">
-              <strong>Course · 3 tours</strong><span>Défie 9 concurrents sur la piste</span>
-            </button>
+          <header class="gcv-menu-heading">
+            <p class="gcv-home-eyebrow">GMR · COURSE 3D</p>
+            <h2>SUPER KART</h2>
+            <p class="gcv-home-description">Prêt à prendre le départ ?</p>
+          </header>
+          <section id="resume-card" class="gcv-resume-card" aria-label="Partie sauvegardée" hidden>
+            <div class="gcv-resume-text">
+              <strong>Partie en cours</strong>
+              <span id="resume-details"></span>
+            </div>
+            <button type="button" id="resume-button" class="gcv-home-button gcv-home-resume">Reprendre la course</button>
+          </section>
+          <div class="gcv-menu-main">
+            <div class="gcv-menu-options">
+              <section class="gcv-menu-section" aria-labelledby="gcv-track-title">
+                <h3 id="gcv-track-title">1 · Circuit</h3>
+                <div class="gcv-track-chooser" role="group" aria-label="Choisir le circuit">
+                  <button type="button" class="gcv-home-button gcv-track-choice is-selected" data-gcv-track="classic" aria-pressed="true">Circuit classique</button>
+                  <button type="button" class="gcv-home-button gcv-track-choice" data-gcv-track="rainbow" aria-pressed="false">Route Arc-en-ciel</button>
+                </div>
+              </section>
+              <section class="gcv-menu-section" aria-labelledby="gcv-vehicle-title">
+                <h3 id="gcv-vehicle-title">2 · Véhicule</h3>
+                <div class="gcv-vehicle-chooser" role="group" aria-label="Choisir le véhicule et le pilote">
+                  <button type="button" class="gcv-home-button gcv-vehicle-choice is-selected" data-gcv-vehicle="classic" aria-pressed="true"><span class="gcv-vehicle-icon" aria-hidden="true">🏎️</span><span class="gcv-vehicle-label"><strong>Voiture n° 9</strong><small>Pilote classique</small></span></button>
+                  <button type="button" class="gcv-home-button gcv-vehicle-choice" data-gcv-vehicle="moto" aria-pressed="false"><span class="gcv-vehicle-icon" aria-hidden="true">🏍️</span><span class="gcv-vehicle-label"><strong>Moto Turbo</strong><small>Milo le motard</small></span></button>
+                  <button type="button" class="gcv-home-button gcv-vehicle-choice" data-gcv-vehicle="kart" aria-pressed="false"><span class="gcv-vehicle-icon" aria-hidden="true">🏁</span><span class="gcv-vehicle-label"><strong>Kart Citron</strong><small>Luna la pilote</small></span></button>
+                  <button type="button" class="gcv-home-button gcv-vehicle-choice" data-gcv-vehicle="buggy" aria-pressed="false"><span class="gcv-vehicle-icon" aria-hidden="true">🚙</span><span class="gcv-vehicle-label"><strong>Buggy Dragon</strong><small>Bongo l'aventurier</small></span></button>
+                  <button type="button" class="gcv-home-button gcv-vehicle-choice" data-gcv-vehicle="comet" aria-pressed="false"><span class="gcv-vehicle-icon" aria-hidden="true">🚀</span><span class="gcv-vehicle-label"><strong>Comète Violette</strong><small>Nova l'astronaute</small></span></button>
+                </div>
+              </section>
+              <section class="gcv-menu-section" aria-labelledby="gcv-mode-title">
+                <h3 id="gcv-mode-title">3 · Mode de jeu</h3>
+                <div class="gcv-mode-chooser" role="group" aria-label="Choisir le mode">
+                  <button type="button" id="free-mode-button" class="gcv-home-button gcv-mode-choice is-selected" aria-pressed="true">
+                    <strong>Essais libres</strong><span>Améliore tes records</span>
+                  </button>
+                  <button type="button" id="race-mode-button" class="gcv-home-button gcv-mode-choice" aria-pressed="false">
+                    <strong>Course · 3 tours</strong><span>Affronte 9 adversaires</span>
+                  </button>
+                </div>
+              </section>
+            </div>
+            <aside class="gcv-menu-launch" aria-label="Démarrer une nouvelle partie">
+              <p class="gcv-launch-eyebrow">NOUVELLE PARTIE</p>
+              <strong class="gcv-launch-title">À toi de jouer !</strong>
+              <p id="start-summary" class="gcv-start-summary"></p>
+              <button type="button" id="start-button" class="gcv-start-button">
+                <svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M8 4.5v15l12-7.5L8 4.5Z"/></svg>
+                <span id="start-button-label">Démarrer les essais</span>
+              </button>
+              <p class="gcv-launch-note">Une nouvelle partie démarre avec les réglages choisis.</p>
+            </aside>
           </div>
         </div>
       </div>
