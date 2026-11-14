@@ -16,7 +16,7 @@ test("open route selects a distinct start and finish", () => {
       "every timing marker must use the {x,z} contract");
   }
   assert.equal(typeof Layout.SPRINT.nearestIndex, "function");
-  assert.equal(Layout.SPRINT.HUMPS.length, 3);
+  assert.equal(Layout.SPRINT.HUMPS.length, 4);
   assert.ok(Layout.SPRINT.RAINBOW[1] > Layout.SPRINT.RAINBOW[0]);
 });
 
