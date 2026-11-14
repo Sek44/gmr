@@ -4,6 +4,8 @@ Documentation technique du code situé dans `games/gcv/`. Les règles observable
 
 ## 1. Chargement et orchestration
 
+`index.html` génère, pendant l'analyse du document HTML, les liens CSS et les scripts classiques `defer` et module avec le paramètre `gmr-refresh`. Ce paramètre provient du lien de l'accueil ou d'un horodatage à l'ouverture directe, pour éviter que le navigateur ne réutilise d'anciennes ressources. L'ordre initial des dépendances est conservé ; la bibliothèque Three.js reste épinglée à sa version de CDN.
+
 `index.html` charge les modules JavaScript du jeu dans l'ordre de leurs dépendances. `game.js` est le point d'entrée exécuté comme module ES ; il importe **Three.js 0.180.0** depuis un CDN jsDelivr, construit la scène et démarre la boucle `requestAnimationFrame`.
 
 Il n'existe ni serveur de jeu, ni build, ni moteur physique externe. Les autres fichiers utilisent actuellement les globales `Gcv*` pour le navigateur et, en général, `module.exports` pour les tests Node.
