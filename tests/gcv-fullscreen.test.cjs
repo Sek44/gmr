@@ -176,8 +176,8 @@ test("Hosted GCV does not request nested fullscreen; Home delegates to host", ()
 
 test("GCV controls show Scores then Home in menu and Scores then Menu while driving", () => {
   const html = fs.readFileSync(path.join(__dirname, "../games/gcv/index.html"), "utf8");
-  const menuActions = html.match(/<div class="gcv-home-tools"[^>]*>([\\s\\S]*?)<\\/div>/)?.[1];
-  const raceActions = html.match(/<div class="gcv-actions">([\\s\\S]*?)<\\/div>/)?.[1];
+  const menuActions = html.match(/<div class="gcv-home-tools"[^>]*>([\s\S]*?)<\/div>/)?.[1];
+  const raceActions = html.match(/<div class="gcv-actions">([\s\S]*?)<\/div>/)?.[1];
   assert.ok(menuActions && raceActions);
   const ids = (text) => [...text.matchAll(/id="([^"]+-button)"/g)].map((match) => match[1]);
   assert.deepEqual(ids(menuActions), ["menu-scores-button", "menu-home-button"]);
@@ -185,6 +185,6 @@ test("GCV controls show Scores then Home in menu and Scores then Menu while driv
     ["scores-button", "menu-button", "restart-button", "camera-button"]);
   assert.doesNotMatch(html, /id="(?:home-button|fullscreen-button|menu-fullscreen-button)"/);
   const css = fs.readFileSync(path.join(__dirname, "../games/gcv/game.css"), "utf8");
-  assert.match(css, /\\.gcv-actions #scores-button \\{ grid-column: 1; grid-row: 1; \\}/);
-  assert.match(css, /\\.gcv-actions #menu-button \\{ grid-column: 2; grid-row: 1; \\}/);
+  assert.match(css, /\.gcv-actions #scores-button \{ grid-column: 1; grid-row: 1; \}/);
+  assert.match(css, /\.gcv-actions #menu-button \{ grid-column: 2; grid-row: 1; \}/);
 });
