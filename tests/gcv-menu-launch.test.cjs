@@ -78,7 +78,7 @@ test("top-aligned menu keeps the three sections ordered and has SVG mode icons",
   assert.ok(!cssPanel.includes("margin-block: auto"));
   assert.ok(css.includes(".gcv-mode-content small { display: none; }"));
   assert.ok(css.includes(".gcv-mode-icon {"));
-  assert.ok(html.includes("./game.css?v=20261114o"));
+  assert.ok(html.includes('["style", "./game.css?v='));
 });
 
 test("choosing options does not start or delete an in-progress race", () => {
