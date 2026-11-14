@@ -55,11 +55,21 @@ test("extended rainbow sprint has four oversized launch hills", () => {
   const length = points.slice(1).reduce((distance, [x, z], index) =>
     distance + Math.hypot(x - points[index][0], z - points[index][1]), 0);
   assert.ok(length > 2500, "route must be substantially longer than 1.6 km");
-  assert.equal(layout.SPRINT.VERSION, 3);
+  assert.equal(layout.SPRINT.VERSION, 4);
   assert.equal(layout.SPRINT.HUMPS.length, 4);
   assert.deepEqual(layout.SPRINT.HUMPS,
     layout.SPRINT.HUMP_PROFILES.map((hump) => hump.at));
   assert.ok(layout.SPRINT.HUMP_PROFILES.every((hump) =>
-    hump.height >= 14 && hump.width >= 0.039));
+    hump.height >= 14 && hump.width >= 0.04 &&
+    hump.crown >= 0.9 && hump.crownWidth < hump.width / 2));
+  for (const hill of layout.SPRINT.HUMP_PROFILES) {
+    assert.ok(Math.abs(layout.SPRINT.heightAt(hill.at) - hill.height) < 0.01,
+      "crown preserves the peak height");
+    const shoulder = layout.SPRINT.heightAt(hill.at - hill.width / 2);
+    assert.ok(shoulder < hill.height && shoulder > hill.height / 2,
+      "bump retains its gradual approach ramp");
+  }
+  assert.ok(layout.SPRINT.HUMP_PROFILES[0].at < 0.17,
+    "first crest should be positioned before the abrupt bend");
   assert.ok(layout.SPRINT.FINISH.z < layout.SPRINT.START.z);
 });
