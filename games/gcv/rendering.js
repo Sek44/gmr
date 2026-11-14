@@ -78,9 +78,10 @@ const GcvRendering = (() => {
     let landingCompression = 0;
     const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
-    // One tiny radial alpha texture, one plane geometry and two materials for
-    // all ten shadows. The meshes belong to the scene, NOT to the car groups:
-    // jumping and pitching never lift or rotate the ground projection.
+    // One tiny radial alpha texture and plane geometry for all ten shadows.
+    // A standalone player mesh keeps its individual in-flight alpha fade.
+    // One instanced draw handles all nine opponent shadows, independently of
+    // their animated vehicles (which can jump or pitch above the road).
     const shadowCanvas = window.document.createElement("canvas");
     shadowCanvas.width = shadowCanvas.height = 64;
     const shadowContext = shadowCanvas.getContext("2d");
@@ -98,31 +99,28 @@ const GcvRendering = (() => {
     const shadowGeometry = new THREE.PlaneGeometry(1, 1);
     const opponentShadowMaterial = new THREE.MeshBasicMaterial({
       color: 0x10141a, map: shadowTexture, transparent: true,
-      opacity: SHADOW_OPACITY, depthWrite: false, side: THREE.DoubleSide,
+      opacity: SHADOW_OPACITY, depthWrite: false, side: THREE.FrontSide,
     });
     const playerShadowMaterial = opponentShadowMaterial.clone();
-    function makeShadow(material, footprint) {
-      const mesh = new THREE.Mesh(shadowGeometry, material);
-      mesh.rotation.set(-Math.PI / 2, 0, 0, "YXZ");
-      mesh.scale.set(footprint[0], footprint[1], 1);
-      scene.add(mesh);
-      return mesh;
-    }
-    function placeShadow(mesh, x, groundY, z, yaw, footprint, size = 1) {
-      mesh.position.set(x, groundY + SHADOW_GROUND_OFFSET, z);
+    function placeShadow(target, x, groundY, z, yaw, footprint, size = 1) {
+      target.position.set(x, groundY + SHADOW_GROUND_OFFSET, z);
       // YXZ applies yaw around world Y while leaving the plane horizontal.
-      mesh.rotation.set(-Math.PI / 2, yaw, 0, "YXZ");
-      mesh.scale.set(footprint[0] * size, footprint[1] * size, 1);
+      target.rotation.set(-Math.PI / 2, yaw, 0, "YXZ");
+      target.scale.set(footprint[0] * size, footprint[1] * size, 1);
     }
-    const playerShadow = makeShadow(playerShadowMaterial,
-      SHADOW_FOOTPRINTS.classic);
-    const opponentShadows = new Map();
-    for (const [id] of opponentMeshes) {
-      const shadow = makeShadow(opponentShadowMaterial,
-        SHADOW_FOOTPRINTS.classic);
-      shadow.visible = false;
-      opponentShadows.set(id, shadow);
-    }
+    const playerShadow = new THREE.Mesh(shadowGeometry, playerShadowMaterial);
+    playerShadow.rotation.set(-Math.PI / 2, 0, 0, "YXZ");
+    playerShadow.scale.set(...SHADOW_FOOTPRINTS.classic, 1);
+    scene.add(playerShadow);
+
+    const opponentShadows = new THREE.InstancedMesh(shadowGeometry,
+      opponentShadowMaterial, opponentMeshes.size);
+    opponentShadows.count = 0; // No opponents in free driving.
+    // The instance transforms change every frame; a cached initial bounding
+    // sphere would incorrectly cull moving shadows later in the race.
+    opponentShadows.frustumCulled = false;
+    scene.add(opponentShadows);
+    const opponentShadowTransform = new THREE.Object3D();
 
     let riderMotionTime = 0;
     // Explicitly visible arcade-style rider motion: the bike banks while Milo
@@ -234,11 +232,13 @@ const GcvRendering = (() => {
     }
 
     function syncOpponents(opponents) {
+      // One matrix upload per frame, not one shadow mesh/draw call per AI.
+      // Dense indices keep the batch correct when an opponent is absent.
+      const byId = new Map(opponents?.map((entry) => [entry.id, entry]) || []);
+      let shadowCount = 0;
       for (const [id, mesh] of opponentMeshes) {
-        const ai = opponents?.find((entry) => entry.id === id);
+        const ai = byId.get(id);
         mesh.visible = Boolean(ai);
-        const shadow = opponentShadows.get(id);
-        if (shadow) shadow.visible = Boolean(ai);
         if (!ai) continue;
         // Use arc length, including on the final long straight.
         const rawT = startIndex / SAMPLE_COUNT + ai.progress / trackLength;
@@ -249,9 +249,13 @@ const GcvRendering = (() => {
         mesh.position.set(center.x + sideX * ai.lateral,
           heightAt(t) + 0.14, center.z + sideZ * ai.lateral);
         mesh.rotation.y = Math.atan2(-forward.x, -forward.z);
-        if (shadow) placeShadow(shadow, mesh.position.x, heightAt(t),
+        placeShadow(opponentShadowTransform, mesh.position.x, heightAt(t),
           mesh.position.z, mesh.rotation.y, SHADOW_FOOTPRINTS.classic);
+        opponentShadowTransform.updateMatrix();
+        opponentShadows.setMatrixAt(shadowCount++, opponentShadowTransform.matrix);
       }
+      opponentShadows.count = shadowCount;
+      if (shadowCount) opponentShadows.instanceMatrix.needsUpdate = true;
     }
 
     function updatePlayer({ driver, fall, dt, brakePressed, jumpVelocity = 0,
