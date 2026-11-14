@@ -84,7 +84,7 @@ test("standalone benchmark browser scripts load in dependency order", () => {
 });
 
 test("seven scripted runs keep like-for-like resolution comparisons", () => {
-  assert.equal(Config.VERSION, "gcv-render-v4");
+  assert.equal(Config.VERSION, "gcv-render-v5");
   assert.equal(Config.SCENARIOS.length, 7);
   assert.ok(Config.validatePlan());
   const full = Config.SCENARIOS.find((item) => item.id === "classic-race");
@@ -191,6 +191,8 @@ test("three report pages provide readable screenshot sections", () => {
   assert.match(code, /setResolutionScale\(scenario\.scale\)/);
   assert.match(code, /performance\.now\(\)/);
   assert.match(code, /metrics\.resolutionComparison\(output\)/);
+  assert.match(code, /classicReference\?\.msaaActive/);
+  assert.match(code, /MSAA classique/);
   assert.match(css, /\[hidden\] \{ display: none !important; \}/);
   assert.doesNotMatch(html, /play-time|game-state|session\.js|game\.js/);
 });
