@@ -12,6 +12,7 @@ La documentation est versionnée avec le code. Elle décrit l'état **actuel** d
 | Choix structurants communs | [ADR globaux](adr/README.md) |
 | Règles du jeu GCV | [Spécifications GCV](../games/gcv/docs/SPECIFICATIONS.md) |
 | Architecture du jeu GCV | [Architecture GCV](../games/gcv/docs/ARCHITECTURE.md) |
+| Revue et mesures de performances GCV | [Rapport de performance](../games/gcv/docs/PERFORMANCE.md) |
 | Travaux propres à GCV | [Backlog GCV](../games/gcv/docs/BACKLOG.md) |
 | Justifications techniques propres à GCV | [ADR GCV](../games/gcv/docs/adr/0001-progression-des-tours.md) |
 
