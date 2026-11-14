@@ -611,7 +611,7 @@
       visualEffects.update(dt, driver, flow.falling ? 0 : mudSkidIntensity,
         flow.falling ? null : barrierSparkContact);
       hud.setSpeed(driver.speed);
-      refreshChrono();
+      // Chrono is refreshed once in frame(), after lap-hold timers advance.
     }
 
     let frameId = null;
