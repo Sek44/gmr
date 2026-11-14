@@ -16,7 +16,7 @@
         || String(Date.now());
       const resources = [
       ["style", "../../shared/site.css"],
-      ["style", "./game.css?v=20261114n"],
+      ["style", "./game.css?v=20261114o"],
       ["script", "../../shared/game-state.js"],
       ["script", "../../shared/play-time.js?v=20261111-seconds2"],
       ["script", "./physics.js?v=20261114m"],
@@ -111,10 +111,17 @@
                 <h3 id="gcv-mode-title">3 · Mode de jeu</h3>
                 <div class="gcv-mode-chooser" role="group" aria-label="Choisir le mode">
                   <button type="button" id="free-mode-button" class="gcv-home-button gcv-mode-choice is-selected" aria-pressed="true">
-                    <strong>Essais libres</strong><span>Améliore tes records</span>
+                    <svg class="gcv-mode-icon" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <circle cx="16" cy="18" r="10"/><path d="M16 18l5-4M16 18v-5M13 3h6M16 3v5M23.5 8l2-2"/><circle cx="16" cy="18" r="1" fill="currentColor" stroke="none"/>
+                    </svg>
+                    <span class="gcv-mode-content"><strong>Essais libres</strong><small>Améliore tes records</small></span>
                   </button>
                   <button type="button" id="race-mode-button" class="gcv-home-button gcv-mode-choice" aria-pressed="false">
-                    <strong>Course · 3 tours</strong><span>Affronte 9 adversaires</span>
+                    <svg class="gcv-mode-icon" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M6 29V4m0 1c6-5 11 5 20 0v16c-9 5-14-5-20 0"/>
+                      <path d="M7 7l5-1v5l-5-1m5-4l5 2v5l-5-2m5-3l5-1v5l-5 1m-15 2l5-1v5l-5-1m5-4l5 2v5l-5-2" fill="currentColor" stroke="none"/>
+                    </svg>
+                    <span class="gcv-mode-content"><strong>Course · 3 tours</strong><small>Affronte 9 adversaires</small></span>
                   </button>
                 </div>
               </section>
