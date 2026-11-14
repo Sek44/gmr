@@ -482,3 +482,15 @@ test("crossing again after only a short excursion is not a lap", () => {
   assert.equal(state.playerLapTimes.length, 0);
   assert.equal(state.phase, "racing");
 });
+
+test("long open sprints give opponents proportional additional race time", () => {
+  const short = race.create(1600, () => 0.5, null, 1);
+  const long = race.create(2560, () => 0.5, null, 1);
+  assert.equal(short.laps, 1);
+  assert.equal(long.laps, 1);
+  for (let i = 0; i < long.opponents.length; i++) {
+    assert.ok(Math.abs(long.opponents[i].targetLapSeconds /
+      short.opponents[i].targetLapSeconds - 1.6) < 1e-10);
+    assert.ok(long.opponents[i].speed <= 1600 / 27);
+  }
+});
