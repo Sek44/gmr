@@ -6,17 +6,6 @@ const GcvTrackLayout = (() => {
   const SAMPLE_COUNT = 840;
   const ROAD_HALF_WIDTH = 9;
   const SHOULDER_WIDTH = 7; // Seven metres of shoulder on each side.
-  const WAYPOINTS = Object.freeze([
-    [78, 150], [78, 100], [78, 50], [78, 0], [78, -50], [78, -90],
-    [53, -114], [4, -125], [-40, -117], [-75, -90], [-91, -52],
-    [-65, -14], [-97, 22], [-100, 60], [-76, 93], [-44, 125],
-    [6, 164], [48, 163],
-  ].map((point) => Object.freeze(point)));
-
-  // 240 m straight, finishing 160 m into it = 2/3 of the way along.
-  const FINISH = Object.freeze({ x: 78, z: -10 });
-  const SPAWN = Object.freeze({ x: 78, z: -43 });
-
   // The Arc-en-ciel sprint is an authored SEQUENCE, not a hand-drawn
   // waypoint list. Only straights may contain crests or rainbow segments.
   // To add a circuit later, supply a template and seed to TrackGenerator.
@@ -25,6 +14,39 @@ const GcvTrackLayout = (() => {
     ? require("./track-generator.js")
     : window.GcvTrackGenerator;
   if (!TrackGenerator) throw new Error("track-generator.js must load first");
+
+  // One authored half-lap is repeated after a 180-degree turn.
+  // This guarantees a seamless loop for every seed while varying the
+  // lengths and radii. The paired S-bends and wide U-turns leave clear
+  // shoulders and a long, straight starting grid.
+  const CLASSIC_TEMPLATE = Object.freeze({
+    origin: [0, 100], heading: 0,
+    closed: true, repeat: 2,
+    finishMetres: 83, spawnMetres: 108,
+    minClearanceMetres: 32,
+    sections: Object.freeze([
+      { type: "straight", length: 124, lengthVariance: 4 },
+      { type: "turn", angle: 32, radius: 36, radiusVariance: 1.5 },
+      { type: "straight", length: 30, lengthVariance: 3 },
+      { type: "turn", angle: -64, radius: 36, radiusVariance: 1.5 },
+      { type: "straight", length: 30, lengthVariance: 3 },
+      { type: "turn", angle: 32, radius: 36, radiusVariance: 1.5 },
+      { type: "straight", length: 35, lengthVariance: 3 },
+      { type: "turn", angle: 90, radius: 30, radiusVariance: 1.5 },
+      { type: "straight", length: 42, lengthVariance: 3 },
+      { type: "turn", angle: 90, radius: 30, radiusVariance: 1.5 },
+    ]),
+  });
+  // A fixed seed gives all players the same classic track by default.
+  function generateClassic(seed = 20261114) {
+    const generated = TrackGenerator.build(CLASSIC_TEMPLATE, seed);
+    return Object.freeze({
+      ...generated, ID: "classic", NAME: "Circuit classique", VERSION: 3,
+      SAMPLE_COUNT, ROAD_HALF_WIDTH, SHOULDER_WIDTH,
+      nearestIndex, zigzagAt,
+    });
+  }
+  const CLASSIC = generateClassic();
 
   const SPRINT_TEMPLATE = Object.freeze({
     origin: [0, 90], heading: 0,
@@ -86,7 +108,7 @@ const GcvTrackLayout = (() => {
         envelope * Math.PI * 14 * Math.cos(phase)),
     };
   }
-  function select(id) { return id === SPRINT.ID ? SPRINT : GcvTrackLayout; }
+  function select(id) { return id === SPRINT.ID ? SPRINT : CLASSIC; }
 
   function nearestIndex(positions, reference) {
     let bestIndex = 0;
@@ -108,11 +130,11 @@ const GcvTrackLayout = (() => {
     return sum;
   }
 
-  return Object.freeze({ VERSION, SAMPLE_COUNT, ROAD_HALF_WIDTH, SHOULDER_WIDTH,
-    WAYPOINTS, FINISH, SPAWN, ID: "classic", NAME: "Circuit classique", CLOSED: true,
-    CIRCUITS: Object.freeze([{ id: "classic", name: "Circuit classique" },
-      { id: SPRINT.ID, name: SPRINT.NAME }]), SPRINT, select,
-    nearestIndex, perimeter, SPRINT_TEMPLATE, generateSprint });
+  return Object.freeze({ ...CLASSIC,
+    CIRCUITS: Object.freeze([{ id: CLASSIC.ID, name: CLASSIC.NAME },
+      { id: SPRINT.ID, name: SPRINT.NAME }]),
+    CLASSIC, SPRINT, select, perimeter,
+    CLASSIC_TEMPLATE, generateClassic, SPRINT_TEMPLATE, generateSprint });
 })();
 if (typeof window !== "undefined") window.GcvTrackLayout = GcvTrackLayout;
 if (typeof module !== "undefined" && module.exports) module.exports = GcvTrackLayout;
