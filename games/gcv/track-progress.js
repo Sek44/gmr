@@ -82,6 +82,47 @@ const GcvTrackProgress = (() => {
   }
 
 
+  // A continuous location on the OPEN track centreline. Interpolating the
+  // closest segment avoids road-height jumps when the nearest sample changes
+  // across the crest (especially on a bend at high speed).
+  function projectOpenRoad(positions, sampleCount, x, z,
+      hintIndex = null, halfSpan = 12) {
+    if (!positions || positions.length <= sampleCount || sampleCount < 2 ||
+        !Number.isFinite(x) || !Number.isFinite(z)) return null;
+    const limit = Math.min(sampleCount, positions.length - 1);
+    let best = null;
+    function check(index) {
+      const a = positions[index], b = positions[index + 1];
+      const dx = b.x - a.x, dz = b.z - a.z;
+      const lengthSquared = dx * dx + dz * dz;
+      if (lengthSquared < 1e-8) return;
+      const t = Math.max(0, Math.min(1,
+        ((x - a.x) * dx + (z - a.z) * dz) / lengthSquared));
+      const centerX = a.x + dx * t, centerZ = a.z + dz * t;
+      const distanceSquared = (x - centerX) ** 2 + (z - centerZ) ** 2;
+      if (!best || distanceSquared < best.distanceSquared) {
+        const length = Math.sqrt(lengthSquared);
+        best = {
+          index, t, fraction: (index + t) / sampleCount,
+          lateral: (x - centerX) * -dz / length +
+            (z - centerZ) * dx / length,
+          distanceSquared,
+        };
+      }
+    }
+    if (Number.isInteger(hintIndex) && hintIndex >= 0 &&
+        hintIndex <= limit) {
+      for (let i = Math.max(0, hintIndex - halfSpan);
+        i < Math.min(limit, hintIndex + halfSpan + 1); i++) check(i);
+      // Do not jump to a remote hairpin arm when the vehicle is still
+      // within the local corridor.
+      if (best && best.distanceSquared <= 16 * 16) return best;
+    }
+    best = null;
+    for (let i = 0; i < limit; i++) check(i);
+    return best;
+  }
+
   // During a long jump, follow the road's *longitudinal* geometry rather than
   // flying off a bend. Steering changes only the bounded lateral offset.
   // Use actual travelled metres, not a sample-index jump, for race progress.
@@ -299,7 +340,7 @@ const GcvTrackProgress = (() => {
     return Math.abs(sideways) <= halfWidth ? fraction : null;
   }
 
-  return Object.freeze({ nearestSample, nearestOpenSample, alongTrackTravel, guideAirborne, relocate,
+  return Object.freeze({ nearestSample, nearestOpenSample, projectOpenRoad, alongTrackTravel, guideAirborne, relocate,
     createMotion, restoreMotion, move, moveOpen, finishCrossing, MIN_LAP_FRACTION });
 })();
 
