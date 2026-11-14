@@ -240,13 +240,15 @@ const GcvWorld3D = (() => {
     }
     pebbles.instanceMatrix.needsUpdate = true;
     scene.add(pebbles);
+    // All horizontal alpha decals face upwards: FrontSide avoids an extra
+    // transparent back-face render pass while keeping the camera-side visible.
     // Muddy patches give the road a rough, irregular surface without painted
     // white/yellow lane markings. All use a single instanced draw call.
     const patches = new THREE.InstancedMesh(
       new THREE.CircleGeometry(1, 10),
       new THREE.MeshStandardMaterial({
         color: 0x614a37, roughness: 1, transparent: true, opacity: 0.42,
-        depthWrite: false, side: THREE.DoubleSide,
+        depthWrite: false, side: THREE.FrontSide,
       }),
       Math.floor((SAMPLE_COUNT - 1) / 2)
     );
@@ -277,7 +279,7 @@ const GcvWorld3D = (() => {
       new THREE.MeshStandardMaterial({
         color: 0x527d89, roughness: 0.14, metalness: 0.18,
         transparent: true, opacity: 0.77,
-        depthWrite: false, side: THREE.DoubleSide,
+        depthWrite: false, side: THREE.FrontSide,
       }),
       puddleIndices.length
     );
@@ -285,7 +287,7 @@ const GcvWorld3D = (() => {
       puddleShape,
       new THREE.MeshBasicMaterial({
         color: 0xadd6e0, transparent: true, opacity: 0.23,
-        depthWrite: false, side: THREE.DoubleSide,
+        depthWrite: false, side: THREE.FrontSide,
       }),
       puddleIndices.length
     );
