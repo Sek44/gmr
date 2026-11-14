@@ -38,6 +38,20 @@ test("launcher has distinct resume and start actions after its options", () => {
   assert.match(css, /@media \(orientation: portrait\) and \(max-width: 700px\)/);
 });
 
+test("frameless racing title has a large portrait logo and no enclosing card", () => {
+  const html = file("index.html");
+  const css = file("game.css");
+  const heading = html.slice(html.indexOf('<header class="gcv-menu-heading">'),
+    html.indexOf("</header>", html.indexOf('<header class="gcv-menu-heading">')));
+  assert.ok(heading.includes('class="gcv-title-kart"'));
+  assert.ok(heading.includes('class="gcv-title-copy"'));
+  assert.ok(heading.includes("<h2>SUPER KART</h2>"));
+  const rule = css.slice(css.indexOf(".gcv-menu-heading {"),
+    css.indexOf("}", css.indexOf(".gcv-menu-heading {")));
+  assert.ok(rule.includes("background: none; border: 0;"));
+  assert.ok(css.includes("font-size: clamp(2.3rem, 10.5vw, 3.4rem)"));
+  assert.ok(html.includes("game.css?v=20261114s"));
+});
 test("top-aligned menu keeps the three sections ordered and has SVG mode icons", () => {
   const html = file("index.html");
   const css = file("game.css");
