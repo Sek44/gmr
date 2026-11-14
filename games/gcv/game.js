@@ -32,6 +32,7 @@
   const Vehicles = window.GcvVehicles;
   const VisualEffects = window.GcvVisualEffects;
   const Rendering = window.GcvRendering;
+  const AdaptiveResolution = window.GcvAdaptiveResolution;
   const Controls = window.GcvControls;
   const Hud = window.GcvHud;
   const MiniMap = window.GcvMiniMap;
@@ -53,7 +54,7 @@
   }
 
   try {
-    if (!Physics || !TrackProgress || !Scenery || !World3D || !Tracks || !LapTimes || !Race || !Barriers || !Vehicles || !VisualEffects || !Rendering || !Controls || !Hud || !MiniMap || !Navigation || !Session || !Flow || !Preferences)
+    if (!Physics || !TrackProgress || !Scenery || !World3D || !Tracks || !LapTimes || !Race || !Barriers || !Vehicles || !VisualEffects || !Rendering || !AdaptiveResolution || !Controls || !Hud || !MiniMap || !Navigation || !Session || !Flow || !Preferences)
       throw new Error("Les modules de conduite sont introuvables.");
     preferences = Preferences.create();
     const THREE = await import("https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js");
@@ -105,6 +106,16 @@
       startIndex, SAMPLE_COUNT, trackLength, closed, heightAt,
       onCameraVisibility: setCameraMode,
     });
+    // Resolution is a presentation-only choice. The policy survives ordinary
+    // game frames, but is recreated with each track and never persisted.
+    const adaptiveResolution = AdaptiveResolution.create({
+      setScale: (scale) => rendering.setResolutionScale(scale),
+    });
+    window.addEventListener("resize", adaptiveResolution.reset, { signal });
+    document.addEventListener("fullscreenchange", adaptiveResolution.reset,
+      { signal });
+    document.addEventListener("visibilitychange", adaptiveResolution.reset,
+      { signal });
     const visualEffects = VisualEffects.create({ THREE, scene, car });
     const hud = Hud.create({ document, LapTimes, Race, layout: TrackLayout });
     const routeLength = closed ? trackLength :
@@ -286,7 +297,10 @@
       resumeButton, menuButton, scoresButton, menuScoresButton, scoresFrame,
       fullscreenButton, menuFullscreenButton, clearControls,
       flow,
-      onResume: () => { lastFrame = performance.now(); },
+      onResume: () => {
+        lastFrame = performance.now();
+        adaptiveResolution.reset();
+      },
       changed: () => session?.changed(), announce,
     });
     activeFlow = flow;
@@ -601,7 +615,10 @@
       const realDt = Math.max(0, (now - lastFrame) / 1000);
       const dt = Math.min(realDt, 0.05);
       lastFrame = now;
-      if (document.hidden) return;
+      if (document.hidden) {
+        adaptiveResolution.observe(now, false);
+        return;
+      }
       if (!navigation.paused) {
         resultRefreshCooldown = Math.max(0, resultRefreshCooldown - dt);
         updateCar(dt, realDt);
@@ -616,8 +633,11 @@
         mapElapsed = 0;
         drawMap();
       }
-      // The menu and score iframe cover the stage; skip all WebGL draw calls.
-      if (!navigation.paused) rendering.render();
+      // The menu and score iframe cover the stage; no inactive frames
+      // should influence graphics quality. Evaluate only after a real draw.
+      const drawing = !navigation.paused;
+      if (drawing) rendering.render();
+      adaptiveResolution.observe(now, drawing);
     }
 
     drawMap();
