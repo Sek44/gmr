@@ -22,8 +22,8 @@ Reviewed `rendering.js`, `vehicles.js`, `world-3d.js`, `visual-effects.js`, `gam
 | --- | --- | --- | --- | --- |
 | P1 | Nine AI cars are built from ~12 individual meshes each (approximately **108 mesh draws** when visible), counting body, four wheels and five number plates. | `vehicles.js` | Merge static parts by material, share wheel geometry, consider instancing shared parts and a number atlas. | Compare race draw calls and p95 frame time; keep car colors/numbers visible. |
 | Addressed (validate on device) | Classic DPR cap **1.7** and open-track DPR cap **1.15** / **750,000 pixels** remain as maximum quality. | `rendering.js`, `adaptive-resolution.js`, `game.js` | Adaptive multiplier **1.0–0.55** now adjusts the active game's internal resolution based on sustained frame pacing, with hysteresis and a guarded quality-recovery probe. No game-state changes. | Re-run on phone/tablet, both orientations and fullscreen; check actual framebuffer dimensions, sharpness, FPS, and repeated viewport/menu transitions. |
-| P1 | HUD values are assigned repeatedly; the chrono is refreshed in both `updateCar()` and the outer frame. | `game.js`, `hud.js` | Remove the duplicate refresh, cache unchanged values, throttle noncritical text. | Measure main-thread frame cost; verify lap/timer/rank transitions. |
-| P2 | One checkered line creates **24 separate tile meshes**; open track has two lines (48). | `world-3d.js` | Use two instanced meshes (one per color) for all tiles. | Compare draw calls, check tile orientation and finish timing gate visuals. |
+| Addressed (validate on device) | HUD values were assigned every frame; chrono was refreshed in both `updateCar()` and the outer frame. | `game.js`, `hud.js` | The regular frame now refreshes the chrono only once, and the HUD skips identical text, class, visibility and attribute writes without throttling the visible timer. | Verify timer, hold and ranking display across game modes; profile DOM/compositor before/after. |
+| Addressed (validate on device) | Each timing line previously created 24 separate tile meshes; the open track has two lines (48). | `world-3d.js` | One shared box geometry and two instanced meshes per line (12 tiles per color): 2 submitted meshes on classic, 4 on the open route. | Verify both start/finish colors, geometry and placement; re-run identical benchmark passes for draw-call and frame-time comparisons. |
 | P2 | Each motorcycle wheel consists of many individual spoke/rim/hub meshes (about 15 per wheel). | `vehicles.js` | Merge rigid parts without removing the rotating wheel pivots or changing silhouette. | Compare moto draw calls and visible spokes. |
 | P2 | Several flat transparent meshes use `DoubleSide`; depending on material/render state, this may double rendering passes. | `world-3d.js`, `rendering.js` | Verify triangle winding; use front-side rendering on surfaces only seen from above, and consider instancing ground-shadow decals. | Confirm no surfaces disappear and blending remains correct. |
 | P2 | Two animated brake `PointLight` objects are present even though emissive brake meshes exist. | `vehicles.js` | Try emissive/cheap glow only; profile impact before removing lights. | Compare night/day appearance and GPU frame time. |
@@ -86,10 +86,19 @@ The adaptive module does **not** change physics, collisions, save revisions, rac
 
 The observed v2 tablet comparison (33–36 FPS full resolution vs ~60 FPS at 55% scale) motivated the policy. **These are not post-optimization results**. Validate the actual game on both devices in portrait and landscape (ideally fullscreen), with quality changes and occasional camera/menu transitions, before concluding the improvement is sufficient.
 
+## Implemented — batched timing lines and HUD changes (2026-11-14)
+
+Two conservative improvements now apply to the normal game and benchmark without changing gameplay rules:
+
+- **Start/finish line batching** (`world-3d.js`): each 24-tile checkerboard or colored start line uses two `THREE.InstancedMesh` draws instead of 24 independent meshes. Both colors, exact 24 tile placements, orientation, height and size are retained. Classic timing line: **24 → 2** scene objects; open route start + finish lines: **48 → 4**. Frustum culling means these are theoretical *maximum visible* draw-call reductions (22 classic / 44 open), not a verified per-frame GPU reduction. Browser benchmarking remains necessary.
+- **HUD change detection** (`hud.js`, `game.js`): text, class, visibility and attribute updates now occur only if their displayed values differ. The regular frame removes the second chrono refresh, while session transitions retain immediate refresh paths. Race start/countdown/lap hold/final results should still update normally. There is **no timing throttling** that would reduce displayed stopwatch accuracy.
+
+Regression tests verify tile count/color/locations and HUD updates during countdown, best laps, delta/hold and finished race. Neither change affects save format, the physics loop, camera, controls or the adaptive-resolution policy.
+
 ## Implementation sequence
 
 1. Collect baseline mobile/tablet results with the benchmark (backlog `GCV10`).
-2. Apply minimal low-risk changes (redundant HUD writes, finish-line instancing, transparency audit).
+2. Validate the implemented HUD write reduction and timing-line instancing on device; audit transparent materials separately.
 3. Re-measure; then target AI mesh batching, motorcycle geometry and common pixel-budget policy.
 4. Consider renderer lifecycle or more complex dynamic quality only after identifying a measurable benefit.
 
