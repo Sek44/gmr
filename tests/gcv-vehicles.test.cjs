@@ -68,12 +68,21 @@ class SceneNode {
     this.children = [];
     this.position = new Vector();
     this.scale = new Vector(1, 1, 1);
-    this.rotation = { set() {} };
-    this.quaternion = { setFromUnitVectors() {} };
+    this.rotation = { x: 0, y: 0, z: 0,
+      set(x, y, z) { Object.assign(this, { x, y, z }); } };
+    this.quaternion = { setFromUnitVectors() {}, setFromEuler() {} };
+    this.matrix = {};
     this.visible = true;
   }
   add(...nodes) {
     this.children.push(...nodes);
+  }
+  updateMatrix() {
+    this.matrix = {
+      position: { x: this.position.x, y: this.position.y, z: this.position.z },
+      rotation: { x: this.rotation.x, y: this.rotation.y, z: this.rotation.z },
+      scale: { x: this.scale.x, y: this.scale.y, z: this.scale.z },
+    };
   }
 }
 class Mesh extends SceneNode {
@@ -81,6 +90,17 @@ class Mesh extends SceneNode {
     super();
     this.geometry = geometry;
     this.material = material;
+  }
+}
+class InstancedMesh extends Mesh {
+  constructor(geometry, material, count) {
+    super(geometry, material);
+    this.count = count;
+    this.instances = [];
+    this.instanceMatrix = { needsUpdate: false };
+  }
+  setMatrixAt(index, matrix) {
+    this.instances[index] = JSON.parse(JSON.stringify(matrix));
   }
 }
 class Geometry {
@@ -103,7 +123,8 @@ class Light extends SceneNode {
 }
 
 const THREE = {
-  Group: SceneNode, Mesh, PointLight: Light, Vector3: Vector,
+  Group: SceneNode, Object3D: SceneNode, Mesh, InstancedMesh,
+  PointLight: Light, Vector3: Vector,
   BoxGeometry: Geometry, CylinderGeometry: Geometry, BufferGeometry: Geometry,
   Float32BufferAttribute: Geometry, TorusGeometry: Geometry,
   PlaneGeometry: Geometry, CanvasTexture,
@@ -229,6 +250,46 @@ test("all five vehicle/pilot pairs can be selected without creating a new scene"
     models.setCameraMode(true);
   }
   assert.equal(models.setVehicle("unknown"), "classic");
+});
+
+test("motorcycle wheel spokes and rims are instanced under their spinning pivots", () => {
+  const document = { createElement: () => ({ getContext: () => ({
+    fillRect() {}, fillText() {}, beginPath() {}, arc() {},
+    stroke() {}, moveTo() {}, lineTo() {},
+  }) }) };
+  const scene = new SceneNode();
+  const objects = Vehicles.create({ THREE, scene, Race,
+    trackLength: 1500, document });
+  const [front, rear] = objects.extraWheelPivots.slice(0, 2);
+  assert.ok(front && rear);
+  assert.equal(front.position.z, -1.48);
+  assert.equal(rear.position.z, 1.35);
+  for (const pivot of [front, rear]) {
+    assert.equal(pivot.children.length, 5,
+      "tyre + two instanced alloys + hub + brake");
+    const instanced = pivot.children.filter((mesh) =>
+      mesh instanceof InstancedMesh);
+    assert.deepEqual(instanced.map((mesh) => mesh.count), [2, 10],
+      "each wheel retains both rim sides and all ten visible spokes");
+    assert.ok(instanced.every((mesh) =>
+      mesh.instanceMatrix.needsUpdate && mesh.instances.length === mesh.count));
+    const [rims, spokes] = instanced;
+    assert.deepEqual(rims.instances.map((m) => m.position.x), [-0.095, 0.095]);
+    assert.equal(spokes.instances.filter((m) => m.position.x < 0).length, 5);
+    assert.equal(spokes.instances.filter((m) => m.position.x > 0).length, 5);
+    assert.equal(pivot.children[0].rotation.y, Math.PI / 2, "tyre still faces sideways");
+    assert.equal(pivot.children[4].position.x, -0.145,
+      "brake ring remains on its original side");
+  }
+  for (let i = 0; i < 5; i++) {
+    assert.equal(front.children[i].geometry, rear.children[i].geometry,
+      "front/rear share identical rigid geometry and render materials");
+    assert.equal(front.children[i].material, rear.children[i].material);
+  }
+  assert.equal(front.visible, true);
+  objects.setVehicle("moto");
+  assert.equal(objects.extraWheelPivots.length, 14,
+    "all other wheel pivots remain independent and animated");
 });
 
 test("sport motorcycle has a crouched rider, full-face helmet and visible fairing", () => {
