@@ -276,3 +276,59 @@ test("airborne guidance from an on-road position avoids sideways teleportation",
     index = guided.index;
   }
 });
+
+test("first hill airborne guide cannot snap sideways on a bend", () => {
+  const layout = require("../games/gcv/track-layout.js").SPRINT;
+  const physics = require("../games/gcv/physics.js");
+  const waypoints = layout.WAYPOINTS;
+  const cumulative = [0];
+  for (let i = 1; i < waypoints.length; i++) {
+    cumulative.push(cumulative[i - 1] +
+      Math.hypot(waypoints[i][0] - waypoints[i - 1][0],
+        waypoints[i][1] - waypoints[i - 1][1]));
+  }
+  const length = cumulative[cumulative.length - 1];
+  const count = layout.SAMPLE_COUNT;
+  const positions = Array.from({ length: count + 1 }, (_, i) => {
+    const distance = length * i / count;
+    let segment = 0;
+    while (segment < waypoints.length - 2 &&
+        cumulative[segment + 1] < distance) segment++;
+    const t = (distance - cumulative[segment]) /
+      (cumulative[segment + 1] - cumulative[segment]);
+    return {
+      x: waypoints[segment][0] +
+        (waypoints[segment + 1][0] - waypoints[segment][0]) * t,
+      z: waypoints[segment][1] +
+        (waypoints[segment + 1][1] - waypoints[segment][1]) * t,
+    };
+  });
+  const start = Math.round(0.13 * count);
+  const a = positions[start], b = positions[start + 1];
+  const dx = b.x - a.x, dz = b.z - a.z;
+  const distance = Math.hypot(dx, dz);
+  const side = { x: -dz / distance, z: dx / distance };
+  let car = { x: a.x + side.x * 6, z: a.z + side.z * 6,
+    yaw: Math.atan2(-dx, -dz), speed: 69 };
+  let index = start;
+  let frames = 0;
+  for (; frames < 230; frames++) {
+    const before = { x: car.x, z: car.z };
+    const candidate = physics.advance(car,
+      { accelerate: true, airborne: true }, 1 / 60);
+    const guided = track.guideAirborne(positions, count,
+      before, candidate, index, 9, 0, 1 / 60);
+    assert.ok(guided);
+    const travelled = Math.hypot(guided.x - before.x, guided.z - before.z);
+    assert.ok(travelled <= candidate.speed / 60 + 0.451,
+      "no multi-metre sideways teleport at a road corner");
+    const projection = track.projectOpenRoad(positions, count,
+      guided.x, guided.z, guided.index);
+    assert.ok(Math.abs(projection.lateral) <= 7.3,
+      "airborne position stays within the paved road");
+    car = { ...candidate, ...guided };
+    index = guided.index;
+    if (projection.fraction > 0.205) break;
+  }
+  assert.ok(frames > 30, "test must cross the first hill and following bend");
+});
