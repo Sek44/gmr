@@ -47,7 +47,7 @@ test("the classic start grid, finish and spawn belong to the first straight", ()
   assert.ok(route.FINISH.z > route.SPAWN.z);
   assert.ok(route.WAYPOINTS[0][1] - route.FINISH.z >= 65,
     "enough space before the line for all ten starting slots");
-  assert.ok(route.SPAWN.z > route.WAYPOINTS[5][1] - 80,
+  assert.ok(route.SPAWN.z > route.WAYPOINTS[5][1],
     "spawn is on the long initial straight");
   const before = { x: route.FINISH.x, z: route.FINISH.z + 3 };
   const after = { x: route.FINISH.x, z: route.FINISH.z - 3 };
