@@ -52,6 +52,7 @@ function sampledLayout(route) {
     navigation: Navigation.create({
       positions, directions, sampleCount, startIndex, trackLength: length,
       routeLength, closed: route.CLOSED, laps, maxSpeed: Physics.MAX_SPEED,
+      roadHalfWidth: route.ROAD_HALF_WIDTH, heightAt: route.heightAt,
     }),
   };
 }
