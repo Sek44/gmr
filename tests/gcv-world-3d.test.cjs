@@ -14,12 +14,14 @@ const directory = path.join(__dirname, "../games/gcv");
 test("world is loaded before the GCV entry point", () => {
   const html = fs.readFileSync(path.join(directory, "index.html"), "utf8")
     .replace(/\?v=\d{8}[a-z]/g, "");
-  const scenery = html.indexOf('<script defer src="./scenery.js"></script>');
-  const layout = html.indexOf('<script defer src="./track-layout.js"></script>');
-  const barriers = html.indexOf('<script defer src="./barriers.js"></script>');
-  const world = html.indexOf('<script defer src="./world-3d.js"></script>');
-  const game = html.indexOf('<script type="module" src="./game.js"></script>');
-  assert.ok(scenery >= 0 && layout > scenery && barriers > layout);
+  const scenery = html.indexOf("./scenery.js");
+  const generator = html.indexOf("./track-generator.js");
+  const layout = html.indexOf("./track-layout.js");
+  const barriers = html.indexOf("./barriers.js");
+  const world = html.indexOf("./world-3d.js");
+  const game = html.indexOf("./game.js");
+  assert.ok(scenery >= 0 && generator > scenery &&
+    layout > generator && barriers > layout);
   assert.ok(world > barriers && game > world);
   for (const file of ["world-3d.js", "game.js"]) {
     assert.doesNotThrow(() =>
