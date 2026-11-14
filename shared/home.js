@@ -9,6 +9,12 @@
   // Every refresh of the homepage starts a new asset generation for all
   // games, including games that do not use the fullscreen iframe host.
   const refreshKey = String(Date.now());
+  const scoresLink = document.querySelector(".home-scores-link");
+  if (scoresLink) {
+    const scoresUrl = new URL(scoresLink.href);
+    scoresUrl.searchParams.set("gmr-refresh", refreshKey);
+    scoresLink.href = scoresUrl.href;
+  }
   const assetRoot = "./shared/themes/classic-play/assets/";
   for (const game of games) {
     const link = document.createElement("a");
