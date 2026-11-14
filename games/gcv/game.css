@@ -484,3 +484,23 @@
   .gcv-home-panel { gap: 6px; }
   .gcv-vehicle-choice { min-height: 43px; padding-block: 4px; }
 }
+
+/* In the common fullscreen launcher the entire iframe is fullscreen, not the
+   inner stage. Suppress standalone page chrome and fill its viewport. */
+html.gcv-embedded, html.gcv-embedded body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+html.gcv-embedded .gcv-page { width: 100%; max-width: none; padding: 0; margin: 0; }
+html.gcv-embedded .gcv-page-header, html.gcv-embedded .gcv-help { display: none; }
+html.gcv-embedded .gcv-stage {
+  width: 100%; height: 100dvh !important; max-height: none;
+  border-radius: 0; box-shadow: none;
+}
+/* In fullscreen the expand buttons are hidden; the Home icon exits instead. */
+.gcv-action[hidden] { display: none; }
+.gcv-actions #home-button { grid-column: 2; grid-row: 3; }
+@media (orientation: portrait) {
+  .gcv-actions #home-button { grid-column: 1; grid-row: 1; }
+  .gcv-home-tools { grid-template-columns: repeat(3, 42px); }
+  .gcv-home-tools #menu-home-button { grid-column: 1; grid-row: 1; }
+  .gcv-home-tools #menu-scores-button { grid-column: 2; grid-row: 1; }
+  .gcv-home-tools #menu-fullscreen-button { grid-column: 3; grid-row: 1; }
+}
