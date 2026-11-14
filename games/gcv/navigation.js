@@ -99,6 +99,12 @@ const GcvNavigation = (() => {
     const openScores = () => navigateOutside("scores");
     const goHome = () => navigateOutside("home");
 
+    // Direct links cannot fullscreen on page load. Use the first eligible
+    // click in the stage (including selecting a vehicle or circuit) instead.
+    listen(stage, "click", (event) => {
+      if (event.target.closest?.("#home-button, #menu-home-button, #scores-button, #menu-scores-button")) return;
+      ensureFullscreen();
+    });
     listen(resumeButton, "click", resume);
     listen(menuButton, "click", openMenu);
     listen(homeButton, "click", goHome);
