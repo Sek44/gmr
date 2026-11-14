@@ -38,28 +38,38 @@ const GcvWorld3D = (() => {
     sunlight.position.set(-70, 120, 45);
     scene.add(sunlight);
 
-    // Earth/mud throughout: road and safety shoulders differ only by soil shade.
-    const roadMaterial = new THREE.MeshStandardMaterial({
-      color: 0x856044, roughness: 1, side: THREE.DoubleSide,
+    // Lighting on large opaque dirt surfaces does not need the physically
+    // based reflections used by the vehicles, rails and water.
+    const roadMaterial = new THREE.MeshLambertMaterial({
+      color: 0x856044, side: THREE.DoubleSide,
     });
-    const shoulderMaterial = new THREE.MeshStandardMaterial({
-      color: 0xb29871, roughness: 1, side: THREE.DoubleSide,
+    const shoulderMaterial = new THREE.MeshLambertMaterial({
+      color: 0xb29871, side: THREE.DoubleSide,
     });
 
-    // Build ribbon meshes from a single closed centerline. The same geometry
-    // drives minimap, collision/respawn and future AI waypoint navigation.
-    function strip(offset, halfWidth, height, material) {
+    // The generator owns the centerline and all height samples. Build surface
+    // ribbons ONLY from its shared positions/sides, never from separate
+    // hard-coded road points. One geometry holds both narrow shoulder strips.
+    // Their inner edges meet the road at +0.07 m; their outer edges meet the
+    // existing island cliff at +0.02 m. This removes the old full-width
+    // shoulder hidden beneath the road, without opening a seam at the edge.
+    function surfaceBands(bands, material) {
       const vertices = [], indices = [];
-      for (let i = 0; i <= SAMPLE_COUNT; i++) {
-        const p = positions[i], n = sides[i];
-        for (const sign of [-1, 1]) {
-          vertices.push(p.x + n.x * (offset + sign * halfWidth), p.y + height,
-            p.z + n.z * (offset + sign * halfWidth));
+      for (const [from, to, heightFrom, heightTo] of bands) {
+        const baseVertex = vertices.length / 3;
+        for (let i = 0; i <= SAMPLE_COUNT; i++) {
+          const p = positions[i], side = sides[i];
+          vertices.push(
+            p.x + side.x * from, p.y + heightFrom,
+            p.z + side.z * from,
+            p.x + side.x * to, p.y + heightTo,
+            p.z + side.z * to
+          );
         }
-      }
-      for (let i = 0; i < SAMPLE_COUNT; i++) {
-        const v = 2 * i;
-        indices.push(v, v + 1, v + 2, v + 2, v + 1, v + 3);
+        for (let i = 0; i < SAMPLE_COUNT; i++) {
+          const v = baseVertex + 2 * i;
+          indices.push(v, v + 1, v + 2, v + 2, v + 1, v + 3);
+        }
       }
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
@@ -70,8 +80,12 @@ const GcvWorld3D = (() => {
       return mesh;
     }
 
-    strip(0, OUTER_HALF_WIDTH, 0.02, shoulderMaterial);
-    strip(0, ROAD_HALF_WIDTH, 0.07, roadMaterial);
+    surfaceBands([
+      [-OUTER_HALF_WIDTH, -ROAD_HALF_WIDTH, 0.02, 0.07],
+      [ROAD_HALF_WIDTH, OUTER_HALF_WIDTH, 0.07, 0.02],
+    ], shoulderMaterial);
+    surfaceBands([[-ROAD_HALF_WIDTH, ROAD_HALF_WIDTH, 0.07, 0.07]],
+      roadMaterial);
 
     // Rainbow rails: a clearly visible run of parallel coloured driving
     // strips, bending with the centerline through the zigzag section.
@@ -205,8 +219,8 @@ const GcvWorld3D = (() => {
     solidGeometry.setAttribute("position", new THREE.Float32BufferAttribute(solidVertices, 3));
     solidGeometry.setIndex(solidIndices);
     solidGeometry.computeVertexNormals();
-    scene.add(new THREE.Mesh(solidGeometry, new THREE.MeshStandardMaterial({
-      color: 0x674934, roughness: 1, side: THREE.DoubleSide,
+    scene.add(new THREE.Mesh(solidGeometry, new THREE.MeshLambertMaterial({
+      color: 0x674934, side: THREE.DoubleSide,
     })));
 
     // Sparse, low-poly stones on the 6 m earth shoulders. Instancing keeps
@@ -214,7 +228,7 @@ const GcvWorld3D = (() => {
     const pebbleCount = Math.ceil(SAMPLE_COUNT / 7) * 2 * 5;
     const pebbles = new THREE.InstancedMesh(
       new THREE.DodecahedronGeometry(0.12, 0),
-      new THREE.MeshStandardMaterial({ color: 0x736e61, roughness: 1 }),
+      new THREE.MeshLambertMaterial({ color: 0x736e61 }),
       pebbleCount
     );
     const pebble = new THREE.Object3D();
@@ -242,8 +256,8 @@ const GcvWorld3D = (() => {
     // white/yellow lane markings. All use a single instanced draw call.
     const patches = new THREE.InstancedMesh(
       new THREE.CircleGeometry(1, 10),
-      new THREE.MeshStandardMaterial({
-        color: 0x614a37, roughness: 1, transparent: true, opacity: 0.42,
+      new THREE.MeshLambertMaterial({
+        color: 0x614a37, transparent: true, opacity: 0.42,
         depthWrite: false, side: THREE.FrontSide,
       }),
       Math.floor((SAMPLE_COUNT - 1) / 2)
@@ -374,8 +388,8 @@ const GcvWorld3D = (() => {
     // Bare rock islets: the rocks rise directly out of the water, with
     // no beaches or sandy discs. Validate against the ENTIRE winding circuit
     // and previously placed rocks to avoid obstacles appearing on the road.
-    const rockMaterial = new THREE.MeshStandardMaterial({
-      color: 0x64737b, roughness: 1, flatShading: true,
+    const rockMaterial = new THREE.MeshLambertMaterial({
+      color: 0x64737b, flatShading: true,
     });
     const rockGeometry = new THREE.DodecahedronGeometry(1, 1);
     const islands = [];
