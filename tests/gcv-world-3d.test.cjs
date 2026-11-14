@@ -163,8 +163,10 @@ test("rainbow world initializes with distinct, valid start and finish gates", ()
   assert.ok(routeLength > 500 && Number.isFinite(routeLength));
   assert.equal(world.positions.length, layout.SAMPLE_COUNT + 1);
   assert.equal(world.barriers.rails.left.points.length, layout.SAMPLE_COUNT + 1);
-  assert.ok(world.positions.some((point) => point.y > 1.5),
-    "raised humps must be present");
+  assert.ok(world.positions.some((point) => point.y > 14),
+    "giant raised humps must be visibly taller than 14 metres");
+  assert.ok(world.heightAt(0.73) >= 18,
+    "the highest jump hill must reach 18 metres");
   const rainbowColors = [0xf05c78, 0xfca33a, 0xf4df4e, 0x7fd56d,
     0x37b6d5, 0x5e74df, 0xc879da];
   assert.equal(world.scene.children.filter((node) =>
