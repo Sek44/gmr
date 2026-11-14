@@ -38,19 +38,29 @@ test("launcher has distinct resume and start actions after its options", () => {
   assert.match(css, /@media \(orientation: portrait\) and \(max-width: 700px\)/);
 });
 
-test("frameless racing title has a large portrait logo and no enclosing card", () => {
+test("GMR and GCV share the official Super Kart title and circuit artwork", () => {
   const html = file("index.html");
   const css = file("game.css");
-  const heading = html.slice(html.indexOf('<header class="gcv-menu-heading">'),
-    html.indexOf("</header>", html.indexOf('<header class="gcv-menu-heading">')));
-  assert.ok(heading.includes('class="gcv-title-kart"'));
-  assert.ok(heading.includes('class="gcv-title-copy"'));
+  const artwork = file("assets/home-circuit.svg");
+  const catalog = fs.readFileSync(path.join(__dirname, "../games/catalog.js"), "utf8");
+  const home = fs.readFileSync(path.join(__dirname, "../shared/home.js"), "utf8");
+  const headingStart = html.indexOf('<header class="gcv-menu-heading">');
+  const heading = html.slice(headingStart, html.indexOf("</header>", headingStart));
   assert.ok(heading.includes("<h2>SUPER KART</h2>"));
+  assert.ok(catalog.includes('title: "Super Kart"'));
+  assert.ok(catalog.includes('artwork: "./games/gcv/assets/home-circuit.svg?v=20261114t"'));
+  assert.ok(heading.includes('class="gcv-title-artwork" src="./assets/home-circuit.svg?v=20261114t"'));
+  assert.ok(!heading.includes('class="gcv-title-kart"'));
+  assert.ok(artwork.includes('viewBox="0 0 480 330"'));
+  assert.ok(artwork.includes('id="circuit"'));
+  assert.ok(artwork.includes('id="finish-flag"'));
+  assert.ok(home.includes('new URL(game.artwork || assetRoot'));
   const rule = css.slice(css.indexOf(".gcv-menu-heading {"),
     css.indexOf("}", css.indexOf(".gcv-menu-heading {")));
   assert.ok(rule.includes("background: none; border: 0;"));
+  assert.ok(css.includes(".gcv-title-artwork {"));
   assert.ok(css.includes("font-size: clamp(2.3rem, 10.5vw, 3.4rem)"));
-  assert.ok(html.includes("game.css?v=20261114s"));
+  assert.ok(html.includes("game.css?v=20261114t"));
 });
 test("top-aligned menu keeps the three sections ordered and has SVG mode icons", () => {
   const html = file("index.html");
