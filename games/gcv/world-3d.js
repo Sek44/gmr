@@ -11,8 +11,10 @@ const GcvWorld3D = (() => {
     const closed = TrackLayout.CLOSED !== false;
     const rainbow = TrackLayout.RAINBOW || null;
     function heightAt(t) {
-      return (TrackLayout.HUMPS || []).reduce((height, fraction) =>
-        height + 2.4 * Math.exp(-Math.pow((t - fraction) / 0.012, 2)), 0);
+      // Shared continuous height profile for sampled road, AI and player.
+      // Broad crests let the car launch clear of the descending roadway.
+      return (TrackLayout.HUMP_PROFILES || []).reduce((height, hump) =>
+        height + hump.height * Math.exp(-Math.pow((t - hump.at) / hump.width, 2)), 0);
     }
     const CURVE_POINTS = TrackLayout.WAYPOINTS.map(([x, z]) =>
       new THREE.Vector3(x, 0, z));
