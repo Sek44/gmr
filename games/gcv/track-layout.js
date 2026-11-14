@@ -35,14 +35,23 @@ const GcvTrackLayout = (() => {
   // Spawn and timing gates use the same { x, z } contract as the
   // original track. Array waypoints are only for Catmull-Rom construction.
   const pointAt = ([x, z]) => Object.freeze({ x, z });
-  // Tall, gradual hills keep their visual scale without launching cars
-  // far above the surface. Their curvature determines takeoff speed.
+  // Broad approach ramps with a much more pronounced (but low) crown.
+  // The 1 m cap sharpens the crest enough to lift fast vehicles without
+  // creating the oversized multi-metre impulse of the original jumps.
   const HUMP_PROFILES = Object.freeze([
-    { at: 0.18, height: 16, width: 0.041 },
-    { at: 0.34, height: 14, width: 0.039 },
-    { at: 0.73, height: 18, width: 0.043 },
-    { at: 0.88, height: 15, width: 0.040 },
+    { at: 0.18, height: 16, width: 0.043, crown: 1, crownWidth: 0.014 },
+    { at: 0.34, height: 14, width: 0.041, crown: 1, crownWidth: 0.014 },
+    { at: 0.73, height: 18, width: 0.045, crown: 1, crownWidth: 0.014 },
+    { at: 0.88, height: 15, width: 0.042, crown: 1, crownWidth: 0.014 },
   ].map((hump) => Object.freeze(hump)));
+  function sprintHeightAt(progress) {
+    return HUMP_PROFILES.reduce((height, hump) => {
+      const distance = progress - hump.at;
+      return height +
+        (hump.height - hump.crown) * Math.exp(-Math.pow(distance / hump.width, 2)) +
+        hump.crown * Math.exp(-Math.pow(distance / hump.crownWidth, 2));
+    }, 0);
+  }
   const SPRINT = Object.freeze({
     ID: "rainbow", NAME: "Route Arc-en-ciel", VERSION: 3,
     CLOSED: false, SAMPLE_COUNT: 720, ROAD_HALF_WIDTH,
@@ -55,6 +64,7 @@ const GcvTrackLayout = (() => {
     RAINBOW: Object.freeze([0.46, 0.63]),
     zigzagAt,
     HUMP_PROFILES,
+    heightAt: sprintHeightAt,
     HUMPS: Object.freeze(HUMP_PROFILES.map((hump) => hump.at)),
   });
   // Seven short, lively swerves with a much smaller lateral excursion.
