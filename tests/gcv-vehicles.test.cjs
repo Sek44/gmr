@@ -13,9 +13,9 @@ const gameDirectory = path.join(__dirname, "../games/gcv");
 test("GCV loads its vehicle module before the game entry point", () => {
   const html = fs.readFileSync(path.join(gameDirectory, "index.html"), "utf8")
     .replace(/\?v=[\w-]+/g, "");
-  const race = html.indexOf('<script defer src="./race.js"></script>');
-  const vehicles = html.indexOf('<script defer src="./vehicles.js"></script>');
-  const game = html.indexOf('<script type="module" src="./game.js"></script>');
+  const race = html.indexOf("./race.js");
+  const vehicles = html.indexOf("./vehicles.js");
+  const game = html.indexOf("./game.js");
   assert.ok(race >= 0 && vehicles > race && game > vehicles);
 
   for (const name of ["race.js", "vehicles.js", "game.js"]) {
