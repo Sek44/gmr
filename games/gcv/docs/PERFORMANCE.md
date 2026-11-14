@@ -47,6 +47,16 @@ MSAA is now selected **once at WebGL context creation**, using a conservative lo
 
 `renderer.getMetrics()` includes `msaaRequested`, `lowEndDevice`, and, where the browser reports it, `msaaActive`. Benchmark v5 displays classic MSAA state on pages 1 and 3 and includes it in exported JSON. When comparing v4 and v5 tablet results, distinguish MSAA effects from any later shading or geometry optimizations.
 
+## Terrain fragment cost and shoulder geometry
+
+The terrain uses simpler `MeshLambertMaterial` lighting for the opaque road, shoulders, cliff underside, small stones and rocks, plus alpha mud decals. More visibly reflective materials (sea, puddles, metallic guardrails and vehicles) remain unchanged. This targets large screen-space dirt surfaces without dropping the shared road geometry resolution.
+
+`world-3d.js` now builds a center road ribbon over **±9 m** and a single combined shoulder geometry consisting of **two separate 7 m side strips**, instead of a 32 m full-width shoulder ribbon hidden under the 18 m road. The shoulders meet road edges at the road's +0.07 m level and the cliff-side outer edges at +0.02 m; the slight slope prevents gaps without changing contact physics. A paired pair of surface bands keeps the same two material draw submissions. The total shoulder vertex/triangle count grows modestly (two strips), while removing the hidden center surface that covered approximately 56% of the old shoulder width. Actual GPU savings depend on depth rejection and the camera view; no FPS improvement is claimed until retesting.
+
+The source points, tangents, sample count and `heightAt(t)` remain fully controlled by the present `TrackLayout` / `track-generator.js` modules. Tests check exact common road/shoulder boundaries on the classic layout, default sprint and independently generated seeded sprints; timing lines, barriers, bumps and rainbow strips are untouched.
+
+**To validate:** repeat the same GCV benchmark version on the Android 14 tablet at fixed 1280×800 fullscreen, 100%, 75% and 55% resolution. Compare FPS/P95/P99 and draw counts, and inspect road edges, shoulders, bumps and the sea cliff for color or shading changes. Because Lambert changes lighting, final visual acceptance requires actual Three.js/WebGL rendering on a device.
+
 ## Current rendering strategy
 
 - Transparent decals parallel to the road and their procedural alpha shadows are rendered front-facing only, to avoid a redundant second transparency pass. The bike windshield is still visible from both sides but rendered with a single transparent draw pass.
