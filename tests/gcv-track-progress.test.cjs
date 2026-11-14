@@ -177,3 +177,59 @@ test("a teleporting road index with no car displacement cannot invent progress",
   assert.equal(track.alongTrackTravel(origin,
     { x: origin.x + 10, z: origin.z }, { x: 0, z: -1 }), 0);
 });
+
+test("airborne guidance keeps player on road through a bend and finish", () => {
+  const points = [
+    { x: 0, z: 8 }, { x: 0, z: 0 }, { x: 0, z: -8 },
+    { x: 8, z: -8 }, { x: 16, z: -8 }, { x: 24, z: -8 },
+    { x: 32, z: -8 },
+  ];
+  const dt = 1 / 60, speed = 12, routeLength = 32;
+  let player = { x: 0, z: 7, yaw: 0, speed };
+  let motion = track.createMotion(routeLength, -7, 0);
+  let starts = 0, finishes = 0, lastIndex = 0;
+  for (let step = 0; step < 240; step++) {
+    const before = { x: player.x, z: player.z };
+    const candidate = {
+      ...player, x: player.x - Math.sin(player.yaw) * speed * dt,
+      z: player.z - Math.cos(player.yaw) * speed * dt,
+    };
+    const guided = track.guideAirborne(points, points.length - 1,
+      before, candidate, motion.index, 9, 1, dt);
+    assert.ok(guided, "must stay mapped to the road");
+    assert.ok(guided.index >= lastIndex, "no backwards index jumps");
+    assert.ok(guided.travel <= speed * dt + 1e-8);
+    lastIndex = guided.index;
+    player = { ...candidate, ...guided };
+    const segment = points[guided.index], next = points[guided.index + 1];
+    const dx = next.x - segment.x, dz = next.z - segment.z;
+    const side = Math.abs((player.x - segment.x) * -dz +
+      (player.z - segment.z) * dx) / Math.hypot(dx, dz);
+    assert.ok(side <= 7.2 + 1e-8, "the car must stay inside road edges");
+    const start = track.finishCrossing(before, player,
+      points[1], { x: 0, z: -1 }, 9);
+    const finish = track.finishCrossing(before, player,
+      points[5], { x: 1, z: 0 }, 9);
+    const moved = track.moveOpen(motion, routeLength,
+      guided.travel, start, finish, guided.index, points.length - 1);
+    motion = moved.state;
+    starts += moved.events.filter(e => e.type === "start").length;
+    finishes += moved.events.filter(e => e.type === "lap").length;
+    if (finishes) break;
+  }
+  assert.equal(starts, 1);
+  assert.equal(finishes, 1, "the real finish line completes the route");
+  assert.equal(motion.laps, 1);
+});
+
+test("airborne guidance cannot manufacture distance beyond open road end", () => {
+  const points = [
+    { x: 0, z: 10 }, { x: 0, z: 0 }, { x: 0, z: -10 },
+  ];
+  const guided = track.guideAirborne(points, 2, { x: 0, z: -10 },
+    { x: 0, z: -15, yaw: 0, speed: 30 }, 1, 9, -1, 0.05);
+  assert.ok(guided);
+  assert.equal(guided.travel, 0);
+  assert.equal(guided.index, 1);
+  assert.ok(guided.z >= -10);
+});
