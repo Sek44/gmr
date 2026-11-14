@@ -17,56 +17,54 @@ const GcvTrackLayout = (() => {
   const FINISH = Object.freeze({ x: 78, z: -10 });
   const SPAWN = Object.freeze({ x: 78, z: -43 });
 
-  // Extended open sprint: the extra final canyon is part of the same continuous
-  // route. Keep the sampling budget controlled on modest mobile GPUs.
-  const SPRINT_POINTS = Object.freeze([
-    [0, 100], [0, 60], [0, 0], [0, -65], [28, -130],
-    [82, -185], [110, -240], [145, -295], [155, -365],
-    [123, -420], [70, -475], [10, -535], [-22, -590],
-    [-12, -650], [45, -710], [90, -770], [83, -830],
-    [36, -895], [-16, -950], [-70, -1015], [-99, -1075],
-    [-86, -1145], [-25, -1200], [45, -1260], [75, -1315],
-    [62, -1370], [0, -1430], [-40, -1490], [0, -1550],
-    [65, -1615], [95, -1680], [84, -1730],
-    [90, -1810], [86, -1880], [85, -1960], [50, -2025],
-    [-20, -2085], [-62, -2140], [-45, -2195], [15, -2260],
-    [75, -2325], [76, -2395], [76, -2475], [76, -2545],
-  ].map(([x,z]) => Object.freeze([x * 0.82, z * 0.82])));
-  // Spawn and timing gates use the same { x, z } contract as the
-  // original track. Array waypoints are only for Catmull-Rom construction.
-  const pointAt = ([x, z]) => Object.freeze({ x, z });
-  // Broad approach ramps with a much more pronounced (but low) crown.
-  // The 1 m cap sharpens the crest enough to lift fast vehicles without
-  // creating the oversized multi-metre impulse of the original jumps.
-  const HUMP_PROFILES = Object.freeze([
-    { at: 0.15, height: 16, width: 0.043, crown: 1, crownWidth: 0.014 },
-    { at: 0.34, height: 14, width: 0.041, crown: 1, crownWidth: 0.014 },
-    { at: 0.73, height: 18, width: 0.045, crown: 1, crownWidth: 0.014 },
-    { at: 0.88, height: 15, width: 0.042, crown: 1, crownWidth: 0.014 },
-  ].map((hump) => Object.freeze(hump)));
-  function sprintHeightAt(progress) {
-    return HUMP_PROFILES.reduce((height, hump) => {
-      const distance = progress - hump.at;
-      return height +
-        (hump.height - hump.crown) * Math.exp(-Math.pow(distance / hump.width, 2)) +
-        hump.crown * Math.exp(-Math.pow(distance / hump.crownWidth, 2));
-    }, 0);
-  }
-  const SPRINT = Object.freeze({
-    ID: "rainbow", NAME: "Route Arc-en-ciel", VERSION: 4,
-    CLOSED: false, SAMPLE_COUNT: 720, ROAD_HALF_WIDTH,
-    SHOULDER_WIDTH, WAYPOINTS: SPRINT_POINTS,
-    START: pointAt(SPRINT_POINTS[2]),
-    FINISH: pointAt(SPRINT_POINTS[SPRINT_POINTS.length - 2]),
-    SPAWN: pointAt(SPRINT_POINTS[1]), // Leave space before the physical starting cap.
-    nearestIndex,
-    // This marked stretch contains the winding multicoloured guidance rails.
-    RAINBOW: Object.freeze([0.46, 0.63]),
-    zigzagAt,
-    HUMP_PROFILES,
-    heightAt: sprintHeightAt,
-    HUMPS: Object.freeze(HUMP_PROFILES.map((hump) => hump.at)),
+  // The Arc-en-ciel sprint is an authored SEQUENCE, not a hand-drawn
+  // waypoint list. Only straights may contain crests or rainbow segments.
+  // To add a circuit later, supply a template and seed to TrackGenerator.
+  // Turning sections are broad enough to avoid extreme handling on mobile.
+  const TrackGenerator = typeof module !== "undefined" && module.exports
+    ? require("./track-generator.js")
+    : window.GcvTrackGenerator;
+  if (!TrackGenerator) throw new Error("track-generator.js must load first");
+
+  const SPRINT_TEMPLATE = Object.freeze({
+    origin: [0, 90], heading: 0,
+    spawnMetres: 20, startMetres: 70, finishMargin: 45,
+    sections: Object.freeze([
+      { type: "straight", length: 360, lengthVariance: 18,
+        hump: { height: 16, widthMetres: 88, crown: 1, crownWidthMetres: 32 } },
+      { type: "turn", angle: 55, radius: 90,
+        angleVariance: 4, radiusVariance: 6 },
+      { type: "straight", length: 385, lengthVariance: 22,
+        hump: { height: 14, widthMetres: 91, crown: 1, crownWidthMetres: 32 } },
+      { type: "turn", angle: -95, radius: 90,
+        angleVariance: 4, radiusVariance: 6 },
+      { type: "straight", length: 390, lengthVariance: 24,
+        hump: { height: 18, widthMetres: 93, crown: 1, crownWidthMetres: 33 } },
+      { type: "turn", angle: 90, radius: 90,
+        angleVariance: 4, radiusVariance: 6 },
+      // Only about 150 m of multicoloured guidance rails, down from ~430 m.
+      { type: "straight", length: 170, lengthVariance: 12, rainbow: true },
+      { type: "turn", angle: -70, radius: 100,
+        angleVariance: 4, radiusVariance: 6 },
+      { type: "straight", length: 410, lengthVariance: 24,
+        hump: { height: 15, widthMetres: 97, crown: 1, crownWidthMetres: 34 } },
+      { type: "turn", angle: 60, radius: 95,
+        angleVariance: 4, radiusVariance: 6 },
+      { type: "straight", length: 170, lengthVariance: 12 },
+    ]),
   });
+  // A different seed yields a new reproducible route, while its features
+  // stay attached to the same kinds of section. Future menus can offer
+  // multiple seeds without changing the simulation or renderer.
+  function generateSprint(seed = 20261114) {
+    const generated = TrackGenerator.build(SPRINT_TEMPLATE, seed);
+    return Object.freeze({
+      ...generated, ID: "rainbow", NAME: "Route Arc-en-ciel", VERSION: 5,
+      CLOSED: false, SAMPLE_COUNT: 720, ROAD_HALF_WIDTH, SHOULDER_WIDTH,
+      nearestIndex, zigzagAt,
+    });
+  }
+  const SPRINT = generateSprint();
   // Seven short, lively swerves with a much smaller lateral excursion.
   // Smoothstep fades the motion AND its derivative at both section edges.
   function zigzagAt(progress) {
@@ -114,7 +112,7 @@ const GcvTrackLayout = (() => {
     WAYPOINTS, FINISH, SPAWN, ID: "classic", NAME: "Circuit classique", CLOSED: true,
     CIRCUITS: Object.freeze([{ id: "classic", name: "Circuit classique" },
       { id: SPRINT.ID, name: SPRINT.NAME }]), SPRINT, select,
-    nearestIndex, perimeter });
+    nearestIndex, perimeter, SPRINT_TEMPLATE, generateSprint });
 })();
 if (typeof window !== "undefined") window.GcvTrackLayout = GcvTrackLayout;
 if (typeof module !== "undefined" && module.exports) module.exports = GcvTrackLayout;
