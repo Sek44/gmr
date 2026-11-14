@@ -328,3 +328,13 @@ test("reducing shoulders from ten to seven preserves the prior records", () => {
   assert.deepEqual(timing.createStore(layout, storage).top()
     .map((r) => r.ms), [54100, 58500]);
 });
+
+test("open-route arrival still finishes when an intermediate sector is missing", () => {
+  const running = { running: true, startAt: 0, elapsedMs: 55000,
+    splits: [12500, 27000], delta: null, splitNumber: 2 };
+  const result = timing.completeRoute(running, 0.5, 100);
+  assert.equal(result.state.finished, true);
+  assert.equal(result.state.running, false);
+  assert.equal(result.state.elapsedMs, 54950);
+  assert.equal(result.events.length, 0, "invalid splits cannot become a record");
+});
