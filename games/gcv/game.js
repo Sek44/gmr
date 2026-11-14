@@ -42,7 +42,7 @@
   const Flow = window.GcvFlow;
   const Preferences = window.GcvPreferences;
   // Bump this revision after incompatible GCV updates. Old sessions are canceled.
-  const SAVE_REVISION = 11;
+  const SAVE_REVISION = 12;
   // Keep this same fullscreen DOM element while rebuilding only the circuit.
   let disposeGame = null;
   let activeFlow = null;
