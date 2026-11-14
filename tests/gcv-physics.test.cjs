@@ -259,3 +259,32 @@ test("jump touchdown is detected once even at low frame rates", () => {
   }
   assert.equal(landingCount, 1);
 });
+
+test("all four giant hills give sustained airtime over their descending slopes", () => {
+  const layout = require("../games/gcv/track-layout.js").SPRINT;
+  const profiles = layout.HUMP_PROFILES;
+  const distance = layout.WAYPOINTS.slice(1).reduce((length, point, index) =>
+    length + Math.hypot(point[0] - layout.WAYPOINTS[index][0],
+      point[1] - layout.WAYPOINTS[index][1]), 0);
+  const ground = (t) => profiles.reduce((y, hill) =>
+    y + hill.height * Math.exp(-Math.pow((t - hill.at) / hill.width, 2)), 0);
+  const step = 1 / 60, speed = 45;
+  for (const hill of profiles) {
+    let position = hill.at - 2 / distance;
+    let priorGround = ground(position);
+    let flight = { height: 0.01, velocity: physics.JUMP_TAKEOFF_SPEED };
+    let landingCount = 0, duration = 0;
+    for (let frame = 0; frame < 360; frame++) {
+      position += speed * step / distance;
+      const roadY = ground(position);
+      flight = physics.advanceJump(flight.height, flight.velocity, step,
+        roadY - priorGround);
+      priorGround = roadY;
+      duration += step;
+      if (flight.landed) { landingCount++; break; }
+    }
+    assert.ok(duration > 3.2 && duration < 4,
+      "sustained flight at crest " + hill.at + ": " + duration);
+    assert.equal(landingCount, 1);
+  }
+});
