@@ -4,6 +4,8 @@
 const GcvRace = (() => {
   const TrackProgress = typeof GcvTrackProgress !== "undefined"
     ? GcvTrackProgress : require("./track-progress.js");
+  const AiNavigation = typeof GcvAiNavigation !== "undefined"
+    ? GcvAiNavigation : require("./ai-navigation.js");
   const GRID_COUNT = 10;
   const AI_COUNT = GRID_COUNT - 1;
   const PLAYER_SLOT = 4; // Fifth of ten positions: middle of the grid.
@@ -69,7 +71,7 @@ const GcvRace = (() => {
       const jitter = Number.isFinite(roll) ?
         (Math.min(1, Math.max(0, roll)) - 0.5) * 0.024 : 0;
       const strength = navigation
-        ? GcvAiNavigation.SKILLS[rank] + jitter : null;
+        ? AiNavigation.SKILLS[rank] + jitter : null;
       const startProgress = -grid.distance;
       const lapSeconds = navigation
         ? navigation.plan({ id: slot, startProgress, strength }).totalTime / laps
@@ -168,13 +170,13 @@ const GcvRace = (() => {
       const remaining = race.gridWait - dt;
       if (remaining > 0) return { ...race, gridWait: remaining };
       return advance({ ...race, phase: "countdown", gridWait: 0 },
-        Math.max(0, -remaining), 0);
+        Math.max(0, -remaining), 0, null, navigation);
     }
     if (race.phase === "countdown") {
       const remaining = race.countdown - dt;
       if (remaining > 0) return { ...race, countdown: remaining };
       return advance({ ...race, phase: "racing", countdown: 0 },
-        Math.max(0, -remaining), 0);
+        Math.max(0, -remaining), 0, null, navigation);
     }
 
     const finishDistance = race.laps * race.trackLength;
