@@ -6,6 +6,8 @@ Décrire les composants qui existent réellement et leurs responsabilités. Supp
 
 À compléter selon le code réel du jeu. La page du jeu charge `../../shared/site.css` (cadre et composants), puis, si nécessaire, `./game.css` (styles de gameplay). Les services communs viennent de `../../shared/` ; le jeu reste indépendant de tous les autres jeux.
 
+La page modèle propage le paramètre `gmr-refresh`, transmis par l'accueil, à chacune des feuilles CSS et chacun des scripts au moment de leur insertion dans le document. Garder ce comportement dans les nouveaux jeux pour éviter les anciennes versions en cache après un rechargement de GMR.
+
 Le modèle utilise `GmrPlayTime.mountGame` depuis `shared/play-time.js` : adapter `isPlaying` pour exclure les menus, pauses, scores et écrans de fin.
 
 ## Flux et état du jeu
