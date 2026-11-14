@@ -21,7 +21,7 @@ Reviewed `rendering.js`, `vehicles.js`, `world-3d.js`, `visual-effects.js`, `gam
 | Priority | Finding | Location | Suggested change | Validation |
 | --- | --- | --- | --- | --- |
 | P1 | Nine AI cars are built from ~12 individual meshes each (approximately **108 mesh draws** when visible), counting body, four wheels and five number plates. | `vehicles.js` | Merge static parts by material, share wheel geometry, consider instancing shared parts and a number atlas. | Compare race draw calls and p95 frame time; keep car colors/numbers visible. |
-| P1 | Classic track uses DPR up to **1.7**; open track caps DPR at **1.15** and **750,000 pixels**. | `rendering.js` | Define a mobile-friendly resolution budget for *both* circuits; consider adaptive scaling after measurements. | Compare sharpness, p95 frame time, and framebuffer dimensions on each device/orientation. |
+| Addressed (validate on device) | Classic DPR cap **1.7** and open-track DPR cap **1.15** / **750,000 pixels** remain as maximum quality. | `rendering.js`, `adaptive-resolution.js`, `game.js` | Adaptive multiplier **1.0–0.55** now adjusts the active game's internal resolution based on sustained frame pacing, with hysteresis and a guarded quality-recovery probe. No game-state changes. | Re-run on phone/tablet, both orientations and fullscreen; check actual framebuffer dimensions, sharpness, FPS, and repeated viewport/menu transitions. |
 | P1 | HUD values are assigned repeatedly; the chrono is refreshed in both `updateCar()` and the outer frame. | `game.js`, `hud.js` | Remove the duplicate refresh, cache unchanged values, throttle noncritical text. | Measure main-thread frame cost; verify lap/timer/rank transitions. |
 | P2 | One checkered line creates **24 separate tile meshes**; open track has two lines (48). | `world-3d.js` | Use two instanced meshes (one per color) for all tiles. | Compare draw calls, check tile orientation and finish timing gate visuals. |
 | P2 | Each motorcycle wheel consists of many individual spoke/rim/hub meshes (about 15 per wheel). | `vehicles.js` | Merge rigid parts without removing the rotating wheel pivots or changing silhouette. | Compare moto draw calls and visible spokes. |
@@ -77,6 +77,14 @@ Observed directly from the supplied portrait and landscape screenshots. These ar
 Reference scenario FPS: portrait 33.9 classic solo / 33.5 classic race / 54.3 motorcycle / 47.7 rainbow; landscape 36.2 / 35.6 / 58.1 / 47.3 respectively. JavaScript wall-clock averages for the classic race were approximately **6.95 ms** portrait and **6.63 ms** landscape, dominated by the `renderer.render()` call (6.22 / 5.99 ms). These numbers **do not directly measure GPU execution time**.
 
 **Interpretation:** Resolution scaling has a much larger impact than the extra 72 draw calls between classic solo and classic race on this tablet. This strongly supports investigating pixel-related / WebGL work before prioritizing vehicle mesh consolidation. The 55% run is at the roughly 60 FPS browser cap, not proof of unused headroom. Fullscreen runs are a separate baseline and should not be directly compared with the windowed numbers unless framebuffer sizes match.
+
+## Implemented — adaptive resolution (2026-11-14)
+
+The active GCV game now lowers the WebGL framebuffer pixel ratio, without changing UI element sizes or simulation timing, if rendered-frame intervals indicate sustained slow performance. Scale levels: 100%, 90%, 80%, 70%, 60% and 55% of the circuit's existing DPR ceiling. Resolution reductions react to persistently sub-56 FPS or quickly to especially slow samples; restoring quality requires approximately 18 seconds of stable near-60 FPS data and a probation period. An unsuccessful quality increase is reverted and the next attempt is delayed. Sampling occurs only after **actual active game WebGL frames**, excluding menus, score iframe, background/resume and viewport changes.
+
+The adaptive module does **not** change physics, collisions, save revisions, race results, touch controls or the independent benchmark. It is device-responsive and not persisted between sessions or circuit rebuilds. The current benchmark remains a fixed-resolution measurement tool for controlled comparisons; it does not activate automatic adjustment.
+
+The observed v2 tablet comparison (33–36 FPS full resolution vs ~60 FPS at 55% scale) motivated the policy. **These are not post-optimization results**. Validate the actual game on both devices in portrait and landscape (ideally fullscreen), with quality changes and occasional camera/menu transitions, before concluding the improvement is sufficient.
 
 ## Implementation sequence
 
