@@ -18,8 +18,8 @@ test("benchmark metrics summarize delivered frames and renderer counters", () =>
   assert.equal(result.durationMs, 86);
   assert.ok(Math.abs(result.fps - 4000 / 86) < 1e-9);
   assert.equal(result.frameP50Ms, 18);
-  assert.equal(result.frameP95Ms, 37);
-  assert.equal(result.frameP99Ms, 39.4);
+  assert.ok(Math.abs(result.frameP95Ms - 37) < 1e-9);
+  assert.ok(Math.abs(result.frameP99Ms - 39.4) < 1e-9);
   assert.equal(result.longFramePct, 25);
   assert.equal(result.drawCallsAvg, 115);
   assert.equal(result.drawCallsMax, 130);
