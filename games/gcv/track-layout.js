@@ -39,7 +39,7 @@ const GcvTrackLayout = (() => {
   // The 1 m cap sharpens the crest enough to lift fast vehicles without
   // creating the oversized multi-metre impulse of the original jumps.
   const HUMP_PROFILES = Object.freeze([
-    { at: 0.18, height: 16, width: 0.043, crown: 1, crownWidth: 0.014 },
+    { at: 0.15, height: 16, width: 0.043, crown: 1, crownWidth: 0.014 },
     { at: 0.34, height: 14, width: 0.041, crown: 1, crownWidth: 0.014 },
     { at: 0.73, height: 18, width: 0.045, crown: 1, crownWidth: 0.014 },
     { at: 0.88, height: 15, width: 0.042, crown: 1, crownWidth: 0.014 },
@@ -53,7 +53,7 @@ const GcvTrackLayout = (() => {
     }, 0);
   }
   const SPRINT = Object.freeze({
-    ID: "rainbow", NAME: "Route Arc-en-ciel", VERSION: 3,
+    ID: "rainbow", NAME: "Route Arc-en-ciel", VERSION: 4,
     CLOSED: false, SAMPLE_COUNT: 720, ROAD_HALF_WIDTH,
     SHOULDER_WIDTH, WAYPOINTS: SPRINT_POINTS,
     START: pointAt(SPRINT_POINTS[2]),
