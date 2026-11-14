@@ -35,6 +35,7 @@ Il n'existe ni serveur de jeu, ni build, ni moteur physique externe. Les autres 
 | `visual-effects.js` | Particules dynamiques de boue et étincelles de friction ; petite gerbe radiale de poussière à l'atterrissage réutilisant le tampon de particules existant (`land`) sans nouvel appel de dessin |
 | `hud.js` | Indicateurs de conduite, chrono, classements et panneau d'arrivée |
 | `mini-map.js` | Carte ouverte/fermée, départ et arrivée distincts, secteurs et marqueurs dynamiques |
+| `adaptive-resolution.js` | Politique pure d'ajustement du facteur de résolution (échelle 1 → 0,55), basée sur les intervalles des frames WebGL actives ; fenêtre temporelle, hystérésis, stabilisation et remontée lente avec retour arrière en cas de régression |
 
 ## 3. Flux de simulation
 
@@ -72,7 +73,7 @@ Les tests Node `tests/gcv-*.test.cjs` couvrent notamment la physique, les barri�
 
 Le rendu WebGL réel, le plein écran, le multi-touch et les présentations mobiles restent à valider en navigateur ; une automatisation intégrée est prévue dans le backlog. Trois.js est chargé depuis un CDN au démarrage : le fonctionnement hors connexion au premier chargement n'est pas garanti.
 
-Pour les GPU modestes, le parcours ouvert utilise un échantillonnage à 720 segments, des décorations plus légères, un framebuffer plafonné à 750 000 pixels et un rendu sans MSAA. Le circuit classique conserve son niveau de qualité précédent. Les ressources JS/CSS du jeu portent un identifiant de version dans leur URL pour éviter les mélanges de modules mis en cache.
+Le parcours ouvert utilise un échantillonnage à 720 segments, des décorations plus légères, un framebuffer plafonné à 750 000 pixels et un rendu sans MSAA. Le circuit classique conserve son plafond DPR initial de 1,7. **Pendant le jeu actif uniquement**, `game.js` transmet les timestamps de `requestAnimationFrame` à `adaptive-resolution.js` après `rendering.render()` ; le contrôleur utilise `rendering.setResolutionScale()` (défaut 1) pour multiplier le DPR déjà limité par le circuit. Les niveaux autorisés sont 1, 0,9, 0,8, 0,7, 0,6 et 0,55 : baisse après ralentissement durable, remontée seulement après environ 18 secondes stables avec vérification et attente après un essai raté. Les 1,2 seconde suivant un changement sont exclues des mesures. Les menus/scores, onglets masqués, reprises, redimensionnements et bascules plein écran remettent à zéro les échantillons, mais **pas** le jeu ou les scores. Le contrôleur est recréé avec la scène lors d'un changement de circuit. Il ne mesure pas directement la charge GPU et n'enregistre aucune préférence de qualité. Les ressources JS/CSS du jeu portent un identifiant de version dans leur URL pour éviter les mélanges de modules mis en cache.
 
 Le parcours est sélectionné via `?track=rainbow` si présent, sinon depuis les préférences locales (classique par défaut), avec rechargement de la scène et annulation possible des anciennes sessions. `world-3d.js` livre les indices de départ/arrivée au moteur ; `game.js` calcule la longueur entre les deux portes pour la progression/IA tout en conservant la longueur intégrale de spline pour le rendu. Le saut est un écart vertical temporaire qui ne produit aucun événement de course.
 
