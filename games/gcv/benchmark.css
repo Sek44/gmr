@@ -1,0 +1,68 @@
+:root {
+  color-scheme: dark;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: #0c1829;
+  color: #f5f7ff;
+}
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100svh; }
+button, a { font: inherit; }
+button { touch-action: manipulation; }
+.benchmark-stage { position: fixed; inset: 0; background: #7ab7ce; z-index: 0; }
+.benchmark-scene, .benchmark-scene canvas {
+  position: absolute; inset: 0; width: 100%; height: 100%; display: block;
+}
+.benchmark-panel {
+  position: fixed; z-index: 2; top: max(12px, env(safe-area-inset-top));
+  left: 50%; transform: translateX(-50%);
+  width: min(92vw, 630px); padding: 15px 18px;
+  background: #0c182be8; border: 1px solid #91bddd72; border-radius: 16px;
+  box-shadow: 0 8px 28px #06122470;
+}
+.benchmark-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.benchmark-kicker { color: #b6d6ff; font-size: .68rem; font-weight: 800; letter-spacing: .16em; margin: 0 0 3px; }
+h1, h2 { margin: 0; letter-spacing: -.025em; }
+h1 { font-size: clamp(1.25rem, 4.8vw, 1.8rem); }
+h2 { font-size: clamp(1.4rem, 5vw, 1.85rem); }
+.benchmark-link, .benchmark-results-link { color: #a8d6ff; font-size: .85rem; text-decoration: underline; white-space: nowrap; }
+.benchmark-intro, .benchmark-instruction { font-size: .85rem; line-height: 1.35; margin: 10px 0; }
+.benchmark-instruction { color: #ffdca0; }
+.benchmark-button {
+  background: #448ef2; color: white; border: 1px solid #84baff;
+  border-radius: 9px; padding: 11px 15px; font-weight: 750;
+  min-height: 44px; cursor: pointer;
+}
+.benchmark-button:disabled { opacity: .55; cursor: default; }
+.benchmark-secondary { background: #233d5e; }
+.benchmark-status { margin: 10px 0 0; font-size: .82rem; color: #d7e9fd; }
+.benchmark-results {
+  position: relative; z-index: 3; max-width: 740px;
+  margin: 0 auto; padding: max(17px, env(safe-area-inset-top)) 12px 20px;
+  background: #0c1829; min-height: 100svh;
+}
+.benchmark-results[hidden] { display: none; }
+.benchmark-results-header { border-bottom: 1px solid #45617d; padding-bottom: 10px; }
+.benchmark-device { color: #c0d1e6; font-size: .76rem; margin: 7px 0 0; overflow-wrap: anywhere; }
+.benchmark-table-container { overflow-x: auto; margin-top: 10px; }
+.benchmark-table { width: 100%; table-layout: fixed; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.benchmark-table th, .benchmark-table td { padding: 9px 4px; border-bottom: 1px solid #324661; text-align: right; font-size: .83rem; }
+.benchmark-table th:first-child, .benchmark-table td:first-child { text-align: left; width: 36%; }
+.benchmark-table th { color: #a5c6e7; font-size: .71rem; font-weight: 750; }
+.benchmark-table td:first-child { font-weight: 650; }
+.benchmark-extras { margin-top: 8px; color: #b7cde6; font-size: .76rem; line-height: 1.4; }
+.benchmark-extras p { margin: 5px 0; }
+.benchmark-footnote { color: #b0c2da; font-size: .74rem; line-height: 1.35; margin: 10px 0; }
+.benchmark-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.benchmark-results-link { display: inline-block; margin-top: 12px; }
+body.is-complete .benchmark-panel, body.is-complete .benchmark-stage { display: none; }
+@media (max-width: 440px) {
+  .benchmark-panel { padding: 12px; }
+  .benchmark-intro, .benchmark-instruction { font-size: .79rem; margin: 7px 0; }
+  .benchmark-table th, .benchmark-table td { font-size: .76rem; padding: 9px 2px; }
+  .benchmark-table th { font-size: .67rem; }
+  .benchmark-results { padding-left: 9px; padding-right: 9px; }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  .benchmark-panel { left: max(12px, env(safe-area-inset-left)); top: 10px; transform: none; width: min(410px, 49vw); padding: 10px 12px; }
+  .benchmark-intro, .benchmark-instruction { font-size: .75rem; margin: 6px 0; }
+}
