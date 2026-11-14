@@ -581,6 +581,82 @@ test("steering input makes Milo move immediately and visibly even at low speed",
     "the pilot smoothly returns to center");
 });
 
+test("motorcycle and rider retain their bank at takeoff and throughout coasting", () => {
+  const { view, car, motoRider } = fixture(true, true);
+  view.setVehicle("moto");
+  const dt = 1 / 60;
+  let yaw = 0;
+  const draw = (jumpY, steerInput = 0) => view.updatePlayer({
+    driver: { x: 0, z: 0, yaw, speed: 52, jumpY },
+    fall: null, dt, steerInput, brakePressed: false, jumpVelocity: 3,
+  });
+
+  draw(0);
+  for (let i = 0; i < 9; i++) {
+    yaw += 0.025;
+    draw(0);
+  }
+  const groundBikeRoll = car.rotation.z;
+  const groundRiderRoll = motoRider.body.rotation.z;
+  assert.ok(groundBikeRoll > 0.10, "bike is leaning before takeoff");
+  assert.ok(groundRiderRoll > 0.15, "rider leans before takeoff");
+
+  draw(0.12); // The guiding logic stops changing yaw while airborne.
+  assert.ok(car.rotation.z > groundBikeRoll * 0.85,
+    "takeoff must not abruptly straighten the motorcycle");
+  assert.ok(motoRider.body.rotation.z > groundRiderRoll * 0.85,
+    "rider keeps his existing leaning pose");
+  for (let i = 0; i < 30; i++) draw(1.4);
+  assert.ok(car.rotation.z > groundBikeRoll * 0.8,
+    "no-control flight preserves the departure bank");
+  assert.ok(motoRider.body.rotation.z > groundRiderRoll * 0.8,
+    "rider remains leaned while airborne without steering");
+});
+
+test("left and right controls smoothly bank the motorcycle and rider in flight", () => {
+  const { view, car, motoRider } = fixture(true, true);
+  view.setVehicle("moto");
+  const dt = 1 / 60;
+  const draw = (steerInput, jumpY = 1.2) => view.updatePlayer({
+    driver: { x: 0, z: 0, yaw: 0, speed: 55, jumpY },
+    fall: null, dt, steerInput, brakePressed: false, jumpVelocity: -2,
+  });
+
+  draw(0, 0);
+  for (let i = 0; i < 25; i++) draw(1);
+  assert.ok(car.rotation.z < -0.15, "right control banks the motorcycle right");
+  assert.ok(motoRider.body.rotation.z < -0.13,
+    "rider leans into the airborne steering input");
+  const heldRight = car.rotation.z;
+  const heldRider = motoRider.body.rotation.z;
+  for (let i = 0; i < 20; i++) draw(0);
+  assert.ok(Math.abs(car.rotation.z - heldRight) < 0.01,
+    "releasing the control must not reset airborne bank");
+  assert.ok(Math.abs(motoRider.body.rotation.z - heldRider) < 0.015,
+    "rider holds the last steering pose while coasting");
+
+  let previousRoll = car.rotation.z;
+  for (let i = 0; i < 30; i++) {
+    draw(-1);
+    assert.ok(Math.abs(car.rotation.z - previousRoll) < 0.055,
+      "airborne roll must change continuously without snapping");
+    previousRoll = car.rotation.z;
+  }
+  assert.ok(car.rotation.z > 0.15, "left control banks the motorcycle left");
+  assert.ok(motoRider.body.rotation.z > 0.13,
+    "rider follows left control while airborne");
+
+  const beforeLanding = car.rotation.z;
+  draw(0, 0);
+  assert.ok(car.rotation.z > 0 && car.rotation.z < beforeLanding,
+    "landing begins a smooth return to grounded handling");
+  for (let i = 0; i < 40; i++) draw(0, 0);
+  assert.ok(Math.abs(car.rotation.z) < 0.002,
+    "bike settles to upright after landing");
+  assert.ok(Math.abs(motoRider.body.rotation.z) < 0.002,
+    "rider gradually settles as well");
+});
+
 test("the moto chase camera frames the rider closer", () => {
   const { view, camera } = fixture();
   view.setVehicle("moto");
