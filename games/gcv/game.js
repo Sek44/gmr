@@ -566,7 +566,8 @@
           if (!closed && jumpCooldown === 0 &&
               jumpVelocity === 0 && driver.jumpY === 0) {
             const launch = Physics.takeoffVelocity(trackFraction,
-              driver.speed, trackLength, heightAt);
+              driver.speed, trackLength, heightAt,
+              projection?.lateral ?? 0, ROAD_HALF_WIDTH - 1.8);
             if (launch !== null) {
               jumpVelocity = launch;
               driver.jumpY = 0.001;
