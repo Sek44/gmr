@@ -78,7 +78,12 @@ const GcvPhysics = (() => {
   // road would require downward acceleration greater than gravity. There is
   // no invented launch impulse: takeoff inherits the road's vertical speed.
   // heightAt is the same continuous profile used by world-3d.js.
-  function takeoffVelocity(progress, speed, trackLength, heightAt) {
+  function takeoffVelocity(progress, speed, trackLength, heightAt,
+      lateral = 0, safeHalfWidth = Infinity) {
+    // A jump must begin on the paved road. Otherwise the airborne corridor
+    // could abruptly pull a car back from the shoulder at the first crest.
+    if (!Number.isFinite(lateral) || Math.abs(lateral) > safeHalfWidth)
+      return null;
     if (!Number.isFinite(progress) || progress <= 0 || progress >= 1 ||
         !Number.isFinite(speed) || speed <= 20 ||
         !Number.isFinite(trackLength) || trackLength <= 0 ||
