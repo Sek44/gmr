@@ -17,8 +17,8 @@ const GcvTrackLayout = (() => {
   const FINISH = Object.freeze({ x: 78, z: -10 });
   const SPAWN = Object.freeze({ x: 78, z: -43 });
 
-  // Second route: an open point-to-point sprint. Coordinates are scaled
-  // to give approximately 1.6 km of driving at the existing car speeds.
+  // Extended open sprint: the extra final canyon is part of the same continuous
+  // route. Keep the sampling budget controlled on modest mobile GPUs.
   const SPRINT_POINTS = Object.freeze([
     [0, 100], [0, 60], [0, 0], [0, -65], [28, -130],
     [82, -185], [110, -240], [145, -295], [155, -365],
@@ -28,12 +28,23 @@ const GcvTrackLayout = (() => {
     [-86, -1145], [-25, -1200], [45, -1260], [75, -1315],
     [62, -1370], [0, -1430], [-40, -1490], [0, -1550],
     [65, -1615], [95, -1680], [84, -1730],
-  ].map(([x,z]) => Object.freeze([x * 0.75, z * 0.75])));
+    [90, -1810], [86, -1880], [85, -1960], [50, -2025],
+    [-20, -2085], [-62, -2140], [-45, -2195], [15, -2260],
+    [75, -2325], [76, -2395], [76, -2475], [76, -2545],
+  ].map(([x,z]) => Object.freeze([x * 0.82, z * 0.82])));
   // Spawn and timing gates use the same { x, z } contract as the
   // original track. Array waypoints are only for Catmull-Rom construction.
   const pointAt = ([x, z]) => Object.freeze({ x, z });
+  // Four oversized, broad launch hills (fraction of the open centerline).
+  // Height and width drive the geometry; HUMPS is the shared crest lookup.
+  const HUMP_PROFILES = Object.freeze([
+    { at: 0.18, height: 16, width: 0.018 },
+    { at: 0.34, height: 14, width: 0.018 },
+    { at: 0.73, height: 18, width: 0.022 },
+    { at: 0.88, height: 15, width: 0.019 },
+  ].map((hump) => Object.freeze(hump)));
   const SPRINT = Object.freeze({
-    ID: "rainbow", NAME: "Route Arc-en-ciel", VERSION: 2,
+    ID: "rainbow", NAME: "Route Arc-en-ciel", VERSION: 3,
     CLOSED: false, SAMPLE_COUNT: 720, ROAD_HALF_WIDTH,
     SHOULDER_WIDTH, WAYPOINTS: SPRINT_POINTS,
     START: pointAt(SPRINT_POINTS[2]),
@@ -41,9 +52,10 @@ const GcvTrackLayout = (() => {
     SPAWN: pointAt(SPRINT_POINTS[1]), // Leave space before the physical starting cap.
     nearestIndex,
     // This marked stretch contains the winding multicoloured guidance rails.
-    RAINBOW: Object.freeze([0.51, 0.68]),
+    RAINBOW: Object.freeze([0.46, 0.63]),
     zigzagAt,
-    HUMPS: Object.freeze([0.23, 0.39, 0.81]),
+    HUMP_PROFILES,
+    HUMPS: Object.freeze(HUMP_PROFILES.map((hump) => hump.at)),
   });
   // Seven short, lively swerves with a much smaller lateral excursion.
   // Smoothstep fades the motion AND its derivative at both section edges.
