@@ -240,9 +240,8 @@ test("takeoff depends on speed, upward road slope and crest curvature", () => {
   const length = layout.WAYPOINTS.slice(1).reduce((total, point, i) =>
     total + Math.hypot(point[0] - layout.WAYPOINTS[i][0],
       point[1] - layout.WAYPOINTS[i][1]), 0);
-  const heightAt = (t) =>
-    hill.height * Math.exp(-Math.pow((t - hill.at) / hill.width, 2));
-  const approaching = hill.at - 30 / length;
+  const heightAt = layout.heightAt;
+  const approaching = hill.at - 22 / length;
   const fast = physics.takeoffVelocity(approaching, 69, length, heightAt);
   assert.ok(fast > 0 && fast < 10, "velocity comes from the road slope");
   assert.equal(physics.takeoffVelocity(approaching, 35, length, heightAt), null,
@@ -251,6 +250,10 @@ test("takeoff depends on speed, upward road slope and crest curvature", () => {
     "already descending the hill must not trigger a jump");
   assert.equal(physics.takeoffVelocity(approaching, -69, length, heightAt), null);
   assert.equal(physics.takeoffVelocity(approaching, 69, length, () => 0), null);
+  assert.equal(physics.takeoffVelocity(approaching, 69, length, heightAt,
+    9, 7.2), null, "takeoff from a gravel shoulder must not snap laterally");
+  assert.ok(physics.takeoffVelocity(approaching, 69, length, heightAt,
+    3, 7.2) > 0);
 });
 test("jump touchdown is detected once at a low frame rate", () => {
   let jump = { height: 0.001, velocity: 4 };
@@ -267,8 +270,7 @@ test("hills give shallow speed-dependent airtime instead of huge leaps", () => {
   const distance = layout.WAYPOINTS.slice(1).reduce((length, point, i) =>
     length + Math.hypot(point[0] - layout.WAYPOINTS[i][0],
       point[1] - layout.WAYPOINTS[i][1]), 0);
-  const ground = (t) => profiles.reduce((y, hill) =>
-    y + hill.height * Math.exp(-Math.pow((t - hill.at) / hill.width, 2)), 0);
+  const ground = layout.heightAt;
 
   function crossHill(hill, speed) {
     const step = 1 / 60;
@@ -308,9 +310,9 @@ test("hills give shallow speed-dependent airtime instead of huge leaps", () => {
     assert.equal(slow.takeoffs, 0, "slow car hugs the surface");
     assert.equal(fast.takeoffs, 1);
     assert.equal(fast.landings, 1);
-    assert.ok(fast.peak > 0.2 && fast.peak < 4,
+    assert.ok(fast.peak > 1 && fast.peak < 5,
       "fast car lifts only slightly above hill " + hill.at + ": " + fast.peak);
-    assert.ok(fast.seconds > 1 && fast.seconds < 3,
+    assert.ok(fast.seconds > 1.2 && fast.seconds < 3,
       "flight must be short, not a fixed multi-second jump");
   }
 });
