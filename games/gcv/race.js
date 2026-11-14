@@ -65,7 +65,9 @@ const GcvRace = (() => {
       const grid = gridSlot(slot);
       const rank = opponents.length;
       const targetLapSeconds = laps === 1
-        ? 27 + rank * 1.4 + Math.max(0, Math.min(1, random())) * 1.2
+        // Keep AI speeds credible when the point-to-point course is extended.
+        ? (27 + rank * 1.4 + Math.max(0, Math.min(1, random())) * 1.2) *
+          Math.max(1, trackLength / 1600)
         : lapTarget(rank, random);
       opponents.push({
         id: slot, progress: -grid.distance, lateral: grid.lateral,
