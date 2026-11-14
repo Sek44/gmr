@@ -75,7 +75,11 @@ const GcvRace = (() => {
       const startProgress = -grid.distance;
       const lapSeconds = navigation
         ? navigation.plan({ id: slot, startProgress, strength }).totalTime / laps
-        : lapTarget(rank, () => Number.isFinite(roll) ? roll : 0.5);
+        : laps === 1
+          ? (27 + rank * 1.4 + Math.max(0, Math.min(1,
+            Number.isFinite(roll) ? roll : 0.5)) * 1.2) *
+              Math.max(1, trackLength / 1600)
+          : lapTarget(rank, () => Number.isFinite(roll) ? roll : 0.5);
       opponents.push({
         id: slot, progress: startProgress, startProgress,
         lateral: grid.lateral, strength,
