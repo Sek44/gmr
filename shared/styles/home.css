@@ -1,50 +1,102 @@
-/* GMR shared home styles. Keep game-specific rules in games/<id>/. */
-.home-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 12px 0 36px; }
+/* Structure de l'accueil : composition sans palette ni décor de thème. */
+.home-page {
+  width: min(calc(100% - 40px), 1000px);
+  padding-top: 20px;
+  padding-bottom: 28px;
+}
 
-.eyebrow { color: #5078af; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; font-size: .82rem; margin: 0 0 6px; }
+.home-topbar,
+.home-brand,
+.home-scores-link,
+.daily-heading,
+.daily-heading-title,
+.daily-link,
+.games-heading,
+.game-action {
+  display: flex;
+  align-items: center;
+}
 
-.subtitle { color: #64758a; line-height: 1.5; margin: 10px 0 0; }
+.home-topbar,
+.daily-heading,
+.games-heading {
+  justify-content: space-between;
+  gap: 16px;
+}
 
-.section-title { font-size: 1.35rem; margin: 0 0 18px; }
+.home-topbar { margin-bottom: 22px; }
+.home-brand { gap: 11px; }
+.home-brand-text { display: flex; flex-direction: column; }
+.home-scores-link { gap: 9px; }
 
-.game-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 235px), 1fr)); gap: 18px; }
+.home-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 240px;
+  align-items: center;
+  gap: 18px;
+  min-height: 242px;
+  padding: 35px clamp(24px, 4vw, 50px);
+}
+.home-hero-copy { position: relative; z-index: 1; }
+.home-hero-visual {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 215px;
+  height: 180px;
+  justify-self: center;
+}
+.home-hero-visual img { position: relative; z-index: 1; width: 146px; height: 146px; }
+.hero-orbit, .hero-star { position: absolute; }
 
-.game-card { display: flex; flex-direction: column; align-items: flex-start; min-height: 235px; padding: 25px; border-radius: 18px; background: #fff; box-shadow: 0 5px 20px #1e3d6814; text-decoration: none; color: inherit; border: 2px solid transparent; transition: transform .15s ease, border-color .15s ease; }
+.gmr-daily-panel { margin-top: 22px; padding: 22px 27px; }
+.daily-heading { margin-bottom: 19px; }
+.daily-heading-title { gap: 12px; }
+.daily-heading-title h2 { margin: 1px 0 0; }
+.daily-icon { display: grid; place-items: center; width: 46px; height: 46px; }
+.daily-link { gap: 7px; }
+.daily-summary { min-height: 88px; }
+.daily-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.daily-stat { display: flex; flex-direction: column; gap: 6px; padding: 12px 16px; }
+.daily-caption { margin: 11px 0 0; }
 
-.game-card:hover, .game-card:focus-visible { border-color: #2265c5; transform: translateY(-2px); }
+.home-games { margin-top: 35px; }
+.games-heading { margin-bottom: 17px; }
+.games-heading h2 { margin: 2px 0 0; }
+.games-heading p { margin: 0; }
+.game-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 390px), 1fr)); gap: 18px; }
+.game-card { display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+.game-artwork { display: grid; place-items: center; min-width: 0; overflow: hidden; }
+.game-picture { display: block; width: min(100%, 430px); height: auto; max-height: 240px; object-fit: contain; }
+.game-content { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; padding: 25px; }
+.game-description { display: block; }
+.game-action { gap: 9px; margin-top: 23px; }
+.game-card:only-child { flex-direction: row; }
+.game-card:only-child .game-artwork { flex: 1 1 50%; }
+.game-card:only-child .game-content { flex: 1 1 50%; justify-content: center; padding: 30px; }
+.game-card:only-child .game-picture { max-height: 280px; }
 
-.game-symbol { font-size: 2.2rem; font-weight: 800; color: #2265c5; line-height: 1.2; }
-
-.game-card h3 { font-size: 1.35rem; margin: 14px 0 6px; }
-
-.game-card p { margin: 0 0 16px; line-height: 1.5; color: #64758a; }
-
-.game-action { margin-top: auto; color: #1d5eb6; font-weight: 750; }
-
-.empty-state { background: #fff; border-radius: 18px; padding: 24px; box-shadow: 0 5px 20px #1e3d6812; }
-
-.empty-state { color: #64758a; line-height: 1.5; }
-
-.site-footer { text-align: center; font-size: .9rem; color: #64758a; margin-top: 40px; }
-
+@media (max-width: 700px) {
+  .home-hero { grid-template-columns: minmax(0, 1fr) 125px; gap: 6px; padding: 27px; min-height: 205px; }
+  .home-hero-visual { width: 120px; height: 120px; }
+  .home-hero-visual img { width: 105px; height: 105px; }
+  .game-card:only-child { flex-direction: column; }
+  .game-card:only-child .game-artwork, .game-card:only-child .game-content { flex: auto; }
+  .game-card:only-child .game-picture { max-height: 220px; }
+}
 @media (max-width: 520px) {
-  .home-header { align-items: flex-start; margin-bottom: 28px; }
+  .home-page { width: min(calc(100% - 24px), 1000px); padding-top: 12px; }
+  .home-topbar { margin-bottom: 14px; }
+  .home-hero { grid-template-columns: 1fr; padding: 28px 22px; min-height: 0; }
+  .home-hero-visual { display: none; }
+  .gmr-daily-panel { padding: 17px 16px; margin-top: 14px; }
+  .daily-heading { align-items: flex-start; }
+  .daily-stats { gap: 6px; }
+  .daily-stat { padding: 11px 6px; }
+  .home-games { margin-top: 28px; }
+  .game-content, .game-card:only-child .game-content { padding: 20px; }
 }
-
-@media (max-width: 520px) {
-  .home-header .button { padding: 10px 12px; font-size: .9rem; white-space: nowrap; }
+@media (max-width: 360px) {
+  .daily-heading { flex-wrap: wrap; }
+  .daily-link { margin-left: 58px; }
 }
-
-@media (max-width: 520px) {
-  .game-card { min-height: 185px; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .game-card { transition: none; }
-}
-
-.gmr-daily-panel { padding: 16px 20px; margin: 0 0 24px; background: #e7effb; border-radius: 14px; }
-
-.gmr-daily-panel h2 { font-size: 1.12rem; margin: 0 0 8px; }
-
-.gmr-daily-panel p { margin: 0 0 8px; line-height: 1.5; }

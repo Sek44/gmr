@@ -1,0 +1,153 @@
+/* Habillage de l'accueil. Changer de thème ne modifie pas les jeux. */
+.home-brand, .home-scores-link, .game-card, .daily-link { text-decoration: none; }
+.home-brand { color: var(--home-ink); }
+.home-brand-mark {
+  display: grid;
+  place-items: center;
+  width: 52px; height: 52px;
+  border-radius: 17px;
+  background: #ffda79;
+  border: 2px solid #edc359;
+  box-shadow: 0 4px 0 #e4b94d;
+}
+.home-brand-text strong { font-size: 1.55rem; letter-spacing: -.045em; line-height: 1.05; font-weight: 900; }
+.home-brand-text small { font-size: .74rem; color: var(--home-muted); font-weight: 700; margin-top: 3px; }
+.home-scores-link {
+  border: 1px solid #d3def3;
+  border-radius: 999px;
+  background: var(--home-surface);
+  padding: 12px 17px;
+  min-height: 48px;
+  color: var(--home-blue-dark);
+  font-size: .92rem;
+  font-weight: 800;
+  box-shadow: 0 3px 12px #273f7510;
+}
+.home-scores-link:hover { background: #f1f5ff; }
+
+.home-hero {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: 28px;
+  background: linear-gradient(115deg, #315bd5, #4f79e1);
+  border: 1px solid #3158c4;
+  box-shadow: 0 10px 28px #1c3b9a2b, inset 0 -4px 0 #173ca63d;
+  color: #fff;
+}
+.home-hero::before {
+  content: "";
+  position: absolute; width: 380px; height: 380px; right: -90px; bottom: -265px;
+  border-radius: 50%; border: 60px solid #ffffff0c; pointer-events: none;
+}
+.home-hero::after {
+  content: "";
+  position: absolute; width: 250px; height: 250px; left: -170px; top: -165px;
+  border-radius: 50%; border: 48px solid #ffffff0d; pointer-events: none;
+}
+.home-kicker {
+  display: inline-block;
+  font-size: .76rem;
+  font-weight: 800;
+  letter-spacing: .055em;
+  text-transform: uppercase;
+  color: #eaf0ff;
+  margin-bottom: 14px;
+}
+.home-hero h1 {
+  margin: 0; max-width: 620px;
+  font-size: clamp(2.4rem, 5.3vw, 4rem);
+  font-weight: 900; letter-spacing: -.055em; line-height: 1.08;
+}
+.home-hero h1 span { color: #ffe187; }
+.home-hero p { max-width: 550px; margin: 18px 0 0; line-height: 1.55; color: #f1f4ff; font-size: clamp(.98rem, 1.8vw, 1.13rem); }
+.home-hero-visual { transform: rotate(-13deg); }
+.hero-orbit { border-radius: 50%; background: #ffffff17; }
+.hero-orbit-one { width: 210px; height: 210px; }
+.hero-orbit-two { width: 168px; height: 168px; border: 2px dashed #ffffff44; background: transparent; }
+.hero-star { color: #ffe18b; font-size: 34px; font-weight: 900; }
+.hero-star-one { top: 0; right: 4px; }
+.hero-star-two { bottom: -10px; left: 4px; font-size: 21px; }
+
+.gmr-daily-panel {
+  background: #fff;
+  border: 1px solid var(--home-line);
+  border-radius: var(--home-radius);
+  box-shadow: 0 6px 20px #29385d0e;
+}
+.daily-icon { border-radius: 14px; background: #e6eeff; }
+.daily-eyebrow, .section-eyebrow {
+  color: #6c7da0;
+  font-size: .75rem;
+  font-weight: 800;
+  letter-spacing: .055em;
+  text-transform: uppercase;
+}
+.daily-heading h2 { font-size: 1.22rem; font-weight: 850; letter-spacing: -.025em; }
+.daily-link { color: var(--home-blue-dark); font-size: .86rem; font-weight: 800; white-space: nowrap; }
+.daily-link:hover { text-decoration: underline; }
+.daily-stats { color: var(--home-ink); }
+.daily-stat { background: #f5f7fc; border: 1px solid #edf0f8; border-radius: 13px; }
+.daily-stat-primary { background: #fff5da; border-color: #f8e4a4; }
+.daily-stat-label { font-size: .77rem; font-weight: 700; color: var(--home-muted); }
+.daily-stat-primary .daily-stat-label { color: #8a6b25; }
+.daily-stat-value { font-size: clamp(1.22rem, 3.5vw, 1.8rem); line-height: 1.12; font-weight: 900; letter-spacing: -.035em; font-variant-numeric: tabular-nums; }
+.daily-caption { font-size: .78rem; color: var(--home-muted); line-height: 1.4; }
+.daily-error { color: #a32938; font-weight: 650; line-height: 1.5; }
+
+.games-heading h2 { color: var(--home-ink); font-size: clamp(1.5rem, 3vw, 1.95rem); letter-spacing: -.04em; font-weight: 900; }
+.games-heading p { font-size: .88rem; color: var(--home-muted); font-weight: 650; }
+.game-card {
+  border: 1px solid #dbe2ef;
+  border-radius: var(--home-radius);
+  background: var(--home-surface);
+  box-shadow: 0 5px 18px #29385d14;
+  color: var(--home-ink);
+  transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+.game-card:hover, .game-card:focus-visible {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 24px #29385d1c;
+  border-color: #8eabe8;
+}
+.game-artwork {
+  background: linear-gradient(145deg, #dcecff, #ebefff);
+  padding: 22px;
+}
+.game-card:only-child .game-artwork { border-radius: var(--home-radius) 0 0 var(--home-radius); }
+.game-category {
+  color: #3461bd; background: #eaf1ff;
+  border-radius: 999px; padding: 6px 12px;
+  font-size: .72rem; letter-spacing: .04em; text-transform: uppercase; font-weight: 850;
+}
+.game-content h3 { margin: 13px 0 9px; color: var(--home-ink); font-size: clamp(1.45rem, 3vw, 1.85rem); line-height: 1.12; letter-spacing: -.035em; font-weight: 900; }
+.game-description { color: var(--home-muted); font-size: .94rem; line-height: 1.55; }
+.game-action {
+  border-radius: 12px;
+  background: var(--home-blue); color: #fff;
+  padding: 12px 18px; min-height: 45px;
+  font-size: .9rem; font-weight: 850;
+  box-shadow: inset 0 -3px 0 #142e911f;
+}
+.game-card:hover .game-action { background: var(--home-blue-dark); }
+.game-action img { filter: brightness(0) invert(1); }
+.empty-state { padding: 22px; border-radius: var(--home-radius); background: #fff; color: var(--home-muted); }
+.home-page .site-footer { color: #7b8599; font-size: .78rem; margin-top: 27px; }
+@media (max-width: 700px) {
+  .hero-orbit-one { width: 140px; height: 140px; }
+  .hero-orbit-two { width: 120px; height: 120px; }
+  .game-card:only-child .game-artwork { border-radius: var(--home-radius) var(--home-radius) 0 0; }
+}
+@media (max-width: 520px) {
+  .home-scores-link { padding: 10px 12px; font-size: .81rem; }
+  .home-scores-link img { width: 21px; }
+  .home-hero h1 { font-size: clamp(2.2rem, 9vw, 2.8rem); }
+  .home-hero p { margin-top: 12px; }
+  .home-kicker { margin-bottom: 10px; font-size: .68rem; }
+  .daily-heading h2 { font-size: 1.05rem; }
+  .daily-link { font-size: .76rem; }
+  .daily-stat-label { font-size: .68rem; }
+  .daily-stat-value { font-size: clamp(1.15rem, 5.2vw, 1.55rem); }
+  .games-heading p { display: none; }
+  .game-artwork { padding: 12px; }
+}

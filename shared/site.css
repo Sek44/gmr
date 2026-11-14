@@ -1,9 +1,10 @@
-/* Public entry point for the shared GMR site shell and services.
- * Games keep their own stylesheet after this file (e.g. games/gcv/game.css).
- * Existing pages load this single stable URL; each concern has one owner below.
+/* Entrée stable du site : styles communs, puis thème de l'accueil.
+ * Chaque jeu charge ensuite son propre CSS, sans dépendance au thème.
  */
 @import url("./styles/base.css");
 @import url("./styles/components.css");
 @import url("./styles/home.css");
 @import url("./styles/scores.css");
 @import url("./styles/play-time.css");
+@import url("./themes/classic-play/theme.css");
+@import url("./themes/classic-play/home.css");

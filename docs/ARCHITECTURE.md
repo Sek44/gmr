@@ -6,7 +6,7 @@ GMR est un monorepo de petits jeux jouables directement dans le navigateur, publ
 
 ## Points d'entrée
 
-- `index.html` charge la page d'accueil ; `games/catalog.js` contient la liste explicite des jeux publiés, avec leur identifiant et leur `saveRevision` éventuelle.
+- `index.html` charge la page d'accueil ; `games/catalog.js` contient la liste explicite des jeux publiés, avec leur identifiant, leur illustration SVG `artwork` facultative, leur catégorie et leur `saveRevision` éventuelle.
 - `scores.html` affiche les résultats et records à partir des services communs.
 - `games/<id>/index.html` est la page autonome d'un jeu ; les ressources partagées sont référencées par des chemins relatifs pour fonctionner sous GitHub Pages.
 - `games/_template/` fournit une base pour créer un jeu sans l'inscrire automatiquement au catalogue.
@@ -15,8 +15,9 @@ GMR est un monorepo de petits jeux jouables directement dans le navigateur, publ
 
 | Module | Responsabilité |
 | --- | --- |
-| `shared/home.js` | Construction du catalogue à partir de `games/catalog.js` |
-| `shared/site.css` et `shared/styles/` | Entrée CSS stable ; styles indépendants de base, composants, accueil, scores et temps de jeu |
+| `shared/home.js` | Construction des cartes accessibles depuis le catalogue (illustrations SVG et actions Jouer/Reprendre) |
+| `shared/site.css` et `shared/styles/` | Entrée CSS stable ; structure indépendante du thème, composants communs, scores et temps de jeu |
+| `shared/themes/classic-play/` | Thème visuel du seul accueil : palette, décor et icônes SVG. Les illustrations des jeux restent dans leurs propres dossiers |
 | `games/<id>/game.css` | Présentation spécifique au jeu (scène, HUD, commandes, animations), hors couche commune |
 | `shared/game-state.js` (`GameState`) | Sauvegarder et restaurer une session par jeu ; enregistrer également lors de `pagehide` et du masquage de l'onglet |
 | `shared/scores.js` (`GameScores`) | Historique général des scores, affichage, courbes et suppression ciblée ; enregistrement des adaptateurs de vues par jeu |
@@ -48,6 +49,8 @@ Les jeux utilisent `shared/` comme **infrastructure hôte** : cadre et navigatio
 Cette séparation est motivée par l'[ADR-0001](adr/0001-frontiere-hote-jeux.md).
 
 L'architecture propre au moteur 3D, au chronométrage, à la course et aux sauvegardes GCV figure dans [l'architecture GCV](../games/gcv/docs/ARCHITECTURE.md).
+
+L’accueil présente le temps de jeu sous forme de trois valeurs (« Restant », « Gagné », « Utilisé ») et conserve le nombre d’exercices. `shared/play-time.js` reste propriétaire des données et du calcul, l’accueil ne faisant que les afficher. Les nouveaux visuels d’interface sont exclusivement des SVG statiques, sans polices externes.
 
 ## Vérification et livraison
 

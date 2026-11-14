@@ -89,14 +89,39 @@ const GmrPlayTime = (() => {
       getItem: (key) => localStorage.getItem(key),
       setItem: (key, value) => localStorage.setItem(key, value),
     });
+    function makeStat(label, value, primary = false) {
+      const item = document.createElement("div");
+      item.className = "daily-stat" + (primary ? " daily-stat-primary" : "");
+      const title = document.createElement("span");
+      title.className = "daily-stat-label";
+      title.textContent = label;
+      const amount = document.createElement("strong");
+      amount.className = "daily-stat-value";
+      amount.textContent = value;
+      item.append(title, amount);
+      return item;
+    }
     function refresh() {
       const state = store.read();
-      element.textContent = state.error
-        ? "Compteur de jeu indisponible (stockage local inaccessible ou incompatible)."
-        : state.points + " exercice" + (state.points === 1 ? "" : "s") +
-          " · " + formatCredit(state.seconds) + " autorisées" +
-          " · " + format(state.elapsedMs) + " utilisées" +
-          " · " + format(state.remainingMs, true) + " restantes";
+      if (state.error) {
+        element.className = "daily-summary daily-error";
+        element.textContent = "Compteur indisponible : vérifie le stockage de ton navigateur.";
+        return;
+      }
+      element.className = "daily-summary";
+      const stats = document.createElement("div");
+      stats.className = "daily-stats";
+      stats.append(
+        makeStat("Restant", format(state.remainingMs, true), true),
+        makeStat("Gagné", formatCredit(state.seconds)),
+        makeStat("Utilisé", format(state.elapsedMs)),
+      );
+      const caption = document.createElement("p");
+      caption.className = "daily-caption";
+      caption.textContent = state.points > 0
+        ? state.points + " exercice" + (state.points === 1 ? "" : "s") + " aujourd’hui"
+        : "Fais des exercices pour gagner du temps de jeu.";
+      element.replaceChildren(stats, caption);
     }
     window.addEventListener("storage", (event) => {
       if (event.key === CREDIT_KEY || event.key === USAGE_KEY || event.key === null) refresh();

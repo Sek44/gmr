@@ -1,0 +1,24 @@
+/* Identité du thème "Classic Play", réservée à l'accueil. */
+.home-body {
+  --home-ink: #243254;
+  --home-muted: #68738a;
+  --home-blue: #315ad5;
+  --home-blue-dark: #203eaf;
+  --home-line: #dfe5f0;
+  --home-surface: #ffffff;
+  --home-radius: 22px;
+  color: var(--home-ink);
+  background: #f6f7fc;
+  background-image: radial-gradient(#dce5f7 1.1px, transparent 1.1px);
+  background-size: 24px 24px;
+}
+.home-body .home-page {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-synthesis: none;
+}
+.home-body .home-page :focus-visible { outline: 3px solid #2d5ed3; outline-offset: 4px; }
+.home-body .home-page img { user-select: none; }
+@media (prefers-reduced-motion: reduce) {
+  .home-body .home-page *, .home-body .home-page *::before,
+  .home-body .home-page *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}

@@ -7,6 +7,7 @@ La documentation est versionnée avec le code. Elle décrit l'état **actuel** d
 | Périmètre | Référence |
 | --- | --- |
 | Site, modules partagés et conventions transversales | [Architecture globale](ARCHITECTURE.md) |
+| Design, palette et ressources de l’accueil | [Thème Classic Play](design/README.md) |
 | Travaux transversaux encore ouverts | [Backlog global](BACKLOG.md) |
 | Choix structurants communs | [ADR globaux](adr/README.md) |
 | Règles du jeu GCV | [Spécifications GCV](../games/gcv/docs/SPECIFICATIONS.md) |

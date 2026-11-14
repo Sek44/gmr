@@ -17,7 +17,7 @@ Site statique sans étape de build, conçu pour GitHub Pages, téléphone, table
 - `shared/score-view.js` : ouverture des scores en conservant le jeu courant (pour les jeux qui l'utilisent).
 - `shared/app-confirm.js` : fenêtres de confirmation dans l'application.
 - `shared/game-ui.js` : éléments d'interface réutilisables.
-- `shared/home.js` et `shared/scores-page.js` : affichage des pages générales.
+- `shared/home.js` et `shared/scores-page.js` : affichage des pages générales. Le catalogue fournit une illustration SVG `artwork` et une catégorie facultatives pour chaque jeu ; les illustrations de jeux restent dans leur dossier.
 - `docs/` : [documentation transversale et règles de maintenance](docs/README.md), [architecture globale](docs/ARCHITECTURE.md) et [backlog global](docs/BACKLOG.md).
 - `tests/` : tests Node.js sans dépendance.
 
