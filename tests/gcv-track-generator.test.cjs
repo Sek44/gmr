@@ -161,3 +161,49 @@ test("generated start and finish can be crossed in race progression", () => {
     "start and finish must work on the actual generated route");
   assert.equal(motion.laps, 1);
 });
+
+test("closed templates close their seam, share a finish gate and can repeat sections", () => {
+  const route = Layout.generateClassic(20261114);
+  assert.equal(route.CLOSED, true);
+  assert.equal(route.START.x, route.FINISH.x);
+  assert.equal(route.START.z, route.FINISH.z);
+  assert.equal(route.SECTIONS.length, 20);
+  assert.ok(route.LENGTH_METRES > 820 && route.LENGTH_METRES < 920);
+  assert.equal(route.RAINBOW, null);
+  assert.equal(route.HUMPS.length, 0);
+  assert.deepEqual(Generator.build(Layout.CLASSIC_TEMPLATE, 1234).WAYPOINTS,
+    Layout.generateClassic(1234).WAYPOINTS);
+});
+
+test("closed-loop generator rejects open seams, intersecting roads and unsafe grids", () => {
+  const sections = Layout.CLASSIC_TEMPLATE.sections;
+  assert.throws(() => Generator.build({
+    ...Layout.CLASSIC_TEMPLATE,
+    repeat: 1,
+  }), /return to its origin|same heading/);
+  assert.throws(() => Generator.build({
+    ...Layout.CLASSIC_TEMPLATE,
+    sections: sections.map((section, index) =>
+      index === 1 ? { ...section, angle: 22 } : section),
+  }), /return to its origin|same heading/);
+  assert.throws(() => Generator.build({
+    ...Layout.CLASSIC_TEMPLATE,
+    minClearanceMetres: 150,
+  }), /overlapping road/);
+  assert.throws(() => Generator.build({
+    ...Layout.CLASSIC_TEMPLATE,
+    finishMetres: 25,
+  }), /grid or finish/);
+  assert.throws(() => Generator.build({
+    ...Layout.CLASSIC_TEMPLATE,
+    spawnMetres: 500,
+  }), /straights/);
+  assert.throws(() => Generator.build({
+    ...Layout.CLASSIC_TEMPLATE,
+    repeat: 5,
+  }), /repetition/);
+  assert.throws(() => Generator.build({
+    ...Layout.SPRINT_TEMPLATE,
+    repeat: 2,
+  }), /repetition/);
+});
