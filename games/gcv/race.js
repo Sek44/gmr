@@ -1,6 +1,6 @@
 "use strict";
-// Simple ten-car race: nine AI opponents with a fixed randomized pace per race.
-// Distances are metres measured along the same closed centerline as the player.
+// Ten-car race on the shared generated centreline. AI timetable speeds follow
+// road curvature and each driver\'s fixed skill, independent of the circuit.
 const GcvRace = (() => {
   const TrackProgress = typeof GcvTrackProgress !== "undefined"
     ? GcvTrackProgress : require("./track-progress.js");
@@ -8,7 +8,7 @@ const GcvRace = (() => {
   const AI_COUNT = GRID_COUNT - 1;
   const PLAYER_SLOT = 4; // Fifth of ten positions: middle of the grid.
   const LAPS = 3;
-  const PACE_VERSION = 3;
+  const PACE_VERSION = 4;
   const COUNTDOWN_SECONDS = 3;
   const GRID_WAIT_SECONDS = 2; // Pause on the grid before the 3-2-1 countdown.
   const AI_ACCELERATION = 10; // m/s²; below the player's ~23.6 m/s² launch.
@@ -53,7 +53,8 @@ const GcvRace = (() => {
     return fast + (slow - fast) * fraction;
   }
 
-  function create(trackLength, random = Math.random, initialMotion = null, laps = LAPS) {
+  function create(trackLength, random = Math.random, initialMotion = null, laps = LAPS,
+    navigation = null) {
     if (!Number.isFinite(trackLength) || trackLength <= 0) {
       throw new Error("Invalid track length");
     }
@@ -64,18 +65,21 @@ const GcvRace = (() => {
       if (slot === PLAYER_SLOT) continue;
       const grid = gridSlot(slot);
       const rank = opponents.length;
-      const targetLapSeconds = laps === 1
-        // Keep AI speeds credible when the point-to-point course is extended.
-        ? (27 + rank * 1.4 + Math.max(0, Math.min(1, random())) * 1.2) *
-          Math.max(1, trackLength / 1600)
-        : lapTarget(rank, random);
+      const roll = Number(random());
+      const jitter = Number.isFinite(roll) ?
+        (Math.min(1, Math.max(0, roll)) - 0.5) * 0.024 : 0;
+      const strength = navigation
+        ? GcvAiNavigation.SKILLS[rank] + jitter : null;
+      const startProgress = -grid.distance;
+      const lapSeconds = navigation
+        ? navigation.plan({ id: slot, startProgress, strength }).totalTime / laps
+        : lapTarget(rank, () => Number.isFinite(roll) ? roll : 0.5);
       opponents.push({
-        id: slot, progress: -grid.distance, lateral: grid.lateral,
-        // Speed is fixed at launch but randomized between races. Its target
-        // is based on the real circuit length, not a constant speed value.
-        targetLapSeconds,
+        id: slot, progress: startProgress, startProgress,
+        lateral: grid.lateral, strength,
+        targetLapSeconds: lapSeconds,
         finishTime: null,
-        speed: trackLength / targetLapSeconds,
+        speed: navigation ? 0 : trackLength / lapSeconds,
         color: COLORS[slot % COLORS.length],
       });
     }
@@ -87,7 +91,7 @@ const GcvRace = (() => {
       opponents, finishPosition: null, raceTime: null,
       playerLapTimes: [],
       // The track progress engine alone validates start/finish crossings.
-      distanceModel: "unified-motion-v1",
+      distanceModel: navigation ? "geometry-pace-v2" : "unified-motion-v1",
     };
   }
 
@@ -156,7 +160,8 @@ const GcvRace = (() => {
   // Accept either an authoritative TrackProgress.move result (from the game)
   // or signed travel and crossing fraction (for standalone simulations).
   // Both paths use the SAME progression and lap-validation implementation.
-  function advance(race, elapsedSeconds, playerDistance = 0, finishFraction = null) {
+  function advance(race, elapsedSeconds, playerDistance = 0,
+    finishFraction = null, navigation = null) {
     const dt = Number.isFinite(elapsedSeconds) ? Math.max(0, elapsedSeconds) : 0;
     if (!dt) return race;
     if (race.phase === "staging") {
@@ -179,12 +184,20 @@ const GcvRace = (() => {
     const elapsed = race.elapsed + dt;
     const opponents = race.opponents.map((item) => {
       if (Number.isFinite(item.finishTime)) return item;
+      if (navigation) {
+        const motion = navigation.sample(item, elapsed);
+        if (motion.finishTime !== null) {
+          return { ...item, progress: finishDistance, speed: 0,
+            finishTime: motion.finishTime };
+        }
+        return { ...item, progress: motion.progress, speed: motion.speed };
+      }
+      // Legacy standalone races without a sampled road keep the distance
+      // integration API used by lightweight simulation tests.
       const before = distanceAt(race.elapsed, item.speed);
       const after = distanceAt(elapsed, item.speed);
       const next = item.progress + (after - before);
       if (next >= finishDistance) {
-        // Solve the exact time reached under the acceleration ramp, not a
-        // constant-speed guess. Works for slow or large rendering frames.
         return { ...item, progress: finishDistance,
           finishTime: timeAtDistance(before + finishDistance -
             item.progress, item.speed) };
@@ -229,11 +242,12 @@ const GcvRace = (() => {
   }
 
   // Sessions from prior game revisions are intentionally not migrated.
-  function restore(saved, trackLength, laps = LAPS) {
+  function restore(saved, trackLength, laps = LAPS, navigation = null) {
     // Legacy callers supplied an optional third callback, not a lap count.
     const expectedLaps = Number.isSafeInteger(laps) && laps > 0 ? laps : LAPS;
     if (!saved || saved.laps !== expectedLaps || saved.paceVersion !== PACE_VERSION ||
-        saved.distanceModel !== "unified-motion-v1" ||
+        saved.distanceModel !== (navigation ? "geometry-pace-v2" :
+          "unified-motion-v1") ||
         !Number.isFinite(trackLength) ||
         Math.abs(saved.trackLength - trackLength) > 0.01 ||
         !["staging", "countdown", "racing", "finished"].includes(saved.phase) ||
@@ -248,7 +262,10 @@ const GcvRace = (() => {
         !Array.isArray(saved.opponents) || saved.opponents.length !== AI_COUNT ||
         saved.opponents.some((ai) => !Number.isFinite(ai.progress) ||
           !Number.isFinite(ai.lateral) || !Number.isFinite(ai.speed) ||
-          !Number.isFinite(ai.targetLapSeconds))) return null;
+          !Number.isFinite(ai.targetLapSeconds) ||
+          (navigation && (!Number.isFinite(ai.strength) ||
+            ai.strength <= 0 || !Number.isFinite(ai.startProgress) ||
+            ai.startProgress >= saved.laps * trackLength)))) return null;
     return { ...saved };
   }
 
