@@ -322,27 +322,39 @@ const GcvWorld3D = (() => {
     const startCenter = positions[startIndex], startSide = sides[startIndex];
     const finishCenter = positions[finishIndex];
     const startYaw = Math.atan2(-directions[startIndex].x, -directions[startIndex].z);
-    // The open sprint has a pale start line and a checkered finish line.
+    // Shared checkered tile geometry: two draw calls per line instead of 24.
+    // Instancing preserves each tile's original dimensions, orientation and
+    // alternating colors, including the pale start on the open track.
+    const lineTileGeometry = new THREE.BoxGeometry(1.47, 0.02, 1.35);
+    const tileTransform = new THREE.Object3D();
     function markLine(index, checkered) {
       const center = positions[index], side = sides[index];
       const yaw = Math.atan2(-directions[index].x, -directions[index].z);
-      const black = new THREE.MeshStandardMaterial({
-        color: checkered ? 0x322b35 : 0xd9e0ed, roughness: 1,
-      });
-      const white = new THREE.MeshStandardMaterial({
-        color: checkered ? 0xf5ede6 : 0xf9d966, roughness: 1,
-      });
+      const colors = checkered ? [0xf5ede6, 0x322b35] :
+        [0xf9d966, 0xd9e0ed];
+      const meshes = colors.map((color) => new THREE.InstancedMesh(
+        lineTileGeometry, new THREE.MeshStandardMaterial({
+          color, roughness: 1,
+        }), 12));
+      const count = [0, 0];
       for (let row = 0; row < 2; row++) {
         for (let col = 0; col < 12; col++) {
-          const longitudinal = directions[index].clone().multiplyScalar((row - .5) * 1.35);
+          const longitudinal = directions[index].clone().multiplyScalar(
+            (row - .5) * 1.35);
           const across = side.clone().multiplyScalar((col - 5.5) * 1.47);
-          const tile = new THREE.Mesh(new THREE.BoxGeometry(1.47, 0.02, 1.35),
-            (row + col) % 2 ? black : white);
-          tile.position.copy(center).add(longitudinal).add(across);
-          tile.position.y = center.y + .14;
-          tile.rotation.y = yaw;
-          scene.add(tile);
+          tileTransform.position.copy(center).add(longitudinal).add(across);
+          tileTransform.position.y = center.y + .14;
+          tileTransform.rotation.set(0, yaw, 0);
+          tileTransform.updateMatrix();
+          const colorIndex = (row + col) % 2;
+          meshes[colorIndex].setMatrixAt(count[colorIndex]++,
+            tileTransform.matrix);
         }
+      }
+      for (let index = 0; index < meshes.length; index++) {
+        meshes[index].count = count[index];
+        meshes[index].instanceMatrix.needsUpdate = true;
+        scene.add(meshes[index]);
       }
     }
     markLine(startIndex, closed);
