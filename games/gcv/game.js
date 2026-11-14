@@ -572,7 +572,7 @@
               jumpVelocity = launch;
               // Small suspension clearance prevents frame-to-frame road
               // projection error from cancelling the jump immediately.
-              driver.jumpY = 0.06;
+              driver.jumpY = Physics.JUMP_CLEARANCE;
               jumpCooldown = 1.0; // One launch per crest.
               launched = true;
             }
