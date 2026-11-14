@@ -216,11 +216,6 @@
   display: grid; grid-template-columns: repeat(2, 42px);
   width: auto; max-width: none; gap: 7px; pointer-events: auto;
 }
-.gcv-actions #scores-button { grid-column: 1; grid-row: 1; }
-.gcv-actions #fullscreen-button { grid-column: 2; grid-row: 1; }
-.gcv-actions #menu-button { grid-column: 1; grid-row: 2; }
-.gcv-actions #restart-button { grid-column: 2; grid-row: 2; }
-.gcv-actions #camera-button { grid-column: 1; grid-row: 3; }
 /* Action buttons remain icon-only in landscape and portrait alike. */
 .gcv-action-icon { display: block; width: 22px; height: 22px; flex: 0 0 22px; }
 .gcv-action-label { display: none; }
@@ -383,19 +378,12 @@
     grid-template-columns: repeat(2, 42px);
     width: auto; max-width: none; gap: 5px;
   }
-  .gcv-actions #fullscreen-button { grid-column: 2; grid-row: 1; }
-  .gcv-actions #scores-button { grid-column: 1; grid-row: 2; }
-  .gcv-actions #menu-button { grid-column: 2; grid-row: 2; }
-  .gcv-actions #restart-button { grid-column: 1; grid-row: 3; }
-  .gcv-actions #camera-button { grid-column: 2; grid-row: 3; }
   .gcv-home-tools {
     top: max(9px, env(safe-area-inset-top));
     right: max(9px, env(safe-area-inset-right));
     display: grid; grid-template-columns: repeat(2, 42px);
     max-width: none; gap: 5px;
   }
-  .gcv-home-tools #menu-fullscreen-button { grid-column: 2; grid-row: 1; }
-  .gcv-home-tools #menu-scores-button { grid-column: 1; grid-row: 1; }
 
 }
 
@@ -490,11 +478,16 @@ html.gcv-embedded .gcv-stage {
 }
 /* In fullscreen the expand buttons are hidden; the Home icon exits instead. */
 .gcv-action[hidden] { display: none; }
-.gcv-actions #home-button { grid-column: 2; grid-row: 3; }
 @media (orientation: portrait) {
-  .gcv-actions #home-button { grid-column: 1; grid-row: 1; }
-  .gcv-home-tools { grid-template-columns: repeat(3, 42px); }
-  .gcv-home-tools #menu-home-button { grid-column: 1; grid-row: 1; }
-  .gcv-home-tools #menu-scores-button { grid-column: 2; grid-row: 1; }
-  .gcv-home-tools #menu-fullscreen-button { grid-column: 3; grid-row: 1; }
+  .gcv-home-tools { grid-template-columns: repeat(2, 42px); }
 }
+
+
+/* Action order is identical in portrait and landscape:
+   menu: Scores, Home; driving: Scores, Menu, Restart, Camera. */
+.gcv-home-tools #menu-scores-button { grid-column: 1; grid-row: 1; }
+.gcv-home-tools #menu-home-button { grid-column: 2; grid-row: 1; }
+.gcv-actions #scores-button { grid-column: 1; grid-row: 1; }
+.gcv-actions #menu-button { grid-column: 2; grid-row: 1; }
+.gcv-actions #restart-button { grid-column: 1; grid-row: 2; }
+.gcv-actions #camera-button { grid-column: 2; grid-row: 2; }
