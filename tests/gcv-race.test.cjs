@@ -98,7 +98,7 @@ test("all nine AI lap target bands are two seconds faster than the previous vers
   const distance = 820;
   for (const randomValue of [0, 0.5, 1]) {
     const state = race.create(distance, () => randomValue);
-    assert.equal(state.paceVersion, 4);
+    assert.equal(state.paceVersion, 5);
     assert.equal(state.opponents.length, expectedBands.length);
     const times = state.opponents.map((ai) => distance / ai.speed);
     for (let i = 0; i < times.length; i++) {
