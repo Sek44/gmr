@@ -20,7 +20,7 @@ Travaux **ouverts uniquement**, extraits des exigences non réalisées, vérific
 
 ## Performance et maintenance — priorité moyenne/basse
 
-- [ ] **GCV10 — Profiler le rendu sur mobile avant optimisation.** Mesurer frame time et allocations ; examiner les mises à jour du DOM/HUD, la reconstruction des résultats, les recherches d'IA et la création d'objets/matériaux. Ne refactoriser qu'après mesure.
+- [ ] **GCV10 — Profiler le rendu sur mobile avant optimisation.** Le benchmark automatisé est disponible dans `benchmark.html`, mais les mesures sur de vrais appareils restent à effectuer. Comparer les temps d'image, draw calls et ressources ; examiner aussi, avec un profiler de navigateur, le DOM/HUD, la physique, les recherches d'IA et les allocations non couvertes par ce test synthétique. Ne refactoriser qu'après mesure. Voir [la revue de performance](PERFORMANCE.md).
 - [ ] **GCV11 — Centraliser la révision des sessions GCV.** Éviter deux valeurs manuelles synchronisées entre `game.js` et `games/catalog.js`, tout en préservant la politique d'annulation des anciennes sessions et de conservation des records.
 - [ ] **GCV12 — Fiabiliser la livraison de Three.js.** Évaluer chargement local/cache et message de réessai lorsque le CDN est inaccessible, sans introduire de chaîne de compilation lourde.
 - [ ] **GCV13 — Contrôles visuels ciblés.** Vérifier sur appareil réel les rails dans les épingles, le frottement en virage rapide, les rochers et la mer à l'horizon, la mini-carte, les particules et le comportement de reprise après chute.
