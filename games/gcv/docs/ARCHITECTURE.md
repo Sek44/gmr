@@ -29,7 +29,7 @@ Il n'existe ni serveur de jeu, ni build, ni moteur physique externe. Les autres 
 | `flow.js` | État de l'écran, activité courante et chute, avec transitions contrôlées |
 | `session.js` | Entrée dans les modes, reprise, redémarrage, snapshots et autosauvegarde ; refuse une sauvegarde d'un autre circuit sans réappliquer ses anciens choix ; signal `onRaceStart` uniquement lors d'un nouveau départ en course (y compris « Départ ») |
 | `preferences.js` | Préférences indépendantes des sessions : circuit, véhicule, mode et caméra, vérifiées et stockées dans `localStorage` avec repli en mémoire en cas d'indisponibilité |
-| `navigation.js` | Menu, scores en iframe, commandes plein écran et pause liée à la navigation |
+| `navigation.js` | Menu, navigation externe Accueil/Scores après sauvegarde et sortie du plein écran ; entrée plein écran sur le premier clic en accès direct |
 | `controls.js` | Clavier, direction tactile, pédales multitouch et remise à zéro des commandes |
 | `rendering.js` | WebGL, caméras adaptées au véhicule choisi, travelling de grille (`startGridIntro`, progression de 3,8 s côté → arrière → cockpit selon la vue, annulable et interrompu pendant une pause), visibilité du pilote coordonnée via `onCameraVisibility`, transformations, rotation des roues, inclinaison de la moto vers l'intérieur des virages (roulis de même signe que la rotation du cap), assiette pendant les sauts et animation procédurale amortie du motard suivant vitesse, accélération, rotation et atterrissage ; ombres planes frontales à dégradé partagé : une ombre joueur indépendante (alpha atténué pendant le saut) et une seule `InstancedMesh` pour les neuf ombres IA, matrices mises à jour sur le sol sans suivre la hauteur du saut, lot exclu du frustum culling obsolète |
 | `visual-effects.js` | Particules dynamiques de boue et étincelles de friction ; petite gerbe radiale de poussière à l'atterrissage réutilisant le tampon de particules existant (`land`) sans nouvel appel de dessin |
@@ -53,9 +53,9 @@ Il n'existe ni serveur de jeu, ni build, ni moteur physique externe. Les autres 
 
 `flow.js` modélise l'écran (`menu`, `play`, `scores`), l'activité (`empty`, `free`, `staging`, `countdown`, `racing`, `finished`) et l'état de chute (`on-track` ou `falling`).
 
-`navigation.js` gère le menu, la reprise, le plein écran et la consultation de `scores.html` dans une iframe dédiée. Ouvrir les scores ou le menu suspend l'avancement du temps simulé et les appels de dessin WebGL, sans effacer les commandes sauvegardées ou changer arbitrairement les tours. Le menu opaque recouvre la scène et cache son canvas ; le rendu reprend en jeu. `session.js` réalise les bascules de mode et restaure l'état adéquat.
+`navigation.js` gère le menu, la reprise et les actions Accueil/Scores. Depuis l'accueil GMR ou la page Scores, `shared/game-host.js` demande le plein écran sur un conteneur hôte **pendant le clic** puis charge le jeu dans une iframe même origine ; la navigation vers un nouveau document avant cette demande ferait perdre l'activation utilisateur. En mode hôte, le CSS `gcv-embedded` masque le chrome de page et remplit le viewport de l'iframe. Les actions Accueil/Scores sauvegardent immédiatement la session, demandent à l'hôte de sortir du plein écran, puis chargent la page normale. En accès direct à l'URL GCV, le premier clic Reprendre/Essais/Course demande le plein écran sur la scène ; un refus du navigateur conserve le jeu en fenêtre. Le menu opaque recouvre la scène et cache son canvas, en suspendant la simulation et le rendu ; changer de circuit réutilise l'élément plein écran.
 
-L'unification de cette iframe spécifique avec `shared/score-view.js` reste ouverte dans le [backlog global](../../../docs/BACKLOG.md).
+La consultation des scores est désormais une navigation de page et non une iframe interne au jeu. Depuis Scores, le lien Retour au jeu est à son tour intercepté par l'hôte plein écran pour la reprise.
 
 ## 5. Persistance
 
