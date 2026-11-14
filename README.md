@@ -31,7 +31,7 @@ La frontière est volontaire : **GMR fournit le catalogue, les pages, les styles
 
 Chaque jeu appelle `GameState.create(id).bind({ snapshot, restore })` pour restaurer les données locales, puis `changed()` après les actions modifiant la partie. Les événements `pagehide` et `visibilitychange` sont gérés par le module partagé. À la fin, `stop({ discard: true })` efface la partie en cours et `GameScores.save({ gameId: id, score, total })` conserve son résultat.
 
-Un jeu qui utilise le lien `scores.html` peut appeler `ScoreView.bind({ suspend() { /* sauvegarder / mettre en pause */ }, resume() { /* reprendre */ } })` afin de préserver la session lors de la consultation des scores. GCV a actuellement une navigation dédiée.
+Un jeu qui utilise le lien `scores.html` peut appeler `ScoreView.bind({ suspend() { /* sauvegarder / mettre en pause */ }, resume() { /* reprendre */ } })` afin de préserver la session lors de la consultation des scores. GCV quitte désormais le plein écran et navigue vers la page Scores, avec sauvegarde préalable et relancement plein écran depuis le bouton Retour au jeu.
 
 ## Enregistrement local
 
