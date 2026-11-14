@@ -7,6 +7,7 @@ const path = require("node:path");
 const vm = require("node:vm");
 const Metrics = require("../games/gcv/benchmark-metrics.js");
 const Config = require("../games/gcv/benchmark-config.js");
+const Display = require("../games/gcv/benchmark-display.js");
 
 const game = path.resolve(__dirname, "../games/gcv");
 
@@ -76,13 +77,14 @@ test("standalone benchmark browser scripts load in dependency order", () => {
   }
   for (const name of ["GcvTrackProgress", "GcvRace", "GcvTrackLayout",
     "GcvBarriers", "GcvScenery", "GcvWorld3D", "GcvVehicles",
-    "GcvRendering", "GcvVisualEffects", "GcvBenchmarkConfig", "GcvBenchmarkMetrics"]) {
+    "GcvRendering", "GcvVisualEffects", "GcvBenchmarkConfig",
+    "GcvBenchmarkDisplay", "GcvBenchmarkMetrics"]) {
     assert.ok(sandbox.window[name], `Missing ${name} after loading benchmark scripts`);
   }
 });
 
 test("seven scripted runs keep like-for-like resolution comparisons", () => {
-  assert.equal(Config.VERSION, "gcv-render-v2");
+  assert.equal(Config.VERSION, "gcv-render-v3");
   assert.equal(Config.SCENARIOS.length, 7);
   assert.ok(Config.validatePlan());
   const full = Config.SCENARIOS.find((item) => item.id === "classic-race");
@@ -179,13 +181,72 @@ test("three report pages provide readable screenshot sections", () => {
     "benchmark-resolution-rows", "benchmark-device", "benchmark-hardware",
     "benchmark-run-id", "benchmark-page-number", "benchmark-prev",
     "benchmark-next", "benchmark-end-actions", "benchmark-copy",
+    "benchmark-start", "benchmark-windowed", "benchmark-exit-fullscreen",
+    "benchmark-capture-mode", "benchmark-display-info",
   ]) {
     assert.match(html, new RegExp('id="' + id + '"'));
   }
   assert.match(html, /src="\.\/benchmark-config\.js\?v=/);
+  assert.match(html, /src="\.\/benchmark-display\.js\?v=/);
   assert.match(code, /setResolutionScale\(scenario\.scale\)/);
   assert.match(code, /performance\.now\(\)/);
   assert.match(code, /metrics\.resolutionComparison\(output\)/);
   assert.match(css, /\[hidden\] \{ display: none !important; \}/);
   assert.doesNotMatch(html, /play-time|game-state|session\.js|game\.js/);
+});
+
+test("fullscreen entry succeeds only when the browser confirms activation", async () => {
+  let called = 0;
+  const document = { fullscreenElement: null, documentElement: {} };
+  document.documentElement.requestFullscreen = () => {
+    called++;
+    document.fullscreenElement = document.documentElement;
+    return Promise.resolve();
+  };
+  assert.deepEqual(await Display.enter(document), { ok: true, reason: null });
+  assert.equal(called, 1);
+  assert.equal(Display.isActive(document), true);
+  assert.deepEqual(Display.snapshot(document, {
+    devicePixelRatio: 2.5, screen: { orientation: { type: "portrait-primary" } },
+  }, { clientWidth: 400, clientHeight: 820 }), {
+    mode: "fullscreen", fullscreen: true, orientation: "portrait-primary",
+    viewport: { width: 400, height: 820 }, devicePixelRatio: 2.5,
+  });
+});
+
+test("fullscreen rejection and unsupported API never report success", async () => {
+  assert.deepEqual(await Display.enter({ documentElement: {} }),
+    { ok: false, reason: "unsupported" });
+  const rejected = { documentElement: {
+    requestFullscreen: () => Promise.reject(new Error("not allowed")),
+  }, fullscreenElement: null };
+  assert.deepEqual(await Display.enter(rejected),
+    { ok: false, reason: "denied" });
+  const noConfirmation = { documentElement: {
+    requestFullscreen: () => Promise.resolve(),
+  }, fullscreenElement: null };
+  assert.deepEqual(await Display.enter(noConfirmation),
+    { ok: false, reason: "not-active" });
+  assert.deepEqual(Display.snapshot(noConfirmation, {}, {
+    clientWidth: 1280, clientHeight: 632,
+  }), {
+    mode: "windowed", fullscreen: false, orientation: "landscape",
+    viewport: { width: 1280, height: 632 }, devicePixelRatio: 1,
+  });
+});
+
+test("fullscreen request precedes WebGL import and has explicit fallback", () => {
+  const code = fs.readFileSync(path.join(game, "benchmark.js"), "utf8");
+  const html = fs.readFileSync(path.join(game, "benchmark.html"), "utf8");
+  assert.ok(code.indexOf("await display.enter(document)") > 0);
+  assert.ok(code.indexOf("await display.enter(document)") <
+    code.indexOf("await import(THREE_URL)"),
+    "requestFullscreen must occur inside the user gesture");
+  assert.match(code, /startButton.addEventListener\("click", \(\) => start\(true\)\)/);
+  assert.match(code, /windowedButton.addEventListener\("click", \(\) => start\(false\)\)/);
+  assert.match(code, /lockedDisplay = display.snapshot\(document, window, stage\)/);
+  assert.match(code, /fullscreenChangedDuringTest/);
+  assert.match(code, /document.removeEventListener\("fullscreenchange"/);
+  assert.match(code, /fullscreenRequested,?/);
+  assert.match(html, /Sans plein écran/);
 });
