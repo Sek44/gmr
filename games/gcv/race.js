@@ -10,7 +10,7 @@ const GcvRace = (() => {
   const AI_COUNT = GRID_COUNT - 1;
   const PLAYER_SLOT = 4; // Fifth of ten positions: middle of the grid.
   const LAPS = 3;
-  const PACE_VERSION = 4;
+  const PACE_VERSION = 5;
   const COUNTDOWN_SECONDS = 3;
   const GRID_WAIT_SECONDS = 2; // Pause on the grid before the 3-2-1 countdown.
   const AI_ACCELERATION = 10; // m/s²; below the player's ~23.6 m/s² launch.
@@ -73,6 +73,8 @@ const GcvRace = (() => {
       const strength = navigation
         ? AiNavigation.SKILLS[rank] + jitter : null;
       const startProgress = -grid.distance;
+      const laneSeed = ((Number.isFinite(roll) ? roll : 0.5) *
+        0.6180339 + slot * 0.1743) % 1;
       const lapSeconds = navigation
         ? navigation.plan({ id: slot, startProgress, strength }).totalTime / laps
         : laps === 1
@@ -82,7 +84,7 @@ const GcvRace = (() => {
           : lapTarget(rank, () => Number.isFinite(roll) ? roll : 0.5);
       opponents.push({
         id: slot, progress: startProgress, startProgress,
-        lateral: grid.lateral, strength,
+        lateral: grid.lateral, gridLateral: grid.lateral, laneSeed, strength,
         targetLapSeconds: lapSeconds,
         finishTime: null,
         speed: navigation ? 0 : trackLength / lapSeconds,
@@ -195,10 +197,10 @@ const GcvRace = (() => {
       if (navigation) {
         const motion = navigation.sample(item, elapsed);
         if (motion.finishTime !== null) {
-          return { ...item, progress: finishDistance, speed: 0,
+          return { ...item, ...motion, progress: finishDistance, speed: 0,
             finishTime: motion.finishTime };
         }
-        return { ...item, progress: motion.progress, speed: motion.speed };
+        return { ...item, ...motion };
       }
       // Legacy standalone races without a sampled road keep the distance
       // integration API used by lightweight simulation tests.
@@ -271,7 +273,9 @@ const GcvRace = (() => {
         saved.opponents.some((ai) => !Number.isFinite(ai.progress) ||
           !Number.isFinite(ai.lateral) || !Number.isFinite(ai.speed) ||
           !Number.isFinite(ai.targetLapSeconds) ||
-          (navigation && (!Number.isFinite(ai.strength) ||
+          (navigation && (!Number.isFinite(ai.gridLateral) ||
+            !Number.isFinite(ai.laneSeed) ||
+            !Number.isFinite(ai.strength) ||
             ai.strength <= 0 || !Number.isFinite(ai.startProgress) ||
             ai.startProgress >= saved.laps * trackLength)))) return null;
     return { ...saved };
