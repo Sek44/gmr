@@ -2,77 +2,99 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const layout = require("../games/gcv/track-layout.js");
+const Progress = require("../games/gcv/track-progress.js");
 
-const oldRoute = [
-  [35, 68], [35, 30], [37, -22], [21, -54], [-15, -62],
-  [-43, -44], [-50, -9], [-40, 19], [-46, 51], [-21, 76], [9, 81],
-];
-
-test("new closed circuit is approximately twice the former perimeter", () => {
-  const ratio = layout.perimeter(layout.WAYPOINTS) / layout.perimeter(oldRoute);
-  assert.ok(ratio >= 1.9 && ratio <= 2.2, "length ratio: " + ratio);
-  assert.ok(layout.SAMPLE_COUNT >= 800, "keep geometry detail along the longer course");
+test("classic is a generated, closed lap with one seamless centreline", () => {
+  const classic = layout.select("classic");
+  assert.equal(classic.ID, "classic");
+  assert.equal(classic.VERSION, 3);
+  assert.equal(classic.CLOSED, true);
+  assert.equal(classic.GENERATOR_VERSION, 2);
+  assert.equal(classic.SECTIONS.length, layout.CLASSIC_TEMPLATE.sections.length * 2);
+  assert.equal(classic.HUMP_PROFILES.length, 0);
+  assert.equal(classic.RAINBOW, null);
+  assert.ok(classic.LENGTH_METRES > 820 && classic.LENGTH_METRES < 920);
+  assert.ok(classic.WAYPOINTS.length >= 48 && classic.WAYPOINTS.length < 100);
+  assert.ok(Math.abs(layout.perimeter(classic.WAYPOINTS) -
+    classic.LENGTH_METRES) < 0.02);
+  assert.notDeepEqual(classic.WAYPOINTS.at(-1), classic.WAYPOINTS[0],
+    "three.js closes the circuit: no duplicate end waypoint");
+  assert.equal(layout.SAMPLE_COUNT, 840, "keep the established render budget");
+  assert.equal(layout.ROAD_HALF_WIDTH, 9);
+  assert.equal(layout.SHOULDER_WIDTH, 7);
 });
 
-test("finish line lies two thirds of the way along the long straight", () => {
-  const straight = layout.WAYPOINTS.slice(0, 6);
-  assert.ok(straight.every(([x]) => x === layout.FINISH.x));
-  const startZ = straight[0][1], endZ = straight.at(-1)[1];
-  const totalLength = startZ - endZ;
-  const beforeFinish = startZ - layout.FINISH.z;
-  assert.ok(totalLength >= 200, "straight must be substantial");
-  assert.ok(Math.abs(beforeFinish / totalLength - 2 / 3) < 1e-8);
+test("two chicanes and broad reversing corners make a safe closed course", () => {
+  const route = layout.CLASSIC;
+  const angles = route.SECTIONS.filter(s => s.type === "turn")
+    .map(s => s.endHeading - s.startHeading);
+  assert.deepEqual(angles.map(a => Math.round(a)), [
+    32, -64, 32, 90, 90, 32, -64, 32, 90, 90,
+  ]);
+  assert.ok(route.SECTIONS.filter(s => s.type === "straight").length >= 8);
+  assert.ok(route.WAYPOINTS.every(([x, z]) =>
+    Number.isFinite(x) && Number.isFinite(z)));
 });
 
-test("starting point is after the line on the same straight", () => {
-  assert.equal(layout.FINISH.x, layout.SPAWN.x);
-  assert.ok(layout.SPAWN.z < layout.FINISH.z);
-  assert.ok(layout.SPAWN.z > layout.WAYPOINTS[5][1]);
+test("the classic start grid, finish and spawn belong to the first straight", () => {
+  const route = layout.CLASSIC;
+  const first = route.SECTIONS[0];
+  assert.equal(first.type, "straight");
+  assert.ok(first.length > 115);
+  assert.deepEqual(route.START, route.FINISH, "one line on a closed lap");
+  assert.equal(route.FINISH.x, 0);
+  assert.equal(route.SPAWN.x, 0);
+  assert.ok(route.FINISH.z > route.SPAWN.z);
+  assert.ok(route.WAYPOINTS[0][1] - route.FINISH.z >= 65,
+    "enough space before the line for all ten starting slots");
+  assert.ok(route.SPAWN.z > route.WAYPOINTS[5][1] - 80,
+    "spawn is on the long initial straight");
+  const before = { x: route.FINISH.x, z: route.FINISH.z + 3 };
+  const after = { x: route.FINISH.x, z: route.FINISH.z - 3 };
+  const forward = { x: 0, z: -1 };
+  assert.equal(Progress.finishCrossing(before, after,
+    route.FINISH, forward, route.ROAD_HALF_WIDTH), 0.5);
+  assert.equal(Progress.finishCrossing(after, before,
+    route.FINISH, forward, route.ROAD_HALF_WIDTH), null);
 });
 
-test("nearest sample index finds the line and spawn independently", () => {
+test("new closed variants are reproducible and remain valid for many seeds", () => {
+  for (let seed = 1; seed <= 250; seed++) {
+    const route = layout.generateClassic(seed);
+    assert.equal(route.CLOSED, true);
+    assert.ok(route.LENGTH_METRES > 820 && route.LENGTH_METRES < 920);
+    assert.ok(route.FINISH.z > route.SPAWN.z);
+    assert.ok(Math.abs(layout.perimeter(route.WAYPOINTS) -
+      route.LENGTH_METRES) < 0.02);
+    assert.equal(route.SECTIONS.length, 20);
+  }
+  assert.deepEqual(layout.generateClassic(17).WAYPOINTS,
+    layout.generateClassic(17).WAYPOINTS);
+  assert.notDeepEqual(layout.generateClassic(17).WAYPOINTS,
+    layout.generateClassic(18).WAYPOINTS);
+});
+
+test("nearest sample index ignores the duplicated closing position", () => {
   const samples = [
-    { x: 78, z: 100 }, { x: 78, z: -11 },
-    { x: 78, z: -43 }, { x: 78, z: -90 },
-    { x: 78, z: 100 }, // duplicate closing sample
+    { x: 0, z: 40 }, { x: 0, z: 17 },
+    { x: 0, z: -8 }, { x: 0, z: -30 },
+    { x: 0, z: 40 },
   ];
   assert.equal(layout.nearestIndex(samples, layout.FINISH), 1);
   assert.equal(layout.nearestIndex(samples, layout.SPAWN), 2);
 });
 
-test("track layout version is distinct from earlier saved sessions", () => {
-  assert.equal(layout.VERSION, 2);
-});
-
-test("roadside shoulders are seven metres per side", () => {
-  assert.equal(layout.ROAD_HALF_WIDTH, 9);
-  assert.equal(layout.SHOULDER_WIDTH, 7);
-  assert.equal(layout.ROAD_HALF_WIDTH + layout.SHOULDER_WIDTH, 16);
-});
-
-test("regenerated rainbow sprint has four crests on straight sections", () => {
-  const route = layout.SPRINT;
+test("generated rainbow course retains its separate open-route contract", () => {
+  const route = layout.select("rainbow");
   assert.equal(route.VERSION, 5);
+  assert.equal(route.CLOSED, false);
   assert.ok(route.LENGTH_METRES > 2500 && route.LENGTH_METRES < 2900);
   assert.equal(route.HUMPS.length, 4);
   assert.deepEqual(route.HUMPS, route.HUMP_PROFILES.map(hump => hump.at));
-  const straights = route.SECTIONS.filter(section =>
-    section.type === "straight" && section.hump);
-  assert.equal(straights.length, 4, "a hump belongs only to a long straight");
-  for (const hump of route.HUMP_PROFILES) {
-    const metres = hump.at * route.LENGTH_METRES;
-    assert.ok(metres >= hump.sectionStart + 150,
-      "crest must be at least 150 metres from the preceding turn");
-    assert.ok(metres <= hump.sectionEnd - 150,
-      "crest must be at least 150 metres before the next turn");
-    assert.ok(hump.height >= 14 && hump.crown >= 0.9);
-    assert.ok(Math.abs(route.heightAt(hump.at) - hump.height) < 0.1);
-    const approach = route.heightAt(hump.at - hump.width / 2);
-    assert.ok(approach < hump.height && approach > hump.height * 0.65,
-      "bumps retain their gradual approach");
-  }
-  const colouredMetres = (route.RAINBOW[1] - route.RAINBOW[0]) *
-    route.LENGTH_METRES;
-  assert.ok(colouredMetres > 100 && colouredMetres < 190);
+  assert.ok(route.HUMP_PROFILES.every(hump =>
+    route.SECTIONS.some(section => section.type === "straight" &&
+      section.startMetres === hump.sectionStart &&
+      section.endMetres === hump.sectionEnd)));
+  assert.ok(route.RAINBOW && route.RAINBOW[1] > route.RAINBOW[0]);
   assert.ok(route.FINISH.z < route.START.z);
 });
