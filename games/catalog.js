@@ -4,7 +4,7 @@ window.GmrCatalog = Object.freeze({
   games: Object.freeze([
     Object.freeze({
       id: "gcv",
-      saveRevision: 13,
+      saveRevision: 14,
       fullscreen: true,
       // Loaded in order by the shared Scores page only, never by other games.
       scoreScripts: Object.freeze([
