@@ -43,14 +43,14 @@ Reviewed `rendering.js`, `vehicles.js`, `world-3d.js`, `visual-effects.js`, `gam
 
 ## How to measure
 
-Open the dedicated **[mobile benchmark](../benchmark.html)** on the device being evaluated. It executes deterministic, **rendering-focused** camera/vehicle passes without modifying game credit, scores or preferences. Version `gcv-render-v2` automatically performs **seven passes** (1.5 s warmup + 8 s measurement each):
+Open the dedicated **[mobile benchmark](../benchmark.html)** on the device being evaluated. It executes deterministic, **rendering-focused** camera/vehicle passes without modifying game credit, scores or preferences. Version `gcv-render-v3` automatically performs **seven passes** (1.5 s warmup + 8 s measurement each):
 
 1. Classic solo; classic race with nine AI cars; motorcycle solo (three baseline workloads).
 2. The **same classic race** at 75% and 55% of its normal rendering pixel ratio.
 3. Classic race at **100% again** on the same renderer, to detect warm-up/thermal/order drift.
 4. Rainbow race at its existing capped pixel ratio (fourth baseline workload).
 
-The final report has **three manually navigable screenshot pages**: (1) FPS and frame-tail stability, (2) main-thread JavaScript phase timings, (3) controlled resolution experiment, hardware and initialization. Take one screenshot per page or use **Copy JSON** for complete numerical data. The resolution sweep tests *the same* scene and camera at different framebuffer sizes; do not compare Classic and Rainbow as a controlled resolution experiment.
+The test **requests fullscreen from the initial Start tap** for a more repeatable screen area. Since mobile browsers may deny or lack the Fullscreen API, an explicit **Sans plein écran** option remains available; the report and JSON record the **actual display mode**, orientation, viewport and DPR. Exiting fullscreen during a run invalidates the measurements. Fullscreen is recommended but does not standardize pixel counts across devices: always compare the reported framebuffer sizes. The final report has **three manually navigable screenshot pages**: (1) FPS and frame-tail stability, (2) main-thread JavaScript phase timings, (3) controlled resolution experiment, hardware and initialization. Take one screenshot per page or use **Copy JSON** for complete numerical data. The resolution sweep tests *the same* scene and camera at different framebuffer sizes; do not compare Classic and Rainbow as a controlled resolution experiment.
 
 Measurements include:
 - delivered FPS, frame-interval P50/P95/P99/max, and the fractions above 20, 33.34 and 50 ms;
@@ -60,7 +60,23 @@ Measurements include:
 
 **Interpretation:** `requestAnimationFrame` intervals include refresh-rate pacing and the whole browser frame. `performance.now()` around JavaScript stages measures elapsed main-thread time, **not hardware CPU utilization**; `renderer.render()` can contain GPU-driver waits and is **not a GPU timer**. The benchmark does not measure true GPU time, RAM/VRAM usage, thermal state, the full HUD/gameplay/physics loop, or browser compositor overhead. A Chrome performance trace or GPU profiler is required for deeper root-cause diagnosis.
 
-For comparisons, repeat on each device with unchanged orientation, brightness, refresh-rate and power settings; keep the tab in the foreground. FPS near a display's 60 Hz cap cannot show additional headroom; inspect JS timings and the lower-resolution passes and, if still capped, run a heavier workload. Comparing `gcv-render-v1` and `v2` values directly is discouraged because added timing probes affect work slightly.
+For comparisons, repeat on each device with unchanged orientation, brightness, refresh-rate and power settings; keep the tab in the foreground. FPS near a display's 60 Hz cap cannot show additional headroom; inspect JS timings and the lower-resolution passes and, if still capped, run a heavier workload. Comparing `gcv-render-v1`, `v2` and `v3` without controlling rendering resolution and display mode is discouraged: v2 added timing probes, and v3 recommends fullscreen.
+
+
+## Real-device baseline — Android 14 tablet (2026-11-14, v2, windowed)
+
+Observed directly from the supplied portrait and landscape screenshots. These are **field measurements**, not an independently captured browser trace.
+
+| Same classic-race scene | Portrait (800×1112 CSS px) | Landscape (1280×632 CSS px) |
+| --- | --- | --- |
+| 100% rendering resolution | 33.5 FPS, 800×1112 framebuffer | 35.6 FPS, 1280×632 framebuffer |
+| 75% resolution | 48.3 FPS, 600×834 framebuffer | 49.8 FPS, 960×474 framebuffer |
+| 55% resolution | 60.3 FPS, 440×611 framebuffer | 60.4 FPS, 704×347 framebuffer |
+| 100% repeat | 33.3 FPS (−0.6% vs first pass) | 35.5 FPS (−0.4% vs first pass) |
+
+Reference scenario FPS: portrait 33.9 classic solo / 33.5 classic race / 54.3 motorcycle / 47.7 rainbow; landscape 36.2 / 35.6 / 58.1 / 47.3 respectively. JavaScript wall-clock averages for the classic race were approximately **6.95 ms** portrait and **6.63 ms** landscape, dominated by the `renderer.render()` call (6.22 / 5.99 ms). These numbers **do not directly measure GPU execution time**.
+
+**Interpretation:** Resolution scaling has a much larger impact than the extra 72 draw calls between classic solo and classic race on this tablet. This strongly supports investigating pixel-related / WebGL work before prioritizing vehicle mesh consolidation. The 55% run is at the roughly 60 FPS browser cap, not proof of unused headroom. Fullscreen runs are a separate baseline and should not be directly compared with the windowed numbers unless framebuffer sizes match.
 
 ## Implementation sequence
 
