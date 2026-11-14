@@ -162,8 +162,9 @@ const GcvRendering = (() => {
       wasJumping = airborne;
       landingCompression *= Math.exp(-8 * step);
       riderMotionTime += step;
-      // Steering anticipates the bend, while actual yaw keeps reacting in
-      // autonomous rainbow zigzags. Capped angles prevent rubbery motion.
+      // On the ground, actual yaw and steering anticipate the bend.
+      // In flight, preserve the captured rider lean and let left/right
+      // controls update it without relying on the guided airborne yaw.
       const turn = !fall ? (airborne ? airborneRiderTurn : clamp(
         (moving ? yawRate : 0) - steerInput * 0.75, -2.8, 2.8)) : 0;
       const speed = moving ? Math.abs(driver.speed) : 0;
