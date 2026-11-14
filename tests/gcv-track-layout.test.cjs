@@ -60,6 +60,6 @@ test("extended rainbow sprint has four oversized launch hills", () => {
   assert.deepEqual(layout.SPRINT.HUMPS,
     layout.SPRINT.HUMP_PROFILES.map((hump) => hump.at));
   assert.ok(layout.SPRINT.HUMP_PROFILES.every((hump) =>
-    hump.height >= 14 && hump.width >= 0.017));
+    hump.height >= 14 && hump.width >= 0.039));
   assert.ok(layout.SPRINT.FINISH.z < layout.SPRINT.START.z);
 });
