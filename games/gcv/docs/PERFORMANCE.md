@@ -51,7 +51,7 @@ Reviewed `rendering.js`, `vehicles.js`, `world-3d.js`, `visual-effects.js`, `gam
 
 ## How to measure
 
-Open the dedicated **[mobile benchmark](../benchmark.html)** on the device being evaluated. It executes deterministic, **rendering-focused** camera/vehicle passes without modifying game credit, scores or preferences. Version `gcv-render-v3` automatically performs **seven passes** (1.5 s warmup + 8 s measurement each):
+Open the dedicated **[mobile benchmark](../benchmark.html)** on the device being evaluated. It executes deterministic, **rendering-focused** camera/vehicle passes without modifying game credit, scores or preferences. Version `gcv-render-v4` automatically performs **seven passes** (1.5 s warmup + 8 s measurement each):
 
 1. Classic solo; classic race with nine AI cars; motorcycle solo (three baseline workloads).
 2. The **same classic race** at 75% and 55% of its normal rendering pixel ratio.
@@ -68,7 +68,7 @@ Measurements include:
 
 **Interpretation:** `requestAnimationFrame` intervals include refresh-rate pacing and the whole browser frame. `performance.now()` around JavaScript stages measures elapsed main-thread time, **not hardware CPU utilization**; `renderer.render()` can contain GPU-driver waits and is **not a GPU timer**. The benchmark does not measure true GPU time, RAM/VRAM usage, thermal state, the full HUD/gameplay/physics loop, or browser compositor overhead. A Chrome performance trace or GPU profiler is required for deeper root-cause diagnosis.
 
-For comparisons, repeat on each device with unchanged orientation, brightness, refresh-rate and power settings; keep the tab in the foreground. FPS near a display's 60 Hz cap cannot show additional headroom; inspect JS timings and the lower-resolution passes and, if still capped, run a heavier workload. Comparing `gcv-render-v1`, `v2` and `v3` without controlling rendering resolution and display mode is discouraged: v2 added timing probes, and v3 recommends fullscreen.
+For comparisons, repeat on each device with unchanged orientation, brightness, refresh-rate and power settings; keep the tab in the foreground. FPS near a display's 60 Hz cap cannot show additional headroom; inspect JS timings and the lower-resolution passes and, if still capped, run a heavier workload. Comparing benchmark versions `v1`–`v4` without controlling rendering resolution and display mode is discouraged: v2 added timing probes, v3 recommends fullscreen, and v4 changes 3D geometry/draw-call batching.
 
 
 ## Real-device baseline — Android 14 tablet (2026-11-14, v2, windowed)
