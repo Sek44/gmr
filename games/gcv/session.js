@@ -87,8 +87,10 @@ const GcvSession = (() => {
       return true;
     }
 
-    function startRace() {
-      if (flow.mode === "free") state.freeSession = snapshot();
+    function startRace({ fresh = false } = {}) {
+      // New races do not carry a previous free-drive checkpoint.
+      if (fresh) state.freeSession = null;
+      else if (flow.mode === "free") state.freeSession = snapshot();
       clearControls();
       flow.beginRace();
       clearLapHold();
