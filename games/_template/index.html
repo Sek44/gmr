@@ -4,13 +4,34 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Nouveau jeu — GMR</title>
-  <link rel="stylesheet" href="../../shared/site.css">
-  <script defer src="../../games/catalog.js"></script>
-  <script defer src="../../shared/game-state.js"></script>
-  <script defer src="../../shared/scores.js"></script>
-  <script defer src="../../shared/play-time.js"></script>
-  <script defer src="../../shared/score-view.js"></script>
-  <script defer src="./game.js"></script>
+  <script>
+    // The homepage refresh token is carried in the game URL. Apply the same
+    // token to every CSS/JS asset, without changing script execution order.
+    (() => {
+      const fresh = new URLSearchParams(location.search).get("gmr-refresh")
+        || String(Date.now());
+      const resources = [
+        ["style", "../../shared/site.css"],
+        ["script", "../../games/catalog.js"],
+        ["script", "../../shared/game-state.js"],
+        ["script", "../../shared/scores.js"],
+        ["script", "../../shared/play-time.js"],
+        ["script", "../../shared/score-view.js"],
+        ["script", "./game.js"],
+      ];
+      for (const [kind, file] of resources) {
+        const url = new URL(file, location.href);
+        url.searchParams.set("gmr-refresh", fresh);
+        if (kind === "style") {
+          document.write('<link rel="stylesheet" href="' + url.href + '">');
+        } else {
+          const attrs = kind === "module" ? 'type="module"' : 'defer';
+          document.write('<scr' + 'ipt ' + attrs + ' src="' + url.href +
+            '"></scr' + 'ipt>');
+        }
+      }
+    })();
+  </script>
 </head>
 <body>
   <main class="page">
