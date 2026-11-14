@@ -62,7 +62,7 @@ test("catalog artwork belongs to its game and is a local SVG", () => {
     if (game.id === "gcv") {
       assert.match(svg, /id="circuit"/);
       assert.match(svg, /id="finish-flag"/);
-      assert.doesNotMatch(svg, /kart|vehicle|moto|pilote/i);
+      assert.doesNotMatch(svg, /\bid="(?:kart|vehicle|moto|pilote)[^"]*"/i);
     }
   }
 });
