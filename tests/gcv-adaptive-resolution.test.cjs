@@ -71,7 +71,7 @@ test("recovery is gradual, and failed upgrades revert with a long hold", () => {
   const harness = fixture();
   harness.step(1000 / 33.5, 980);
   assert.equal(harness.controller.scale, 0.55);
-  harness.step(1000 / 60, 1500);
+  harness.step(1000 / 60, 1300);
   assert.equal(harness.controller.scale, 0.6);
   assert.equal(harness.controller.evaluatingUpgrade, true);
   harness.step(1000 / 34, 250);
