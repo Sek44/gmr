@@ -10,12 +10,8 @@ const GcvWorld3D = (() => {
     const SAMPLE_COUNT = TrackLayout.SAMPLE_COUNT;
     const closed = TrackLayout.CLOSED !== false;
     const rainbow = TrackLayout.RAINBOW || null;
-    function heightAt(t) {
-      // Shared continuous height profile for sampled road, AI and player.
-      // Wide, rounded crests produce modest speed-dependent lift-off.
-      return (TrackLayout.HUMP_PROFILES || []).reduce((height, hump) =>
-        height + hump.height * Math.exp(-Math.pow((t - hump.at) / hump.width, 2)), 0);
-    }
+    // Rendered mesh, contact physics and takeoff all use exactly one profile.
+    const heightAt = TrackLayout.heightAt || (() => 0);
     const CURVE_POINTS = TrackLayout.WAYPOINTS.map(([x, z]) =>
       new THREE.Vector3(x, 0, z));
     const curve = new THREE.CatmullRomCurve3(CURVE_POINTS, closed, "catmullrom", 0.55);
