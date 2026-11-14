@@ -43,7 +43,7 @@
   const Flow = window.GcvFlow;
   const Preferences = window.GcvPreferences;
   // Bump this revision after incompatible GCV updates. Old sessions are canceled.
-  const SAVE_REVISION = 13;
+  const SAVE_REVISION = 14;
   // Keep this same fullscreen DOM element while rebuilding only the circuit.
   let disposeGame = null;
   let activeFlow = null;
@@ -146,6 +146,7 @@
     const aiNavigation = AiNavigation.create({
       positions, directions, sampleCount: SAMPLE_COUNT, startIndex,
       trackLength, routeLength, closed, maxSpeed: Physics.MAX_SPEED,
+      roadHalfWidth: ROAD_HALF_WIDTH, heightAt,
       laps: closed ? Race.LAPS : 1,
     });
 
