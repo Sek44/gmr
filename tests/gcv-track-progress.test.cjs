@@ -82,6 +82,35 @@ test("a finish outside the physical road or backwards is ignored", () => {
     { x: 78, z: 1.2 }, { x: 78, z: -14.8 }, line, forward, 15), 0.7);
 });
 
+test("invisible timing gates span the road and shoulders without counting shortcuts", () => {
+  const gate = {
+    center: { x: 78, z: -10 },
+    forward: { x: 0, z: -1 },
+    halfWidth: 16, // 9 m road + 7 m shoulder on each side
+  };
+  for (const offset of [-16, -15.9, -9.1, -9, 0, 9, 9.1, 15.9, 16]) {
+    assert.equal(track.finishCrossing(
+      { x: gate.center.x + offset, z: -5 },
+      { x: gate.center.x + offset, z: -15 }, gate), 0.5,
+    "full-width gate should recognize offset " + offset);
+  }
+  for (const offset of [-16.1, 16.1]) {
+    assert.equal(track.finishCrossing(
+      { x: gate.center.x + offset, z: -5 },
+      { x: gate.center.x + offset, z: -15 }, gate), null,
+    "outside barrier should not count");
+  }
+  assert.equal(track.finishCrossing(
+    { x: 93, z: -15 }, { x: 93, z: -5 }, gate), null,
+  "reverse crossing is not a finish");
+  assert.equal(track.finishCrossing(
+    { x: 77, z: -5 }, { x: 79, z: -5 }, gate), null,
+  "parallel movement does not cross the gate");
+  // A high-speed frame can skip the thin visual tiles but not the timing gate.
+  assert.equal(track.finishCrossing(
+    { x: 93, z: 25 }, { x: 93, z: -45 }, gate), 0.5);
+});
+
 test("a suspicious hairpin sample jump is rejected without changing the anchor", () => {
   const state = track.createMotion(length, 75, 10);
   const jump = track.move(state, length, 70, null, 65, count);
