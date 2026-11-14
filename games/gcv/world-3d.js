@@ -333,6 +333,18 @@ const GcvWorld3D = (() => {
     const finishIndex = TrackLayout.nearestIndex(positions, TrackLayout.FINISH);
     const startCenter = positions[startIndex], startSide = sides[startIndex];
     const finishCenter = positions[finishIndex];
+    // An invisible timing gate spans the entire drivable corridor, including
+    // shoulders up to the barriers. Its centre and direction are identical
+    // to the corresponding visual line; no per-circuit coordinates needed.
+    function timingGate(index) {
+      return Object.freeze({
+        center: positions[index],
+        forward: directions[index],
+        halfWidth: OUTER_HALF_WIDTH,
+      });
+    }
+    const startGate = timingGate(startIndex);
+    const finishGate = closed ? startGate : timingGate(finishIndex);
     const startYaw = Math.atan2(-directions[startIndex].x, -directions[startIndex].z);
     // Shared checkered tile geometry: two draw calls per line instead of 24.
     // Instancing preserves each tile's original dimensions, orientation and
@@ -418,7 +430,8 @@ const GcvWorld3D = (() => {
     return {
       scene, ROAD_HALF_WIDTH, OUTER_HALF_WIDTH, SAMPLE_COUNT, curve,
       trackLength, positions, directions, sides, barriers,
-      startIndex, finishIndex, startCenter, finishCenter, startSide, startYaw, islands,
+      startIndex, finishIndex, startCenter, finishCenter, startSide, startYaw,
+      startGate, finishGate, islands,
       closed, heightAt,
     };
   }
