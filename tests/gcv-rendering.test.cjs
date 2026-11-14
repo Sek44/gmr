@@ -65,7 +65,7 @@ class PerspectiveCamera {
   lookAt(v) { this.target = new Vector().copy(v); }
 }
 
-function fixture(closed = true, withMotoRider = false) {
+function fixture(closed = true, withMotoRider = false, aiCount = 1) {
   const window = { devicePixelRatio: 3, listeners: {},
     document: { createElement() {
       return { getContext() {
@@ -89,6 +89,11 @@ function fixture(closed = true, withMotoRider = false) {
   const rearBrakeGlows = [{ intensity: 0 }, { intensity: 0 }];
   const ai = { position: new Vector(), rotation: {}, visible: false };
   const opponentMeshes = new Map([[1, ai]]);
+  for (let id = 2; id <= aiCount; id++) {
+    opponentMeshes.set(id, {
+      position: new Vector(), rotation: {}, visible: false,
+    });
+  }
   const curve = { getPointAt(t) { return new Vector(t * 100, 0, 20); },
     getTangentAt() { return new Vector(1, 0, 0); } };
   const THREE = { WebGLRenderer, PerspectiveCamera, Vector3: Vector,
@@ -109,7 +114,7 @@ function fixture(closed = true, withMotoRider = false) {
     startIndex: 0, SAMPLE_COUNT: 100, trackLength: 1000, closed, motoRider,
     onCameraVisibility: (outside) => visibility.push(outside) });
   return { view, window, stage, sceneHost, scene, car, motoRider, wheelPivots,
-    brakeLights, rearBrakeGlows, ai, visibility,
+    brakeLights, rearBrakeGlows, ai, opponentMeshes, visibility,
     renderer: latestRenderer, camera: latestCamera };
 }
 
@@ -221,6 +226,32 @@ test("opponent shadows remain a single instanced batch with dense indices", () =
   assert.equal(ai.visible, false);
   view.syncOpponents(null);
   assert.equal(batch.count, 0);
+});
+
+test("shadow batch supports nine vehicles, missing opponents and race-to-free transitions", () => {
+  const { view, scene, opponentMeshes } = fixture(true, false, 9);
+  const batch = scene.objects.find((object) => object instanceof InstancedMesh);
+  assert.ok(batch);
+  assert.equal(batch.count, 0);
+  const fullGrid = Array.from({ length: 9 }, (_, index) =>
+    ({ id: index + 1, progress: index * 70, lateral: (index % 3) - 1 }));
+  view.syncOpponents(fullGrid);
+  assert.equal(batch.count, 9, "all nine shadows are one GPU batch");
+  assert.equal(batch.instances.length, 9);
+  assert.ok([...opponentMeshes.values()].every((vehicle) => vehicle.visible));
+  const positions = batch.instances.map((matrix) => matrix.position.x);
+  assert.equal(new Set(positions).size, 9,
+    "individual opponents keep distinct shadow transforms");
+  const subset = [fullGrid[0], fullGrid[5], fullGrid[8]];
+  view.syncOpponents(subset);
+  assert.equal(batch.count, 3, "missing entries cannot leave trailing ghost shadows");
+  assert.ok(batch.instances.slice(0, 3).every((matrix) =>
+    Number.isFinite(matrix.position.x) && Number.isFinite(matrix.position.z)));
+  assert.equal([...opponentMeshes.values()].filter((vehicle) =>
+    vehicle.visible).length, 3);
+  view.syncOpponents(null);
+  assert.equal(batch.count, 0);
+  assert.ok([...opponentMeshes.values()].every((vehicle) => !vehicle.visible));
 });
 
 test("camera has rigid cockpit view and outside view follows smoothly", () => {
