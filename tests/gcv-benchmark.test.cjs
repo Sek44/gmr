@@ -4,6 +4,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const vm = require("node:vm");
 const Metrics = require("../games/gcv/benchmark-metrics.js");
 
 const game = path.resolve(__dirname, "../games/gcv");
@@ -54,4 +55,27 @@ test("benchmark is separate from the paid play-time and race state", () => {
   assert.match(script, /getMetrics\(\)/);
   assert.match(script, /visibilitychange/);
   assert.match(script, /SCENARIOS/);
+});
+
+test("standalone benchmark browser scripts load in dependency order", () => {
+  const html = fs.readFileSync(path.join(game, "benchmark.html"), "utf8");
+  const scriptPaths = [...html.matchAll(/<script defer src="\.\/([^"?]+\.js)(?:\?[^"]+)?"><\/script>/g)]
+    .map((match) => match[1]);
+  assert.ok(scriptPaths.indexOf("track-progress.js") >= 0);
+  assert.ok(scriptPaths.indexOf("track-progress.js") < scriptPaths.indexOf("race.js"),
+    "Race depends on TrackProgress and must load after it");
+
+  // Execute the scripts in their actual HTML order. This catches runtime
+  // initialization errors caused by missing globals, not just missing tags.
+  const sandbox = vm.createContext({ window: {} });
+  for (const file of scriptPaths) {
+    vm.runInContext(fs.readFileSync(path.join(game, file), "utf8"), sandbox, {
+      filename: file, timeout: 1000,
+    });
+  }
+  for (const name of ["GcvTrackProgress", "GcvRace", "GcvTrackLayout",
+    "GcvBarriers", "GcvScenery", "GcvWorld3D", "GcvVehicles",
+    "GcvRendering", "GcvVisualEffects", "GcvBenchmarkMetrics"]) {
+    assert.ok(sandbox.window[name], `Missing ${name} after loading benchmark scripts`);
+  }
 });
