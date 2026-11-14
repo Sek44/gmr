@@ -1,5 +1,5 @@
 "use strict";
-// Declarative, deterministic generator for OPEN courses.
+// Declarative, deterministic generator for open routes and closed loops.
 //
 // Author a route with straight and turn sections, then attach features to
 // straights. All distances are metres, turn angles are degrees, and the
@@ -7,7 +7,7 @@
 // A seed modifies only explicitly marked variations; it never depends on
 // Math.random(), frame timing, device, or external assets.
 const GcvTrackGenerator = (() => {
-  const VERSION = 1;
+  const VERSION = 2;
   const RAD = Math.PI / 180;
   const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
   const rounded = (x) => Math.round(x * 1e6) / 1e6;
@@ -47,11 +47,68 @@ const GcvTrackGenerator = (() => {
     });
   }
 
+  // Verify a seamless, non-intersecting lap. Neighbouring segments of
+  // one corner are exempt from the distant-lane clearance check.
+  function validateClosed(points, heading, originHeading, clearance) {
+    const first = points[0], last = points[points.length - 1];
+    if (Math.hypot(last[0] - first[0], last[1] - first[1]) > 0.05)
+      throw new RangeError("Closed circuit does not return to its origin");
+    const turns = (heading - originHeading) / (2 * Math.PI);
+    if (Math.abs(turns) < 0.75 ||
+        Math.abs(turns - Math.round(turns)) > 1e-5)
+      throw new RangeError("Closed circuit must join with the same heading");
+    const n = points.length - 1;
+    if (n < 12) throw new RangeError("Closed circuit needs more route segments");
+    function distanceToSegment(p, a, b) {
+      const dx = b[0] - a[0], dz = b[1] - a[1];
+      const length2 = dx * dx + dz * dz;
+      const t = length2 ? clamp(
+        ((p[0] - a[0]) * dx + (p[1] - a[1]) * dz) / length2, 0, 1) : 0;
+      return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dz);
+    }
+    function cross(a, b, c) {
+      return (b[0] - a[0]) * (c[1] - a[1]) -
+        (b[1] - a[1]) * (c[0] - a[0]);
+    }
+    for (let i = 0; i < n; i++) {
+      const a = points[i], b = points[i + 1];
+      for (let j = i + 1; j < n; j++) {
+        if (Math.min(j - i, n - (j - i)) <= 4) continue;
+        const c = points[j], d = points[j + 1];
+        const intersects = cross(a, b, c) * cross(a, b, d) < 0 &&
+          cross(c, d, a) * cross(c, d, b) < 0;
+        const spacing = Math.min(
+          distanceToSegment(a, c, d), distanceToSegment(b, c, d),
+          distanceToSegment(c, a, b), distanceToSegment(d, a, b));
+        if (intersects || spacing < clearance)
+          throw new RangeError("Closed circuit has overlapping road sections");
+      }
+    }
+  }
+
   function build(template, seed = 1) {
     if (!template || !Array.isArray(template.sections) ||
         template.sections.length < 2)
       throw new TypeError("A circuit needs at least two sections");
+    const closed = template.closed === true;
+    const repeat = template.repeat ?? 1;
+    if (!Number.isInteger(repeat) || repeat < 1 || repeat > 4 ||
+        (!closed && repeat !== 1))
+      throw new RangeError("Section repetition is only supported for closed circuits");
     const random = rng(seed);
+    // Resolve variations once so repeated halves remain perfectly symmetric.
+    const variants = template.sections.map((instruction, i) => {
+      if (!instruction || !["straight", "turn"].includes(instruction.type))
+        throw new TypeError("Unknown circuit section " + i);
+      return instruction.type === "straight"
+        ? { ...instruction, length: vary(instruction.length,
+          instruction.lengthVariance || 0, random) }
+        : { ...instruction, radius: vary(instruction.radius,
+          instruction.radiusVariance || 0, random),
+          angle: vary(instruction.angle,
+            instruction.angleVariance || 0, random) };
+    });
+    const instructions = Array.from({ length: repeat }, () => variants).flat();
     const points = [freezePoint(template.origin || [0, 90])];
     const distances = [0];
     const sections = [];
@@ -71,7 +128,7 @@ const GcvTrackGenerator = (() => {
       distances.push(metres);
     }
 
-    for (const [i, instruction] of template.sections.entries()) {
+    for (const [i, instruction] of instructions.entries()) {
       if (!instruction || !["straight", "turn"].includes(instruction.type))
         throw new TypeError("Unknown circuit section " + i);
       if (instruction.hump && instruction.rainbow)
@@ -79,8 +136,7 @@ const GcvTrackGenerator = (() => {
       const start = metres;
       const startHeading = heading;
       if (instruction.type === "straight") {
-        const length = finitePositive(vary(instruction.length,
-          instruction.lengthVariance || 0, random), "straight length");
+        const length = finitePositive(instruction.length, "straight length");
         // An even distribution gives Catmull-Rom straight tangents as well
         // as accurate kilometre markers, without additional render meshes.
         const n = Math.ceil(length / 28);
@@ -88,10 +144,8 @@ const GcvTrackGenerator = (() => {
       } else {
         if (instruction.hump || instruction.rainbow)
           throw new RangeError("Place features on straights, not turns");
-        const radius = finitePositive(vary(instruction.radius,
-          instruction.radiusVariance || 0, random), "turn radius");
-        const angle = vary(instruction.angle,
-          instruction.angleVariance || 0, random);
+        const radius = finitePositive(instruction.radius, "turn radius");
+        const angle = instruction.angle;
         if (!Number.isFinite(angle) || Math.abs(angle) < 1 ||
             Math.abs(angle) > 100)
           throw new RangeError("Turn angle must be between 1 and 100 degrees");
@@ -106,7 +160,8 @@ const GcvTrackGenerator = (() => {
         }
       }
       // These templates progress broadly forwards; no lane-on-lane loops.
-      if (Math.abs(heading) > 72 * RAD || Math.abs(startHeading) > 72 * RAD)
+      if (!closed && (Math.abs(heading) > 72 * RAD ||
+          Math.abs(startHeading) > 72 * RAD))
         throw new RangeError("Open-route heading exceeds the safe forward corridor");
       sections.push(Object.freeze({
         type: instruction.type, startMetres: start, endMetres: metres,
@@ -117,6 +172,9 @@ const GcvTrackGenerator = (() => {
       }));
     }
 
+    if (closed) validateClosed(points, heading,
+      (template.heading || 0) * RAD,
+      finitePositive(template.minClearanceMetres ?? 32, "road clearance"));
     const totalLength = metres;
     const hills = [];
     let rainbow = null;
@@ -157,17 +215,26 @@ const GcvTrackGenerator = (() => {
       }
     }
 
-    const startMetres = template.startMetres ?? 70;
-    const spawnMetres = template.spawnMetres ?? 20;
-    const finishMetres = totalLength - (template.finishMargin ?? 45);
-    if (spawnMetres < 5 || startMetres - spawnMetres < 20 ||
-        startMetres >= finishMetres - 120 || finishMetres > totalLength - 15)
+    const spawnMetres = template.spawnMetres ?? (closed ? 108 : 20);
+    const startMetres = closed ? (template.finishMetres ?? 83) :
+      (template.startMetres ?? 70);
+    const finishMetres = closed ? startMetres :
+      totalLength - (template.finishMargin ?? 45);
+    if (closed) {
+      // The single checkered gate follows a 50 m-long starting grid.
+      if (finishMetres < 65 || spawnMetres - finishMetres < 20 ||
+          spawnMetres >= totalLength)
+        throw new RangeError("Invalid closed-circuit grid or finish position");
+    } else if (spawnMetres < 5 || startMetres - spawnMetres < 20 ||
+        startMetres >= finishMetres - 120 || finishMetres > totalLength - 15) {
       throw new RangeError("Invalid start, spawn, or finish position");
-    // Start and finish are both embedded in straight sections, safely clear
-    // of the end caps and of the preceding turn.
-    function onStraight(metres) {
+    }
+    // All markers are located on straights, clear of transitions.
+    function onStraight(distance) {
+      const margin = closed ? 10 : 15;
       return sections.some(s => s.type === "straight" &&
-        metres > s.startMetres + 15 && metres < s.endMetres - 15);
+        distance > s.startMetres + margin &&
+        distance < s.endMetres - margin);
     }
     if (![spawnMetres, startMetres, finishMetres].every(onStraight))
       throw new RangeError("Grid and finish lines must be on straights");
@@ -182,7 +249,9 @@ const GcvTrackGenerator = (() => {
     const result = {
       SEED: Number(seed) >>> 0,
       GENERATOR_VERSION: VERSION,
-      WAYPOINTS: Object.freeze(points),
+      CLOSED: closed,
+      // Omit the duplicate seam waypoint: CatmullRomCurve3 closes it itself.
+      WAYPOINTS: Object.freeze(closed ? points.slice(0, -1) : points),
       SECTIONS: Object.freeze(sections),
       LENGTH_METRES: totalLength,
       START: pointAtDistance(points, distances, startMetres),
