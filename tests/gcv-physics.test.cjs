@@ -196,21 +196,43 @@ test("fall begins descending immediately, without any initial floating arc", () 
   assert.ok(fall.remaining < physics.FALL_SECONDS);
 });
 
-test("short ramp jumps lift off sharply and land once within 0.65 seconds", () => {
+test("giant ramp jump stays airborne almost three seconds and lands once", () => {
   let jump = { height: 0.01, velocity: physics.JUMP_TAKEOFF_SPEED };
-  let peak = 0, landed = 0, elapsed = 0;
-  for (let frame = 0; frame < 60; frame++) {
+  let peak = 0, landed = 0, firstLanding = null;
+  for (let frame = 0; frame < 300; frame++) {
     jump = physics.advanceJump(jump.height, jump.velocity, 1 / 60);
-    elapsed += 1 / 60;
     peak = Math.max(peak, jump.height);
-    if (jump.landed) landed++;
+    if (jump.landed) { landed++; firstLanding = frame / 60; }
   }
-  assert.ok(peak > 0.9 && peak < 1.5, "noticeable but controlled lift");
-  assert.ok(elapsed >= 0.9 && landed === 1, "only one landing event");
+  assert.ok(peak > 13 && peak < 15, "substantial aerial height");
+  assert.ok(firstLanding > 2.7 && firstLanding < 3);
+  assert.equal(landed, 1);
   assert.equal(jump.height, 0);
   assert.equal(jump.velocity, 0);
   assert.equal(physics.GRAVITY, 9.81, "off-road falls remain unchanged");
-  assert.ok(2 * physics.JUMP_TAKEOFF_SPEED / physics.JUMP_GRAVITY < 0.65);
+});
+
+test("airborne steering and braking are gentle and cannot reverse", () => {
+  const moving = { x: 0, z: 0, yaw: 0, speed: 40 };
+  const ground = physics.advance(moving, { steer: 1, brake: true }, 0.05);
+  const air = physics.advance(moving, { steer: 1, brake: true, airborne: true }, 0.05);
+  assert.ok(Math.abs(air.yaw) < Math.abs(ground.yaw) / 5);
+  assert.ok(air.speed > ground.speed && air.speed < moving.speed);
+  assert.equal(physics.advance({ ...moving, speed: 0 },
+    { brake: true, airborne: true }, 0.05).speed, 0);
+  assert.equal(physics.AIR_STEER_FACTOR, 0.12);
+});
+
+test("jump altitude stays ballistic when the road rises or descends", () => {
+  const initial = { height: 2, velocity: 5 };
+  const rising = physics.advanceJump(initial.height, initial.velocity, 0.05, 1.4);
+  const dropping = physics.advanceJump(initial.height, initial.velocity, 0.05, -1.4);
+  assert.ok(Math.abs((dropping.height - rising.height) - 2.8) < 1e-9);
+  assert.equal(dropping.velocity, rising.velocity);
+  const impact = physics.advanceJump(0.2, -3, 0.05, 1);
+  assert.equal(impact.height, 0);
+  assert.equal(impact.landed, true);
+  assert.equal(physics.advanceJump(0, 0, 0.05).landed, false);
 });
 
 test("a hump launches the vehicle just before its crest, not after the descent", () => {
@@ -228,10 +250,10 @@ test("a hump launches the vehicle just before its crest, not after the descent",
     "high speed anticipates more than a single frame of travel");
 });
 
-test("jump touchdown is detected even at low frame rates", () => {
+test("jump touchdown is detected once even at low frame rates", () => {
   let jump = { height: 0.01, velocity: physics.JUMP_TAKEOFF_SPEED };
   let landingCount = 0;
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < 100; i++) {
     jump = physics.advanceJump(jump.height, jump.velocity, 0.05);
     if (jump.landed) landingCount++;
   }
