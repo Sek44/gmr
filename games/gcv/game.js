@@ -560,17 +560,22 @@
           // Anticipate the crest instead of detecting a drop after passing it.
           // Landing dust remains a single event, separate from race progress.
           jumpCooldown = Math.max(0, jumpCooldown - dt);
+          let launched = false;
           if (!closed && jumpCooldown === 0 &&
               jumpVelocity === 0 && driver.jumpY === 0) {
             const launch = Physics.takeoffVelocity(trackFraction,
               driver.speed, trackLength, heightAt);
             if (launch !== null) {
               jumpVelocity = launch;
-              driver.jumpY = 0.01;
+              driver.jumpY = 0.001;
               jumpCooldown = 1.0; // One launch per crest.
+              launched = true;
             }
           }
-          if (driver.jumpY > 0 || jumpVelocity > 0) {
+          // The takeoff starts at the CURRENT road altitude, not at the
+          // previous frame's altitude. Integrate from the next frame so the
+          // first slope step does not cancel the physically derived lift.
+          if (!launched && (driver.jumpY > 0 || jumpVelocity > 0)) {
             const jump = Physics.advanceJump(driver.jumpY, jumpVelocity,
               dt, driver.roadY - roadY);
             driver.jumpY = jump.height;
