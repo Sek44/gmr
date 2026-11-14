@@ -8,7 +8,7 @@ const GcvSession = (() => {
     LapTimes, Race, progressSamples, startOffset, closestRoad, snapBack,
     clearControls, clearLapHold, resetResultsCooldown, renderSession,
     setLapCount, announce, resume, onRaceStart = () => {},
-    raceLaps = Race.LAPS }) {
+    raceLaps = Race.LAPS, aiNavigation = null }) {
     let binding = null;
     let autosaveElapsed = 0;
     const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -77,7 +77,7 @@ const GcvSession = (() => {
       state.cameraMode = saved.camera === "outside" ? "outside" : "inside";
       if (saved.vehicle) state.vehicleId = saved.vehicle;
       const restoredRace = saved.mode === "race"
-        ? Race.restore(saved.race, trackLength, raceLaps) : null;
+        ? Race.restore(saved.race, trackLength, raceLaps, aiNavigation) : null;
       flow.restore(restoredRace ? "race" : "free", restoredRace?.phase);
       state.raceState = restoredRace;
       if (restoredRace) state.lapTracker = restoredRace.playerMotion;
@@ -106,7 +106,7 @@ const GcvSession = (() => {
       state.fall = null;
       state.respawnIndex = current;
       state.lapTracker = TrackProgress.createMotion(trackLength, -grid.distance, current);
-      state.raceState = Race.create(trackLength, Math.random, state.lapTracker, raceLaps);
+      state.raceState = Race.create(trackLength, Math.random, state.lapTracker, raceLaps, aiNavigation);
       state.lapTimer = LapTimes.initial(SAMPLE_COUNT, progressSamples(state.lapTracker.progress));
       announce("");
       renderSession();
