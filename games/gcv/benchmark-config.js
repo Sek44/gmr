@@ -4,7 +4,7 @@
 // be checked by Node tests. The full-resolution race is repeated last on the
 // same scene to expose order/thermal/warm-up drift.
 (function (root) {
-  const VERSION = "gcv-render-v3";
+  const VERSION = "gcv-render-v4";
   const WARMUP_MS = 1500;
   const SAMPLE_MS = 8000;
   const SPEED = 28;
