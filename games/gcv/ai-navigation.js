@@ -59,6 +59,9 @@ const GcvAiNavigation = (() => {
         throw new RangeError("Invalid AI driver");
       const key = ai.id + ":" + ai.startProgress + ":" + ai.strength;
       if (cache.has(key)) return cache.get(key);
+      // Replaying many races on one screen must not retain every old
+      // driver timetable forever. A clear rebuild costs only a few ms.
+      if (cache.size >= 27) cache.clear();
       const distance = finish - ai.startProgress;
       const count = Math.max(1, Math.ceil(distance / STEP));
       const ds = distance / count;
