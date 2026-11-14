@@ -413,7 +413,7 @@
       setVehicle(vehicleId);
       rendering.setVehicle(vehicleId);
       refreshCameraButton();
-      if (choices.mode === "race") session.startRace();
+      if (choices.mode === "race") session.startRace({ fresh: true });
       else session.startFree();
     }
     startButton.addEventListener("click", launchNewGame, { signal });
@@ -450,7 +450,7 @@
       cameraMode = preferences.get().camera;
       setVehicle(vehicleId);
       rendering.setVehicle(vehicleId);
-      if (preferences.get().mode === "race") session.startRace();
+      if (preferences.get().mode === "race") session.startRace({ fresh: true });
       else session.startFree();
     }
 
