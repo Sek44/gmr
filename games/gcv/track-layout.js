@@ -107,7 +107,7 @@ const GcvTrackLayout = (() => {
         envelope * Math.PI * 14 * Math.cos(phase)),
     };
   }
-  function select(id) { return id === SPRINT.ID ? SPRINT : CLASSIC; }
+  function select(id) { return id === SPRINT.ID ? SPRINT : GcvTrackLayout; }
 
   function nearestIndex(positions, reference) {
     let bestIndex = 0;
