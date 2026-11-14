@@ -98,3 +98,66 @@ test("generator can produce another layout from simple new sections", () => {
   assert.ok(route.FINISH.z < route.START.z);
   assert.ok(route.WAYPOINTS.length > 30);
 });
+
+test("generator rejects rainbow rails on the same straight as a jump", () => {
+  assert.throws(() => Generator.build({
+    sections: [
+      { type: "straight", length: 420, rainbow: true,
+        hump: { height: 14, widthMetres: 95 } },
+      { type: "straight", length: 250 },
+    ],
+  }), /separate straights/);
+});
+
+test("generated start and finish can be crossed in race progression", () => {
+  const Progress = require("../games/gcv/track-progress.js");
+  const route = Layout.SPRINT;
+  const control = route.WAYPOINTS;
+  const sums = [0];
+  for (let i = 1; i < control.length; i++) {
+    sums.push(sums[i - 1] + Math.hypot(
+      control[i][0] - control[i - 1][0],
+      control[i][1] - control[i - 1][1]));
+  }
+  const distance = sums[sums.length - 1];
+  const count = route.SAMPLE_COUNT;
+  function locate(fraction) {
+    const target = fraction * distance;
+    let i = 0;
+    while (i < control.length - 2 && sums[i + 1] < target) i++;
+    const t = (target - sums[i]) / (sums[i + 1] - sums[i]);
+    return { x: control[i][0] + (control[i + 1][0] - control[i][0]) * t,
+      z: control[i][1] + (control[i + 1][1] - control[i][1]) * t };
+  }
+  const positions = Array.from({ length: count + 1 }, (_, i) =>
+    locate(i / count));
+  const directions = positions.map((point, i) => {
+    const before = positions[Math.max(0, i - 1)];
+    const after = positions[Math.min(count, i + 1)];
+    const dx = after.x - before.x, dz = after.z - before.z;
+    const len = Math.hypot(dx, dz);
+    return { x: dx / len, z: dz / len };
+  });
+  const start = route.nearestIndex(positions, route.START);
+  const finish = route.nearestIndex(positions, route.FINISH);
+  const spawn = route.nearestIndex(positions, route.SPAWN);
+  assert.ok(spawn < start && start < finish && finish < count);
+  const routeLength = (finish - start) * distance / count;
+  let motion = Progress.createMotion(routeLength, (spawn - start) * distance / count, spawn);
+  const allEvents = [];
+  for (let i = spawn; i < count; i++) {
+    const before = positions[i], after = positions[i + 1];
+    const signedTravel = Progress.alongTrackTravel(before, after, directions[i + 1]);
+    const startFraction = Progress.finishCrossing(before, after,
+      positions[start], directions[start], route.ROAD_HALF_WIDTH);
+    const finishFraction = Progress.finishCrossing(before, after,
+      positions[finish], directions[finish], route.ROAD_HALF_WIDTH);
+    const next = Progress.moveOpen(motion, routeLength, signedTravel,
+      startFraction, finishFraction, i + 1, count);
+    motion = next.state;
+    allEvents.push(...next.events.map(e => e.type));
+  }
+  assert.deepEqual(allEvents, ["start", "lap"],
+    "start and finish must work on the actual generated route");
+  assert.equal(motion.laps, 1);
+});
