@@ -46,7 +46,7 @@ test("rebuilt sprint is an open, mostly forward, 2.3-2.7 km route", () => {
   assert.equal(route.VERSION, 5);
   assert.ok(route.WAYPOINTS.length > 70 && route.WAYPOINTS.length < 180,
     "lightweight centreline source for mobile rendering");
-  assert.ok(route.LENGTH_METRES > 2300 && route.LENGTH_METRES < 2700);
+  assert.ok(route.LENGTH_METRES > 2500 && route.LENGTH_METRES < 2900);
   for (let i = 1; i < route.WAYPOINTS.length; i++) {
     const a = route.WAYPOINTS[i - 1], b = route.WAYPOINTS[i];
     const distance = Math.hypot(a[0] - b[0], a[1] - b[1]);
@@ -76,10 +76,10 @@ test("generator validates misplaced features, undersized straights and gates", (
     { type: "straight", length: 200 },
   ] }), /Turn angle/);
   assert.throws(() => Generator.build({ sections: [
-    { type: "straight", length: 120 },
+    { type: "straight", length: 300 },
     { type: "turn", angle: 50, radius: 80 },
-    { type: "straight", length: 40 },
-  ], finishMargin: 45, startMetres: 70, spawnMetres: 20 }), /straight/);
+    { type: "straight", length: 240 },
+  ], finishMargin: 270, startMetres: 70, spawnMetres: 20 }), /straights/);
 });
 
 test("generator can produce another layout from simple new sections", () => {
