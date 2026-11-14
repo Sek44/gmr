@@ -3,6 +3,7 @@
  */
 @import url("./styles/base.css");
 @import url("./styles/components.css");
+@import url("./styles/game-host.css");
 @import url("./styles/home.css");
 @import url("./styles/scores.css");
 @import url("./styles/play-time.css");
