@@ -81,6 +81,75 @@ const GcvTrackProgress = (() => {
     return { index, distanceSquared: d };
   }
 
+
+  // During a long jump, follow the road's *longitudinal* geometry rather than
+  // flying off a bend. Steering changes only the bounded lateral offset.
+  // Use actual travelled metres, not a sample-index jump, for race progress.
+  function guideAirborne(positions, sampleCount, before, candidate,
+      hintIndex, roadHalfWidth, steer = 0, dt = 0) {
+    if (!positions || sampleCount < 2 || !Number.isInteger(hintIndex) ||
+        ![before?.x, before?.z, candidate?.x, candidate?.z, roadHalfWidth]
+          .every(Number.isFinite) || roadHalfWidth <= 2) return null;
+    const limit = Math.min(sampleCount, positions.length - 1);
+    // Locate the closest point on a *segment*, avoiding the stair-step and
+    // sign changes produced by snapping to discrete sample centres.
+    let best = null;
+    for (let i = Math.max(0, hintIndex - 6);
+      i < Math.min(limit, hintIndex + 7); i++) {
+      const a = positions[i], b = positions[i + 1];
+      const dx = b.x - a.x, dz = b.z - a.z;
+      const squared = dx * dx + dz * dz;
+      if (squared < 1e-8) continue;
+      const t = Math.max(0, Math.min(1,
+        ((before.x - a.x) * dx + (before.z - a.z) * dz) / squared));
+      const cx = a.x + t * dx, cz = a.z + t * dz;
+      const error = (before.x - cx) ** 2 + (before.z - cz) ** 2;
+      if (!best || error < best.error) best = { index: i, t, error };
+    }
+    if (!best) return null;
+    let index = best.index, t = best.t;
+    let a = positions[index], b = positions[index + 1];
+    let dx = b.x - a.x, dz = b.z - a.z;
+    let length = Math.hypot(dx, dz);
+    const initialSideX = -dz / length, initialSideZ = dx / length;
+    const previousLateral = (before.x - (a.x + t * dx)) * initialSideX +
+      (before.z - (a.z + t * dz)) * initialSideZ;
+    let remaining = Math.hypot(candidate.x - before.x, candidate.z - before.z);
+    let travel = 0;
+    // Arc-length walking is stable in sharp bends and through the final gate.
+    // Do not award fictitious distance after reaching the end cap.
+    while (remaining > 1e-8 && index < limit) {
+      const available = (1 - t) * length;
+      const advance = Math.min(available, remaining);
+      remaining -= advance;
+      travel += advance;
+      t += advance / length;
+      if (t >= 1 - 1e-8 && index + 1 < limit) {
+        index++;
+        t = 0;
+        a = positions[index]; b = positions[index + 1];
+        dx = b.x - a.x; dz = b.z - a.z;
+        length = Math.hypot(dx, dz);
+      } else if (t >= 1 - 1e-8) break;
+    }
+    const maxSide = roadHalfWidth - 1.8; // Whole vehicle stays inside the road.
+    const sidewaysSpeed = Math.min(3.2, Math.max(0, Number(candidate.speed) || 0) * 0.075);
+    const lateral = Math.max(-maxSide, Math.min(maxSide,
+      previousLateral + Math.max(-1, Math.min(1, Number(steer) || 0)) *
+      sidewaysSpeed * Math.max(0, dt)));
+    const sideX = -dz / length, sideZ = dx / length;
+    const targetYaw = Math.atan2(-dx, -dz);
+    const yawError = Math.atan2(Math.sin(targetYaw - candidate.yaw),
+      Math.cos(targetYaw - candidate.yaw));
+    const blend = 1 - Math.exp(-7 * Math.max(0, dt));
+    return {
+      x: a.x + t * dx + sideX * lateral,
+      z: a.z + t * dz + sideZ * lateral,
+      yaw: candidate.yaw + yawError * blend,
+      index, travel,
+    };
+  }
+
   function relocate(state, nearestIndex) {
     // Respawn is not extra travel around the circuit.
     return { ...state, index: nearestIndex };
@@ -230,7 +299,7 @@ const GcvTrackProgress = (() => {
     return Math.abs(sideways) <= halfWidth ? fraction : null;
   }
 
-  return Object.freeze({ nearestSample, nearestOpenSample, alongTrackTravel, relocate,
+  return Object.freeze({ nearestSample, nearestOpenSample, alongTrackTravel, guideAirborne, relocate,
     createMotion, restoreMotion, move, moveOpen, finishCrossing, MIN_LAP_FRACTION });
 })();
 
