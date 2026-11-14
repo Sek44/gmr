@@ -5,6 +5,8 @@
 (async () => {
   const byId = (id) => document.getElementById(id);
   const startButton = byId("benchmark-start");
+  const windowedButton = byId("benchmark-windowed");
+  const exitFullscreenButton = byId("benchmark-exit-fullscreen");
   const status = byId("benchmark-status");
   const resultsPanel = byId("benchmark-results");
   const copyButton = byId("benchmark-copy");
@@ -14,6 +16,7 @@
   const sceneHost = byId("benchmark-scene");
   const config = window.GcvBenchmarkConfig;
   const metrics = window.GcvBenchmarkMetrics;
+  const display = window.GcvBenchmarkDisplay;
   const THREE_URL = "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
   let running = false;
   let lastResult = null;
@@ -23,7 +26,7 @@
     const names = ["GcvTrackLayout", "GcvTrackProgress", "GcvBarriers",
       "GcvScenery", "GcvWorld3D", "GcvVehicles", "GcvRace",
       "GcvRendering", "GcvVisualEffects", "GcvBenchmarkMetrics",
-      "GcvBenchmarkConfig"];
+      "GcvBenchmarkConfig", "GcvBenchmarkDisplay"];
     for (const name of names) {
       if (!window[name]) throw new Error("Module absent : " + name);
     }
@@ -147,7 +150,7 @@
 
       function frame(timestamp) {
         if (invalid() || document.hidden) {
-          reject(new Error("Test interrompu : onglet masqué."));
+          reject(new Error("Test interrompu : onglet masqué ou plein écran quitté."));
           return;
         }
         if (stage.clientWidth !== initialSize[0] ||
@@ -256,6 +259,9 @@
       "Écran CSS " + report.viewport.width + "×" + report.viewport.height +
       " · DPR " + numeric(report.devicePixelRatio, 2) +
       " · " + report.device.platform;
+    byId("benchmark-capture-mode").textContent =
+      "Mesure : " + (report.display.fullscreen ? "plein écran" : "fenêtre navigateur") +
+      " · " + report.display.orientation;
     for (const item of baseline) {
       tableRow("benchmark-overview-rows", [
         item.name, numeric(item.fps), numeric(item.frameP95Ms),
@@ -305,6 +311,11 @@
       " · RAM déclarée : " + (report.device.memoryGb ?? "—") +
       " Go · Écran CSS : " + report.viewport.width + "×" +
       report.viewport.height + " · DPR " + numeric(report.devicePixelRatio, 2);
+    byId("benchmark-display-info").textContent =
+      "Mode mesuré : " + (report.display.fullscreen ? "plein écran" : "fenêtre") +
+      " · " + report.display.orientation +
+      " · " + (report.fullscreenRequested ? "plein écran demandé" :
+        "mode fenêtre choisi");
     byId("benchmark-setup").textContent = setup;
     byId("benchmark-method").textContent =
       report.scenarios.length + " tests · " + (report.warmupMs / 1000) +
@@ -315,21 +326,57 @@
     document.body.classList.add("is-complete");
     showPage(0);
     status.textContent = "Test terminé.";
+    refreshFullscreenControl();
   }
 
-  async function start() {
+  function refreshFullscreenControl() {
+    exitFullscreenButton.hidden = !display?.isActive(document);
+  }
+
+  async function start(fullscreenRequested = true) {
     if (running) return;
     running = true;
     startButton.disabled = true;
-    status.textContent = "Chargement de Three.js et préparation...";
+    windowedButton.disabled = true;
+    status.textContent = "Préparation du test...";
     let session = null;
     let hiddenDuringTest = false;
+    let fullscreenChangedDuringTest = false;
+    let lockedDisplay = null;
     const onVisibilityChange = () => {
       if (document.hidden) hiddenDuringTest = true;
     };
+    const onFullscreenChange = () => {
+      if (lockedDisplay &&
+          display.isActive(document) !== lockedDisplay.fullscreen) {
+        fullscreenChangedDuringTest = true;
+      }
+    };
     document.addEventListener("visibilitychange", onVisibilityChange);
+    document.addEventListener("fullscreenchange", onFullscreenChange);
     try {
       requireModules();
+      if (fullscreenRequested) {
+        // Must happen inside the initial click's user activation, BEFORE
+        // awaiting the network import or a requestAnimationFrame.
+        status.textContent = "Activation du plein écran...";
+        const requested = await display.enter(document);
+        if (!requested.ok) {
+          status.textContent = "Plein écran indisponible ou refusé (" +
+            requested.reason + "). Choisis « Sans plein écran » pour tester.";
+          return;
+        }
+      }
+      // Allow browser chrome/viewport to settle after entering fullscreen.
+      await new Promise((resolve) => requestAnimationFrame(() =>
+        requestAnimationFrame(resolve)));
+      lockedDisplay = display.snapshot(document, window, stage);
+      if (fullscreenRequested && !lockedDisplay.fullscreen) {
+        status.textContent = "Plein écran interrompu. Utilise « Sans plein écran ».";
+        return;
+      }
+      refreshFullscreenControl();
+      status.textContent = "Chargement de Three.js et préparation...";
       const THREE = await import(THREE_URL);
       const output = [];
       const setupTimes = [];
@@ -340,8 +387,13 @@
           session = build(THREE, scenario.track);
           setupTimes.push(session.setup);
         }
+        if (stage.clientWidth !== lockedDisplay.viewport.width ||
+            stage.clientHeight !== lockedDisplay.viewport.height ||
+            fullscreenChangedDuringTest) {
+          throw new Error("Mode d'affichage modifié pendant le test.");
+        }
         output.push(await measure(session, scenario, i + 1,
-          () => hiddenDuringTest));
+          () => hiddenDuringTest || fullscreenChangedDuringTest));
       }
       const report = {
         version: config.VERSION,
@@ -352,8 +404,9 @@
           logicalCores: navigator.hardwareConcurrency ?? null,
           memoryGb: navigator.deviceMemory ?? null,
         },
-        viewport: { width: stage.clientWidth, height: stage.clientHeight },
-        devicePixelRatio: window.devicePixelRatio || 1,
+        viewport: lockedDisplay.viewport,
+        devicePixelRatio: lockedDisplay.devicePixelRatio,
+        display: lockedDisplay, fullscreenRequested,
         warmupMs: config.WARMUP_MS, sampleMs: config.SAMPLE_MS,
         routeSpeedMs: config.SPEED, setupTimes,
         scenarios: output,
@@ -368,12 +421,25 @@
     } finally {
       session?.rendering.dispose();
       document.removeEventListener("visibilitychange", onVisibilityChange);
+      document.removeEventListener("fullscreenchange", onFullscreenChange);
       running = false;
       startButton.disabled = false;
+      windowedButton.disabled = false;
     }
   }
 
-  startButton.addEventListener("click", start);
+  // Fullscreen is recommended, but the fallback is explicit and recorded.
+  // Never silently treat a failed fullscreen request as a fullscreen run.
+  startButton.addEventListener("click", () => start(true));
+  windowedButton.addEventListener("click", () => start(false));
+  document.addEventListener("fullscreenchange", refreshFullscreenControl);
+  exitFullscreenButton.addEventListener("click", async () => {
+    if (display.isActive(document) &&
+        typeof document.exitFullscreen === "function") {
+      try { await document.exitFullscreen(); } catch { /* Browser may deny. */ }
+    }
+    refreshFullscreenControl();
+  });
   byId("benchmark-prev").addEventListener("click",
     () => showPage(selectedPage - 1));
   byId("benchmark-next").addEventListener("click",
