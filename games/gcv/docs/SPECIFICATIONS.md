@@ -51,6 +51,7 @@ Au premier lancement, la caméra est extérieure. Le dernier véhicule, circuit,
 ## 6. Règles de validation des tours et du classement
 
 - Sur le classique, un tour exige le franchissement réel de la ligne dans le bon sens, après une progression longitudinale d'au moins **75 %** du circuit. Sur l'ouvert, les deux franchissements de départ et d'arrivée sont distincts ; l'arrivée exige aussi une progression signée d'au moins **75 %** du trajet pour empêcher les raccourcis. La validation d'arrivée fonctionne également après un saut ; le parcours terminé est annoncé même si des points intermédiaires manquants empêchent d'enregistrer un record.
+- Les portes de chronométrage sont invisibles et couvrent toute la largeur praticable à la ligne, y compris les deux accotements jusqu'aux barrières. Elles sont produites automatiquement à partir de la géométrie de chaque circuit, indépendamment des carreaux de damier visibles. Les franchissements à l'extérieur des barrières ou en marche arrière sont ignorés.
 - La progression tient compte du déplacement longitudinal signé ; marche arrière, oscillations près de la ligne, décalages latéraux et sauts d'échantillon dans les épingles ne donnent pas de tours.
 - Les tours du mode course, le HUD et le chronométrage prennent leurs franchissements dans la **même** progression validée. Les secteurs servent aux statistiques chronométrées, pas à décider de l'arrivée d'une course.
 - Une chute, un retour sur piste ou un redémarrage ne peuvent pas inventer un passage de ligne.
