@@ -2,7 +2,6 @@
 // One definition for the circuit, finish marker, spawning and future AI.
 // Every 2D coordinate is [x, z] in metres; cars travel in array order.
 const GcvTrackLayout = (() => {
-  const VERSION = 2;
   const SAMPLE_COUNT = 840;
   const ROAD_HALF_WIDTH = 9;
   const SHOULDER_WIDTH = 7; // Seven metres of shoulder on each side.
