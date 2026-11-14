@@ -306,6 +306,13 @@ test("sport motorcycle has a crouched rider, full-face helmet and visible fairin
   assert.ok(bike, "the active low-poly motorcycle has a detailed silhouette");
   assert.ok(bike.children.some((node) => node.material?.color === 0xd9112f),
     "red supersport fairing");
+  const windscreen = bike.children.find((node) =>
+    node.material?.transparent && node.material.opacity === 0.68);
+  assert.ok(windscreen, "motorcycle retains the translucent screen");
+  assert.equal(windscreen.material.side, THREE.DoubleSide,
+    "windscreen must stay visible from both camera positions");
+  assert.equal(windscreen.material.forceSinglePass, true,
+    "single thin window does not need two transparent draw passes");
   const { body, helmet, baseY } = models.motoRider;
   assert.ok(bike.children.includes(body), "the motorcycle rider has a separate hip joint");
   assert.equal(baseY, 1.32);
