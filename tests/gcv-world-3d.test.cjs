@@ -110,13 +110,15 @@ class Geometry {
   computeVertexNormals() {}
 }
 class Material { constructor(options = {}) { Object.assign(this, options); } }
+class LambertMaterial extends Material {}
 const THREE = {
   Vector3, CatmullRomCurve3: Curve, Scene: Node, Object3D: Node,
   HemisphereLight: Node, DirectionalLight: Node, Mesh, InstancedMesh,
   BoxGeometry: Geometry, PlaneGeometry: Geometry, CircleGeometry: Geometry,
   DodecahedronGeometry: Geometry, BufferGeometry: Geometry,
   Float32BufferAttribute: class { constructor(array) { this.array = array; } },
-  MeshStandardMaterial: Material, MeshBasicMaterial: Material,
+  MeshStandardMaterial: Material, MeshLambertMaterial: LambertMaterial,
+  MeshBasicMaterial: Material,
   Color: Material, Fog: Material, DoubleSide: 2, FrontSide: 0,
 };
 
@@ -156,6 +158,103 @@ test("static world shares its track samples with barriers and gameplay", () => {
   assert.ok(world.scene.children.some((node) => node instanceof InstancedMesh),
     "decor uses instancing");
   assert.ok(Array.isArray(world.islands));
+});
+
+test("road and terrain use low-cost Lambert materials without changing finish visuals", () => {
+  const Barriers = require("../games/gcv/barriers.js");
+  const world = World3D.create({ THREE, TrackLayout, Barriers, Scenery });
+  const materials = new Map();
+  for (const node of world.scene.children) {
+    if (node.material && typeof node.material.color === "number") {
+      materials.set(node.material.color, node.material);
+    }
+  }
+  for (const color of [0x856044, 0xb29871, 0x674934, 0x736e61,
+    0x614a37, 0x64737b]) {
+    assert.ok(materials.get(color) instanceof LambertMaterial,
+      "opaque road / terrain and mud use Lambert: " + color.toString(16));
+    assert.equal(materials.get(color).roughness, undefined);
+  }
+  assert.equal(materials.get(0x614a37).transparent, true);
+  assert.equal(materials.get(0x614a37).opacity, 0.42);
+  assert.equal(materials.get(0x614a37).side, THREE.FrontSide);
+  assert.ok(!(materials.get(0x417f91) instanceof LambertMaterial),
+    "the visually reflective sea retains its original material");
+  assert.ok(!(materials.get(0x527d89) instanceof LambertMaterial),
+    "puddles retain their material");
+  assert.ok(!(materials.get(0x9baeba) instanceof LambertMaterial),
+    "metallic guardrails retain their material");
+});
+
+test("road and nonoverlapping shoulders share exact edges on classic and generated sprint circuits", () => {
+  const Barriers = require("../games/gcv/barriers.js");
+  const layouts = [
+    TrackLayout,
+    TrackLayout.select("rainbow"),
+    TrackLayout.generateSprint(12345),
+    TrackLayout.generateSprint(20261115),
+  ];
+  for (const layout of layouts) {
+    const world = World3D.create({ THREE, TrackLayout: layout, Barriers, Scenery });
+    const find = (color) => world.scene.children.find((object) =>
+      object instanceof Mesh && !(object instanceof InstancedMesh) &&
+      object.material?.color === color);
+    const road = find(0x856044), shoulders = find(0xb29871);
+    assert.ok(road && shoulders, layout.ID);
+    assert.ok(road.material instanceof LambertMaterial);
+    assert.ok(shoulders.material instanceof LambertMaterial);
+    const n = layout.SAMPLE_COUNT;
+    const roadPos = road.geometry.attributes.position.array;
+    const shoulderPos = shoulders.geometry.attributes.position.array;
+    const firstBand = 2 * (n + 1);
+    assert.equal(roadPos.length, firstBand * 3,
+      "road keeps one strip of two vertices per sample");
+    assert.equal(shoulderPos.length, 2 * firstBand * 3,
+      "two narrow shoulder strips share a single geometry");
+    assert.equal(road.geometry.indices.length, n * 6);
+    assert.equal(shoulders.geometry.indices.length, n * 12);
+    const vertex = (array, i) => array.slice(i * 3, i * 3 + 3);
+    const expected = (i, lateral, height) => {
+      const center = world.positions[i], side = world.sides[i];
+      return [center.x + side.x * lateral, center.y + height,
+        center.z + side.z * lateral];
+    };
+    const samples = [0, 1, Math.floor(n / 4), Math.floor(n / 2),
+      Math.floor(3 * n / 4), n - 1, n];
+    for (const i of samples) {
+      const roadLeft = vertex(roadPos, i * 2);
+      const roadRight = vertex(roadPos, i * 2 + 1);
+      const leftOuter = vertex(shoulderPos, i * 2);
+      const leftInner = vertex(shoulderPos, i * 2 + 1);
+      const rightInner = vertex(shoulderPos, firstBand + i * 2);
+      const rightOuter = vertex(shoulderPos, firstBand + i * 2 + 1);
+      assert.deepEqual(roadLeft, expected(i, -layout.ROAD_HALF_WIDTH, 0.07));
+      assert.deepEqual(roadRight, expected(i, layout.ROAD_HALF_WIDTH, 0.07));
+      assert.deepEqual(leftInner, roadLeft, "left shoulder meets road exactly");
+      assert.deepEqual(rightInner, roadRight, "right shoulder meets road exactly");
+      assert.deepEqual(leftOuter, expected(i,
+        -world.OUTER_HALF_WIDTH, 0.02));
+      assert.deepEqual(rightOuter, expected(i,
+        world.OUTER_HALF_WIDTH, 0.02));
+    }
+    // Indices for one shoulder band must never bridge into the other band.
+    // In particular, the geometry must not contain a hidden central surface.
+    for (let k = 0; k < shoulders.geometry.indices.length; k += 3) {
+      const triangle = shoulders.geometry.indices.slice(k, k + 3);
+      assert.ok(triangle.every((index) => index < firstBand) ||
+        triangle.every((index) => index >= firstBand),
+      "no triangle should span across the driving lane");
+    }
+    assert.equal(world.barriers.rails.left.points.length,
+      layout.CLOSED === false ? n + 1 : n,
+    "collision rails still use exactly the same samples");
+    assert.equal(world.startCenter, world.positions[world.startIndex]);
+    assert.equal(world.finishCenter, world.positions[world.finishIndex]);
+    if (layout.CLOSED === false) {
+      assert.ok(Math.max(...world.positions.map((point) => point.y)) >= 14,
+        "generated crest elevation remains unchanged");
+    }
+  }
 });
 
 test("classic checkered line is batched into two instanced draws without altering tile positions", () => {
