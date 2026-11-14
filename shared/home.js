@@ -6,11 +6,16 @@
   const games = window.GmrCatalog.games;
   empty.hidden = games.length !== 0;
 
+  // Every refresh of the homepage starts a new asset generation for all
+  // games, including games that do not use the fullscreen iframe host.
+  const refreshKey = String(Date.now());
   const assetRoot = "./shared/themes/classic-play/assets/";
   for (const game of games) {
     const link = document.createElement("a");
     link.className = "game-card";
-    link.href = "./games/" + encodeURIComponent(game.id) + "/";
+    const gameUrl = new URL("./games/" + encodeURIComponent(game.id) + "/", location.href);
+    gameUrl.searchParams.set("gmr-refresh", refreshKey);
+    link.href = gameUrl.href;
     link.setAttribute("aria-label", "Jouer à " + game.title);
 
     const artwork = document.createElement("span");
