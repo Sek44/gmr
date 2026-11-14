@@ -64,7 +64,7 @@ const GcvHud = (() => {
       setText(chronoLabel, lapHold
         ? LapTimes.format(lapHold.ms)
         : lapTimer.running || lapTimer.finished ? LapTimes.format(lapTimer.elapsedMs) : "—");
-      setText(chronoTitle, lapHold
+      setText(chronoTitle, lapHold || (!closed && lapTimer.finished)
         ? (closed ? "TOUR TERMINÉ" : "PARCOURS TERMINÉ")
         : (closed ? "TOUR EN COURS" : "PARCOURS EN COURS"));
       setText(chronoRank, lapHold?.rank
