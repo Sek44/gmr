@@ -89,7 +89,7 @@ test("standalone benchmark browser scripts load in dependency order", () => {
 });
 
 test("seven scripted runs keep like-for-like resolution comparisons", () => {
-  assert.equal(Config.VERSION, "gcv-render-v5");
+  assert.equal(Config.VERSION, "gcv-render-v6");
   assert.equal(Config.SCENARIOS.length, 7);
   assert.ok(Config.validatePlan());
   const full = Config.SCENARIOS.find((item) => item.id === "classic-race");
