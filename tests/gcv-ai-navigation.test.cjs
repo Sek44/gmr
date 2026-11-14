@@ -65,6 +65,7 @@ test("each generated route and seed gives all nine competitors a valid track pla
     const { navigation, routeLength, laps } = sampledLayout(route);
     const state = Race.create(routeLength, () => 0.5, null, laps, navigation);
     assert.equal(state.distanceModel, "geometry-pace-v2");
+    assert.throws(() => Race.advance(state, 1), /navigation models/);
     assert.equal(state.opponents.length, 9);
     const times = state.opponents.map((opponent) =>
       navigation.plan(opponent).totalTime);
