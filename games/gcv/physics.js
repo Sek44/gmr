@@ -9,6 +9,7 @@ const GcvPhysics = (() => {
   const REVERSE_ACCELERATION = 7;
   const GRAVITY = 9.81;
   const JUMP_GRAVITY = GRAVITY; // Same physical gravity in every jump and fall.
+  const JUMP_CLEARANCE = 0.06; // Suspension tolerance against sample-height jitter.
   const AIR_STEER_FACTOR = 0.12; // Gentle yaw correction, not road grip.
   const AIR_BRAKE_FACTOR = 0.075; // Small reduction of forward momentum.
   const FALL_SECONDS = 2;
@@ -160,7 +161,7 @@ const GcvPhysics = (() => {
   return Object.freeze({
     MAX_SPEED, MAX_STEER_RATE, BRAKE_DECELERATION,
     REVERSE_DELAY, REVERSE_MAX_SPEED, GRAVITY, FALL_SECONDS,
-    INITIAL_FALL_VELOCITY, JUMP_GRAVITY,
+    INITIAL_FALL_VELOCITY, JUMP_GRAVITY, JUMP_CLEARANCE,
     AIR_STEER_FACTOR, AIR_BRAKE_FACTOR,
     advance, skidIntensity, takeoffVelocity, advanceJump, startFall, advanceFall,
   });
