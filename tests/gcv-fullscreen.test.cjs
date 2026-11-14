@@ -116,8 +116,8 @@ function navigationFixture(hosted) {
     document.fullscreenElement = stage;
     return Promise.resolve();
   };
-  const controls = ["resumeButton", "menuButton", "homeButton", "menuHomeButton",
-    "scoresButton", "menuScoresButton", "fullscreenButton", "menuFullscreenButton"];
+  const controls = ["resumeButton", "menuButton", "menuHomeButton",
+    "scoresButton", "menuScoresButton"];
   const buttons = Object.fromEntries(controls.map((name) => [name, eventTarget()]));
   const pages = [], hostedPages = [];
   const window = { location: { assign(url) { pages.push(url); } } };
@@ -165,7 +165,6 @@ test("First direct-game selection requests fullscreen, but exit buttons do not",
 
 test("Hosted GCV does not request nested fullscreen; Home delegates to host", () => {
   const f = navigationFixture(true);
-  assert.equal(f.buttons.fullscreenButton.hidden, true);
   f.buttons.resumeButton.fire("click");
   assert.equal(f.fullscreenCalls, 0);
   f.buttons.menuHomeButton.fire("click");
@@ -173,4 +172,19 @@ test("Hosted GCV does not request nested fullscreen; Home delegates to host", ()
   assert.deepEqual(f.pages, []);
   assert.ok(f.saves >= 2);
   f.nav.dispose();
+});
+
+test("GCV controls show Scores then Home in menu and Scores then Menu while driving", () => {
+  const html = fs.readFileSync(path.join(__dirname, "../games/gcv/index.html"), "utf8");
+  const menuActions = html.match(/<div class="gcv-home-tools"[^>]*>([\\s\\S]*?)<\\/div>/)?.[1];
+  const raceActions = html.match(/<div class="gcv-actions">([\\s\\S]*?)<\\/div>/)?.[1];
+  assert.ok(menuActions && raceActions);
+  const ids = (text) => [...text.matchAll(/id="([^"]+-button)"/g)].map((match) => match[1]);
+  assert.deepEqual(ids(menuActions), ["menu-scores-button", "menu-home-button"]);
+  assert.deepEqual(ids(raceActions),
+    ["scores-button", "menu-button", "restart-button", "camera-button"]);
+  assert.doesNotMatch(html, /id="(?:home-button|fullscreen-button|menu-fullscreen-button)"/);
+  const css = fs.readFileSync(path.join(__dirname, "../games/gcv/game.css"), "utf8");
+  assert.match(css, /\\.gcv-actions #scores-button \\{ grid-column: 1; grid-row: 1; \\}/);
+  assert.match(css, /\\.gcv-actions #menu-button \\{ grid-column: 2; grid-row: 1; \\}/);
 });
