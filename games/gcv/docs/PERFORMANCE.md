@@ -43,18 +43,24 @@ Reviewed `rendering.js`, `vehicles.js`, `world-3d.js`, `visual-effects.js`, `gam
 
 ## How to measure
 
-Open the dedicated **[mobile benchmark](../benchmark.html)** on the device being evaluated. It executes deterministic, **rendering-focused** camera/vehicle passes without modifying game credit, scores or preferences. It presents a screenshot-ready table and a JSON copy option.
+Open the dedicated **[mobile benchmark](../benchmark.html)** on the device being evaluated. It executes deterministic, **rendering-focused** camera/vehicle passes without modifying game credit, scores or preferences. Version `gcv-render-v2` automatically performs **seven passes** (1.5 s warmup + 8 s measurement each):
 
-Measurements should include:
-- delivered FPS and frame-interval percentiles (p50/p95/p99), percentage of frames above 33.3 ms;
-- Three.js draw calls and triangles per rendered frame;
-- renderer geometry/texture counts (not GPU bytes);
-- framebuffer size, DPR, browser/device information and test version;
-- initialization time separately from frame data.
+1. Classic solo; classic race with nine AI cars; motorcycle solo (three baseline workloads).
+2. The **same classic race** at 75% and 55% of its normal rendering pixel ratio.
+3. Classic race at **100% again** on the same renderer, to detect warm-up/thermal/order drift.
+4. Rainbow race at its existing capped pixel ratio (fourth baseline workload).
 
-The benchmark uses `requestAnimationFrame` and `renderer.info`. **It does not measure actual GPU execution time, RAM/VRAM consumption or full gameplay/HUD/physics performance.** Browser refresh-rate caps, battery/power saving, thermals and backgrounding affect results. An Android Chrome performance trace (via remote DevTools) or GPU profiler is needed to locate a specific main-thread, GPU or compositor bottleneck.
+The final report has **three manually navigable screenshot pages**: (1) FPS and frame-tail stability, (2) main-thread JavaScript phase timings, (3) controlled resolution experiment, hardware and initialization. Take one screenshot per page or use **Copy JSON** for complete numerical data. The resolution sweep tests *the same* scene and camera at different framebuffer sizes; do not compare Classic and Rainbow as a controlled resolution experiment.
 
-For comparisons, repeat at least twice on the same device with the same orientation, brightness, refresh rate and battery/power state. Keep the browser in the foreground and avoid touching the screen during a pass. Compare the same benchmark version and framebuffer resolution.
+Measurements include:
+- delivered FPS, frame-interval P50/P95/P99/max, and the fractions above 20, 33.34 and 50 ms;
+- Three.js draw calls and triangles per rendered frame, and reported geometry/texture counts (not GPU bytes);
+- JavaScript time around curve/path, AI synchronization, vehicle update, effects, camera, and `renderer.render()` submission; total JS work P95/P99 and mean;
+- framebuffer dimensions, effective pixel ratio, viewport, browser/device information, test version and component-level initialization times.
+
+**Interpretation:** `requestAnimationFrame` intervals include refresh-rate pacing and the whole browser frame. `performance.now()` around JavaScript stages measures elapsed main-thread time, **not hardware CPU utilization**; `renderer.render()` can contain GPU-driver waits and is **not a GPU timer**. The benchmark does not measure true GPU time, RAM/VRAM usage, thermal state, the full HUD/gameplay/physics loop, or browser compositor overhead. A Chrome performance trace or GPU profiler is required for deeper root-cause diagnosis.
+
+For comparisons, repeat on each device with unchanged orientation, brightness, refresh-rate and power settings; keep the tab in the foreground. FPS near a display's 60 Hz cap cannot show additional headroom; inspect JS timings and the lower-resolution passes and, if still capped, run a heavier workload. Comparing `gcv-render-v1` and `v2` values directly is discouraged because added timing probes affect work slightly.
 
 ## Implementation sequence
 
