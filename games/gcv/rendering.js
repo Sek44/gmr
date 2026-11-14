@@ -45,6 +45,8 @@ const GcvRendering = (() => {
     // initialization, leaving the menu apparently frozen.
     const compact = !closed;
     const MAX_OPEN_TRACK_PIXELS = 750000;
+    // Benchmark-only override; default 1 leaves the existing game unchanged.
+    let resolutionScale = 1;
     const renderer = new THREE.WebGLRenderer({
       antialias: !compact, alpha: false, powerPreference: "high-performance",
     });
@@ -210,7 +212,7 @@ const GcvRendering = (() => {
         ? Math.min(deviceRatio, 1.15,
           Math.sqrt(MAX_OPEN_TRACK_PIXELS / (width * height)))
         : Math.min(deviceRatio, 1.7);
-      renderer.setPixelRatio(pixelRatio);
+      renderer.setPixelRatio(pixelRatio * resolutionScale);
       renderer.setSize(width, height, false);
       camera.aspect = width / height;
       camera.fov = width < height ? 77 : 72;
@@ -221,6 +223,15 @@ const GcvRendering = (() => {
       ? new ResizeObserver(resize) : null;
     resizeObserver?.observe(stage);
     resize();
+
+    function setResolutionScale(scale) {
+      if (!Number.isFinite(scale) || scale < 0.5 || scale > 1) {
+        throw new RangeError("Rendering scale must be between 0.5 and 1");
+      }
+      if (resolutionScale === scale) return;
+      resolutionScale = scale;
+      resize();
+    }
 
     function syncOpponents(opponents) {
       for (const [id, mesh] of opponentMeshes) {
@@ -404,6 +415,7 @@ const GcvRendering = (() => {
         geometries: renderer.info?.memory?.geometries ?? null,
         textures: renderer.info?.memory?.textures ?? null,
         pixelRatio: renderer.getPixelRatio?.() ?? null,
+        resolutionScale,
         framebufferWidth: renderer.domElement.width ?? null,
         framebufferHeight: renderer.domElement.height ?? null,
       };
@@ -434,7 +446,8 @@ const GcvRendering = (() => {
     }
     return {
       syncOpponents, updatePlayer, setView, setVehicle,
-      startGridIntro, cancelGridIntro, updateCamera, render, getMetrics, dispose,
+      startGridIntro, cancelGridIntro, updateCamera, render, getMetrics,
+      setResolutionScale, dispose,
       get gridIntroActive() { return gridIntroElapsed !== null; },
     };
   }
