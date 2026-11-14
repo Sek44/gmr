@@ -15,7 +15,7 @@
 
 - **SVG uniquement** pour les nouvelles ressources de l’interface (pas de PNG, WebP, JPEG, GIF ni police téléchargée).
 - `shared/themes/classic-play/assets/` : pictogrammes génériques : manette, trophée, horloge et flèche.
-- `games/<id>/assets/` : illustrations SVG propres à chaque jeu ; l’entrée `artwork` de `games/catalog.js` contient le chemin relatif à l’accueil. Super Kart est représenté par un circuit et un drapeau à damier dans `games/gcv/assets/home-circuit.svg`.
+- `games/<id>/assets/` : illustrations SVG propres à chaque jeu ; l’entrée `artwork` de `games/catalog.js` contient le chemin relatif à l’accueil. Super Kart utilise l’illustration **officielle** `games/gcv/assets/home-circuit.svg` (circuit et drapeau à damier), partagée sans duplication entre sa carte d’accueil GMR et l’en-tête du menu GCV. Son nom officiel « Super Kart » est déclaré dans `games/catalog.js` (`title`) et repris dans le titre du jeu.
 - Les SVG sont des fichiers autonomes avec `viewBox`, sans dépendances externes ni image raster embarquée. Les pictogrammes redondants avec le texte ont `alt=""`.
 - Un jeu sans `artwork` utilise `gamepad.svg` comme illustration de repli.
 
