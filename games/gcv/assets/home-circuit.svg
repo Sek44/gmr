@@ -1,40 +1,58 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 330" fill="none" role="img" aria-labelledby="title">
-  <title id="title">Circuit de course et drapeau à damier</title>
+  <title id="title">Super Kart — circuit de course et drapeau à damier</title>
   <defs>
-    <linearGradient id="asphalt" x1="70" y1="80" x2="406" y2="271" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#4D5C79"/>
-      <stop offset="1" stop-color="#263754"/>
+    <linearGradient id="asphalt" x1="72" y1="84" x2="407" y2="266" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#536F98"/>
+      <stop offset=".45" stop-color="#39577C"/>
+      <stop offset="1" stop-color="#1D3659"/>
     </linearGradient>
-    <filter id="trackShadow" x="0" y="0" width="480" height="330" filterUnits="userSpaceOnUse">
-      <feGaussianBlur stdDeviation="5"/>
+    <linearGradient id="curb" x1="72" y1="85" x2="405" y2="275" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#E2F0FF"/>
+    </linearGradient>
+    <filter id="trackShadow" x="-6" y="10" width="490" height="320" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="7"/>
     </filter>
     <clipPath id="flagShape">
       <path d="M372 44C393 31 418 55 453 39V113C420 128 397 101 372 116Z"/>
     </clipPath>
   </defs>
 
-  <!-- One winding, closed race circuit seen from above. -->
+  <!-- The original winding circuit stays the official Super Kart silhouette. -->
   <g id="circuit" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M110 236C68 223 56 163 92 124C126 88 172 101 205 135C236 167 267 136 299 110C340 76 399 90 413 139C430 192 403 248 354 261C298 274 262 238 224 218C179 194 159 248 110 236Z"
-      stroke="#344D76" stroke-opacity=".18" stroke-width="82" filter="url(#trackShadow)"/>
-    <path d="M110 236C68 223 56 163 92 124C126 88 172 101 205 135C236 167 267 136 299 110C340 76 399 90 413 139C430 192 403 248 354 261C298 274 262 238 224 218C179 194 159 248 110 236Z"
-      stroke="#F8F9FF" stroke-width="70"/>
-    <path d="M110 236C68 223 56 163 92 124C126 88 172 101 205 135C236 167 267 136 299 110C340 76 399 90 413 139C430 192 403 248 354 261C298 274 262 238 224 218C179 194 159 248 110 236Z"
-      stroke="#EF7780" stroke-width="70" stroke-dasharray="23 25"/>
-    <path d="M110 236C68 223 56 163 92 124C126 88 172 101 205 135C236 167 267 136 299 110C340 76 399 90 413 139C430 192 403 248 354 261C298 274 262 238 224 218C179 194 159 248 110 236Z"
-      stroke="url(#asphalt)" stroke-width="56"/>
-    <path d="M110 236C68 223 56 163 92 124C126 88 172 101 205 135C236 167 267 136 299 110C340 76 399 90 413 139C430 192 403 248 354 261C298 274 262 238 224 218C179 194 159 248 110 236Z"
-      stroke="#D6DEEF" stroke-opacity=".8" stroke-width="3.5" stroke-dasharray="8 15"/>
+    <path d="M110 236C68 223 56 163 92 124C126 88 172 101 205 135C236 167 267 136 299 110C340 76 399 90 413 139C430 192 403 248 354 261C298 274 262 238 224 218C179 194 159 248 110 236Z" stroke="#0A203D" stroke-opacity=".44" stroke-width="88" filter="url(#trackShadow)"/>
+    <path d="M110 236C68 223 56 163 92 124C126 88 172 101 205 135C236 167 267 136 299 110C340 76 399 90 413 139C430 192 403 248 354 261C298 274 262 238 224 218C179 194 159 248 110 236Z" stroke="#A3D5FF" stroke-opacity=".38" stroke-width="82"/>
+    <path d="M110 236C68 223 56 163 92 124C126 88 172 101 205 135C236 167 267 136 299 110C340 76 399 90 413 139C430 192 403 248 354 261C298 274 262 238 224 218C179 194 159 248 110 236Z" stroke="url(#curb)" stroke-width="75"/>
+    <path d="M110 236C68 223 56 163 92 124C126 88 172 101 205 135C236 167 267 136 299 110C340 76 399 90 413 139C430 192 403 248 354 261C298 274 262 238 224 218C179 194 159 248 110 236Z" stroke="#F46D66" stroke-width="75" stroke-dasharray="24 25"/>
+    <path d="M110 236C68 223 56 163 92 124C126 88 172 101 205 135C236 167 267 136 299 110C340 76 399 90 413 139C430 192 403 248 354 261C298 274 262 238 224 218C179 194 159 248 110 236Z" stroke="#203B61" stroke-width="62"/>
+    <path d="M110 236C68 223 56 163 92 124C126 88 172 101 205 135C236 167 267 136 299 110C340 76 399 90 413 139C430 192 403 248 354 261C298 274 262 238 224 218C179 194 159 248 110 236Z" stroke="url(#asphalt)" stroke-width="58"/>
+    <path d="M110 236C68 223 56 163 92 124C126 88 172 101 205 135C236 167 267 136 299 110C340 76 399 90 413 139C430 192 403 248 354 261C298 274 262 238 224 218C179 194 159 248 110 236Z" stroke="#A5C9EE" stroke-opacity=".32" stroke-width="50"/>
+    <path d="M110 236C68 223 56 163 92 124C126 88 172 101 205 135C236 167 267 136 299 110C340 76 399 90 413 139C430 192 403 248 354 261C298 274 262 238 224 218C179 194 159 248 110 236Z" stroke="url(#asphalt)" stroke-width="47"/>
+    <path d="M110 236C68 223 56 163 92 124C126 88 172 101 205 135C236 167 267 136 299 110C340 76 399 90 413 139C430 192 403 248 354 261C298 274 262 238 224 218C179 194 159 248 110 236Z" stroke="#E8F4FF" stroke-opacity=".95" stroke-width="3.8" stroke-dasharray="8 14"/>
   </g>
 
-  <!-- Checkered finishing flag by the circuit. -->
-  <g id="finish-flag">
-    <path d="M364 41V152" stroke="#20334F" stroke-width="8" stroke-linecap="round"/>
-    <circle cx="364" cy="38" r="7" fill="#F3BF57" stroke="#20334F" stroke-width="2"/>
+  <!-- A few fast accents stay separate from the track itself. -->
+  <g stroke-linecap="round" stroke="#F5C86A" opacity=".85">
+    <path d="M30 88h33" stroke-width="5"/>
+    <path d="M19 104h35" stroke-width="3"/>
+    <path d="M27 118h19" stroke-width="3"/>
+  </g>
+  <g fill="#F6C565">
+    <circle cx="276" cy="63" r="4"/>
+    <path d="m289 47 2.5 7 7.5 2.5-7.5 2.5-2.5 7-2.5-7-7.5-2.5 7.5-2.5Z"/>
+  </g>
+
+  <!-- Finishing flag with sharper checkerwork and a golden pole cap. -->
+  <g id="finish-flag" stroke-linejoin="round">
+    <path d="M364 43V154" stroke="#162D50" stroke-width="10" stroke-linecap="round"/>
+    <path d="M363 43V154" stroke="#DBEAFE" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="363" cy="36" r="9" fill="#F8CB61" stroke="#294366" stroke-width="3"/>
+    <path d="M372 44C393 31 418 55 453 39V113C420 128 397 101 372 116Z" fill="#FFFFFF"/>
     <g clip-path="url(#flagShape)">
-      <path d="M372 35H457V123H372Z" fill="#FFFFFF"/>
-      <path d="M372 35H393V55H372ZM414 35H435V55H414ZM393 55H414V75H393ZM435 55H456V75H435ZM372 75H393V95H372ZM414 75H435V95H414ZM393 95H414V115H393ZM435 95H456V115H435Z" fill="#273753"/>
-      <path d="M372 44C393 31 418 55 453 39V113C420 128 397 101 372 116Z" stroke="#273753" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M372 34H457V123H372Z" fill="#F9FBFF"/>
+      <path d="M372 34H392V54H372ZM412 34H432V54H412ZM392 54H412V74H392ZM432 54H452V74H432ZM372 74H392V94H372ZM412 74H432V94H412ZM392 94H412V114H392ZM432 94H452V114H432Z" fill="#243E61"/>
+      <path d="M372 44C393 31 418 55 453 39" stroke="#DCEBFB" stroke-opacity=".85" stroke-width="2"/>
     </g>
+    <path d="M372 44C393 31 418 55 453 39V113C420 128 397 101 372 116Z" stroke="#213B5E" stroke-width="3.5"/>
   </g>
 </svg>
