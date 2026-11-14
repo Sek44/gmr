@@ -112,6 +112,17 @@ const GcvSession = (() => {
       resume();
     }
 
+    // New free practice always starts fresh, never restores an earlier trial.
+    function startFree() {
+      clearControls();
+      flow.beginFree();
+      state.raceState = null;
+      state.freeSession = null;
+      restartNearFinish();
+      renderSession();
+      resume();
+    }
+
     function chooseFree() {
       if (flow.mode === "free") { resume(); return; }
       clearLapHold();
@@ -173,7 +184,7 @@ const GcvSession = (() => {
 
     return {
       bind, changed, tickAutosave, snapshot, restore,
-      startRace, chooseFree, restartNearFinish,
+      startRace, startFree, chooseFree, restartNearFinish,
       stop() {
         binding?.stop({ discard: true });
         binding = null;
