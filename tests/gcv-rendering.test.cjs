@@ -91,18 +91,12 @@ function fixture(closed = true, withMotoRider = false, aiCount = 1,
   const wheelPivots = Array.from({ length: 4 }, () => ({ rotation: { x: 0 } }));
   const brakeLights = { emissiveIntensity: 0.15 };
   const rearBrakeGlows = [{ intensity: 0 }, { intensity: 0 }];
-  const makeOpponent = () => ({
-    position: new Vector(),
-    rotation: { x: 0, y: 0, z: 0,
-      set(x, y, z, order) { Object.assign(this, { x, y, z, order }); } },
-    scale: new Vector(1, 1, 1),
-    userData: { aiWheels: [] },
-    visible: false,
-  });
-  const ai = makeOpponent();
+  const ai = { position: new Vector(), rotation: {}, visible: false };
   const opponentMeshes = new Map([[1, ai]]);
   for (let id = 2; id <= aiCount; id++) {
-    opponentMeshes.set(id, makeOpponent());
+    opponentMeshes.set(id, {
+      position: new Vector(), rotation: {}, visible: false,
+    });
   }
   const curve = { getPointAt(t) { return new Vector(t * 100, 0, 20); },
     getTangentAt() { return new Vector(1, 0, 0); } };
@@ -119,13 +113,16 @@ function fixture(closed = true, withMotoRider = false, aiCount = 1,
     baseY: 1.32,
   } : null;
   const visibility = [];
+  let opponentSyncCount = 0;
   const view = Rendering.create({ THREE, window, stage, sceneHost, scene, car,
     wheelPivots, brakeLights, rearBrakeGlows, opponentMeshes, curve,
+    syncOpponentModels: () => { opponentSyncCount++; },
     startIndex: 0, SAMPLE_COUNT: 100, trackLength: 1000, closed, motoRider,
     onCameraVisibility: (outside) => visibility.push(outside) });
   return { view, window, stage, sceneHost, scene, car, motoRider, wheelPivots,
     brakeLights, rearBrakeGlows, ai, opponentMeshes, visibility,
-    renderer: latestRenderer, camera: latestCamera };
+    renderer: latestRenderer, camera: latestCamera,
+    getOpponentSyncCount: () => opponentSyncCount };
 }
 
 test("WebGL renderer initializes, handles portrait resize and draws", () => {
@@ -712,4 +709,13 @@ test("default classic resolution is unchanged unless benchmark overrides it", ()
   assert.ok(Math.abs(renderer.pixelRatio - 0.935) < 1e-9);
   view.setResolutionScale(1);
   assert.equal(renderer.pixelRatio, 1.7);
+});
+
+test("rival instancing is synchronized with visibility and pose", () => {
+  const { view, getOpponentSyncCount } = fixture();
+  assert.equal(getOpponentSyncCount(), 0);
+  view.syncOpponents([{ id: 1, progress: 180, lateral: 1 }]);
+  assert.equal(getOpponentSyncCount(), 1);
+  view.syncOpponents(null);
+  assert.equal(getOpponentSyncCount(), 2);
 });

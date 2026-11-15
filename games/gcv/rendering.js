@@ -54,7 +54,8 @@ const GcvRendering = (() => {
   }
 
   function create({ THREE, window, stage, sceneHost, scene, car, wheelPivots,
-    brakeLights, rearBrakeGlows, opponentMeshes, extraWheelPivots = [], curve, startIndex,
+    brakeLights, rearBrakeGlows, opponentMeshes, syncOpponentModels = () => {},
+    extraWheelPivots = [], curve, startIndex,
     SAMPLE_COUNT, trackLength, closed = true, heightAt = () => 0,
     motoRider = null, onCameraVisibility = () => {} }) {
     // Select MSAA before allocating the WebGL context; it cannot be
@@ -291,14 +292,20 @@ const GcvRendering = (() => {
             0.42) % (Math.PI * 2);
         }
         // Stay projected on the road while the car is airborne.
+        const model = mesh.userData?.opponentModel;
+        const rivalFootprint = SHADOW_FOOTPRINTS[
+          model === "bike" ? "moto" : model === "kart" ? "kart" :
+          model === "buggy" ? "buggy" : "classic"
+        ];
         placeShadow(opponentShadowTransform, mesh.position.x, heightAt(t),
-          mesh.position.z, mesh.rotation.y, SHADOW_FOOTPRINTS.classic,
-          flight.scale);
+          mesh.position.z, mesh.rotation.y, rivalFootprint, flight.scale);
         opponentShadowTransform.updateMatrix();
         opponentShadows.setMatrixAt(shadowCount++, opponentShadowTransform.matrix);
       }
       opponentShadows.count = shadowCount;
       if (shadowCount) opponentShadows.instanceMatrix.needsUpdate = true;
+      // Flush poses and spinning wheels to the shared visible geometry.
+      syncOpponentModels();
     }
 
     function updatePlayer({ driver, fall, dt, brakePressed, jumpVelocity = 0,

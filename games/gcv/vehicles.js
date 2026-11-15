@@ -12,6 +12,8 @@
     Object.freeze({ id: "comet", name: "Comète Violette", pilot: "Nova l'astronaute" }),
   ]);
   const normalize = (id) => CHOICES.some((choice) => choice.id === id) ? id : DEFAULT_ID;
+  const OpponentVehicles = typeof GcvOpponentVehicles !== "undefined"
+    ? GcvOpponentVehicles : require("./opponent-vehicles.js");
 
   function create({ THREE, scene, Race, trackLength, document: canvasDocument }) {
     const car = new THREE.Group();
@@ -689,57 +691,13 @@
       return activeVehicle;
     }
 
-    // Nine lightweight opponent cars. They use the same circuit as the player,
-    // but a simple slow path follower rather than expensive vehicle physics.
-    const opponentMeshes = new Map();
-    const opponentColors = new Map(Race.create(trackLength).opponents.map((ai) =>
-      [ai.id, ai.color]));
-    const aiGlass = new THREE.MeshStandardMaterial({
-      color: 0x193345, roughness: 0.34, metalness: 0.05,
-    });
-    const aiTyre = new THREE.MeshStandardMaterial({ color: 0x12181f, roughness: 1 });
-
-    // The AI's simpler, lower body needs its original decal positions.
-    function addOpponentNumber(group, number) {
-      const material = createNumberMaterial(number);
-      addNumberDecal(group, material, 1.00, 0.50, 0, 1.404, 0.06, -Math.PI / 2); // Roof
-      addNumberDecal(group, material, 1.00, 0.44, 0, 1.005, -1.27, -Math.PI / 2); // Bonnet
-      addNumberDecal(group, material, 0.94, 0.43, 0, 0.77, 1.844); // Rear
-      addNumberDecal(group, material, 0.98, 0.44, -0.991, 0.77, 0, 0, -Math.PI / 2); // Left
-      addNumberDecal(group, material, 0.98, 0.44, 0.991, 0.77, 0, 0, Math.PI / 2); // Right
-    }
-    for (let gridSlot = 0; gridSlot < Race.GRID_COUNT; gridSlot++) {
-      if (gridSlot === Race.PLAYER_SLOT) continue;
-      const group = new THREE.Group();
-      group.userData.aiWheels = [];
-      const color = new THREE.MeshStandardMaterial({
-        color: opponentColors.get(gridSlot),
-        roughness: 0.52, metalness: 0.16,
-      });
-      box(group, 1.96, 0.49, 3.65, color, 0, 0.75, 0);
-      box(group, 1.48, 0.46, 1.64, aiGlass, 0, 1.16, 0.06);
-      box(group, 1.75, 0.10, 0.3, color, 0, 1.24, 1.77);
-      addOpponentNumber(group, Race.opponentNumber(gridSlot));
-      for (const side of [-1, 1]) {
-        for (const z of [-1.18, 1.18]) {
-          const tyre = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.29, 9), aiTyre);
-          // The cylinder is sideways. ZYX lets local Y spin its axle
-          // without losing the original 90-degree wheel orientation.
-          tyre.rotation.order = "ZYX";
-          tyre.rotation.z = Math.PI / 2;
-          tyre.position.set(side * 1.02, 0.45, z);
-          group.add(tyre);
-          group.userData.aiWheels.push(tyre);
-        }
-      }
-      group.visible = false;
-      scene.add(group);
-      opponentMeshes.set(gridSlot, group);
-    }
+    // Four original rival silhouettes, drawn as shared instanced batches.
+    const { opponentMeshes, sync: syncOpponentModels } =
+      OpponentVehicles.create({ THREE, scene, Race, trackLength });
 
     return {
       car, wheelPivots, extraWheelPivots, brakeLights, rearBrakeGlows,
-      opponentMeshes, motoRider, setCameraMode, setVehicle,
+      opponentMeshes, syncOpponentModels, motoRider, setCameraMode, setVehicle,
     };
   }
 

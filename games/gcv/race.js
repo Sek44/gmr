@@ -88,7 +88,8 @@ const GcvRace = (() => {
         targetLapSeconds: lapSeconds,
         finishTime: null,
         speed: navigation ? 0 : trackLength / lapSeconds,
-        color: COLORS[slot % COLORS.length],
+        // Skill rank is the stable rival index (the player slot is skipped).
+        color: COLORS[rank],
       });
     }
     return {

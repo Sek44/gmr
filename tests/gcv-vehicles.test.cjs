@@ -6,6 +6,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const Vehicles = require("../games/gcv/vehicles.js");
+const OpponentVehicles = require("../games/gcv/opponent-vehicles.js");
 const Race = require("../games/gcv/race.js");
 
 const gameDirectory = path.join(__dirname, "../games/gcv");
@@ -14,11 +15,14 @@ test("GCV loads its vehicle module before the game entry point", () => {
   const html = fs.readFileSync(path.join(gameDirectory, "index.html"), "utf8")
     .replace(/\?v=[\w-]+/g, "");
   const race = html.indexOf("./race.js");
+  const opponentVehicles = html.indexOf("./opponent-vehicles.js");
   const vehicles = html.indexOf("./vehicles.js");
   const game = html.indexOf("./game.js");
-  assert.ok(race >= 0 && vehicles > race && game > vehicles);
+  assert.ok(race >= 0 && opponentVehicles > race &&
+    vehicles > opponentVehicles && game > vehicles);
 
-  for (const name of ["race.js", "vehicles.js", "game.js"]) {
+  for (const name of ["race.js", "opponent-vehicles.js",
+    "vehicles.js", "game.js"]) {
     assert.doesNotThrow(() =>
       new vm.Script(fs.readFileSync(path.join(gameDirectory, name), "utf8")),
     "the browser entry point and its dependencies must parse");
@@ -63,27 +67,64 @@ class Vector {
   }
 }
 
+class Matrix4 {
+  constructor() {
+    this.position = { x: 0, y: 0, z: 0 };
+    this.scale = { x: 1, y: 1, z: 1 };
+  }
+  clone() {
+    const result = new Matrix4();
+    result.position = { ...this.position };
+    result.scale = { ...this.scale };
+    return result;
+  }
+  multiplyMatrices(a, b) {
+    const position = {
+      x: a.position.x + b.position.x * a.scale.x,
+      y: a.position.y + b.position.y * a.scale.y,
+      z: a.position.z + b.position.z * a.scale.z,
+    };
+    this.scale = { x: a.scale.x * b.scale.x,
+      y: a.scale.y * b.scale.y, z: a.scale.z * b.scale.z };
+    this.position = position;
+    return this;
+  }
+  multiply(other) { return this.multiplyMatrices(this.clone(), other); }
+  makeScale(x, y, z) {
+    this.scale = { x, y, z };
+    return this;
+  }
+}
+class Color {
+  constructor(hex) { this.hex = hex; }
+  lerp(other, ratio) {
+    const channel = (shift) => Math.round(
+      ((this.hex >> shift) & 255) * (1 - ratio) +
+      ((other.hex >> shift) & 255) * ratio);
+    this.hex = (channel(16) << 16) | (channel(8) << 8) | channel(0);
+    return this;
+  }
+}
 class SceneNode {
   constructor() {
     this.children = [];
+    this.userData = {};
     this.position = new Vector();
     this.scale = new Vector(1, 1, 1);
     this.rotation = { x: 0, y: 0, z: 0,
       set(x, y, z) { Object.assign(this, { x, y, z }); } };
     this.quaternion = { setFromUnitVectors() {}, setFromEuler() {} };
     this.matrix = {};
-    this.userData = {};
     this.visible = true;
   }
   add(...nodes) {
     this.children.push(...nodes);
   }
   updateMatrix() {
-    this.matrix = {
-      position: { x: this.position.x, y: this.position.y, z: this.position.z },
-      rotation: { x: this.rotation.x, y: this.rotation.y, z: this.rotation.z },
-      scale: { x: this.scale.x, y: this.scale.y, z: this.scale.z },
-    };
+    this.matrix = new Matrix4();
+    this.matrix.position = { x: this.position.x, y: this.position.y,
+      z: this.position.z };
+    this.matrix.scale = { x: this.scale.x, y: this.scale.y, z: this.scale.z };
   }
 }
 class Mesh extends SceneNode {
@@ -99,7 +140,10 @@ class InstancedMesh extends Mesh {
     this.count = count;
     this.instances = [];
     this.instanceMatrix = { needsUpdate: false };
+    this.instanceColor = { needsUpdate: false };
+    this.instanceColors = [];
   }
+  setColorAt(index, color) { this.instanceColors[index] = color.hex; }
   setMatrixAt(index, matrix) {
     this.instances[index] = JSON.parse(JSON.stringify(matrix));
   }
@@ -125,8 +169,9 @@ class Light extends SceneNode {
 
 const THREE = {
   Group: SceneNode, Object3D: SceneNode, Mesh, InstancedMesh,
-  PointLight: Light, Vector3: Vector,
-  BoxGeometry: Geometry, CylinderGeometry: Geometry, BufferGeometry: Geometry,
+  PointLight: Light, Vector3: Vector, Matrix4, Color,
+  BoxGeometry: Geometry, SphereGeometry: Geometry,
+  CylinderGeometry: Geometry, BufferGeometry: Geometry,
   Float32BufferAttribute: Geometry, TorusGeometry: Geometry,
   PlaneGeometry: Geometry, CanvasTexture,
   MeshBasicMaterial: Material, MeshStandardMaterial: Material,
@@ -154,7 +199,7 @@ test("vehicle factory builds the player and nine hidden opponent models", () => 
   };
 
   const objects = Vehicles.create({ THREE, scene, Race, trackLength: 1500, document });
-  assert.equal(scene.children.length, 10);
+  assert.ok(scene.children.length > 10, "instanced batches accompany the pose handles");
   assert.ok(scene.children.includes(objects.car));
   assert.equal(objects.wheelPivots.length, 4);
   assert.equal(objects.rearBrakeGlows.length, 2);
@@ -184,25 +229,56 @@ test("vehicle factory builds the player and nine hidden opponent models", () => 
   assert.ok(left && left.position.x < -1.03 && left.rotation.y === -Math.PI / 2);
   assert.ok(right && right.position.x > 1.03 && right.rotation.y === Math.PI / 2);
 
-  const aiNumbers = new Set();
-  for (const [slot, group] of objects.opponentMeshes) {
-    const number = String(Race.opponentNumber(slot));
-    aiNumbers.add(Number(number));
-    const decals = group.children.filter((child) =>
-      child.material?.map?.image?.labels.includes(number));
-    assert.equal(decals.length, 5, `AI #${number} needs five visible decals`);
-    assert.equal(new Set(decals.map((mesh) => mesh.material)).size, 1,
-      "the same texture material must be shared across all faces");
-    assert.ok(decals.some((mesh) => mesh.position.y > 1.39), "roof decal");
-    assert.ok(decals.some((mesh) => mesh.position.z < -1), "bonnet decal");
-    assert.ok(decals.some((mesh) => mesh.position.z > 1.8), "rear decal");
-    assert.ok(decals.some((mesh) => mesh.position.x < -0.98), "left-side decal");
-    assert.ok(decals.some((mesh) => mesh.position.x > 0.98), "right-side decal");
+  const expected = Race.create(1500, () => 0.5).opponents;
+  assert.equal(new Set(expected.map((ai) => ai.color)).size, 9,
+    "all nine opponents must have different permanent paint colors");
+  assert.deepEqual([...objects.opponentMeshes.keys()],
+    expected.map((ai) => ai.id));
+  assert.deepEqual(new Set([...objects.opponentMeshes.values()].map((group) =>
+    group.userData.opponentModel)), new Set(OpponentVehicles.MODELS));
+  for (const ai of expected) {
+    const group = objects.opponentMeshes.get(ai.id);
+    assert.equal(group.userData.opponentModel, OpponentVehicles.ASSIGNMENTS[ai.id]);
+    assert.equal(group.userData.color, ai.color);
+    assert.equal(group.userData.numberCount, 5, "five racing number locations");
+    assert.equal(group.userData.aiWheels.length,
+      group.userData.opponentModel === "bike" ? 2 : 4);
+    assert.equal(group.children.length, 0,
+      "all visible rival parts live in common GPU batches");
   }
-  assert.deepEqual([...aiNumbers].sort((a, b) => a - b),
-    [1, 2, 3, 4, 5, 6, 7, 8, 10]);
-  assert.equal(canvasLabels.filter((label) => /^[0-9]+$/.test(label)).length, 10,
-    "one painted number per car, including the player's number 9");
+  const batches = scene.children.filter((child) => child instanceof InstancedMesh);
+  assert.ok(batches.length >= 10 && batches.length <= 16,
+    "the number of rival draw calls stays small and fixed");
+  assert.ok(batches.every((batch) => batch.count === 0 &&
+    batch.frustumCulled === false), "free mode has no visible rival batches");
+  assert.ok(batches.some((batch) => batch.instanceColors.length >= 9 &&
+    new Set(batch.instanceColors).size > 1),
+  "per-instance body paints share one draw call");
+  assert.equal(canvasLabels.filter((label) => /^[0-9]+$/.test(label)).length, 1,
+    "the AI use instanced numeral geometry, not nine canvas textures");
+
+  objects.syncOpponentModels();
+  assert.ok(batches.every((batch) => batch.count === 0));
+  const first = objects.opponentMeshes.get(expected[0].id);
+  const second = objects.opponentMeshes.get(expected[1].id);
+  first.visible = true;
+  second.visible = true;
+  first.position.set(123, 1.5, 200);
+  second.position.set(142, 1.5, 200);
+  first.userData.aiWheels[0].rotation.y = 1.4;
+  objects.syncOpponentModels();
+  assert.ok(batches.every((batch) =>
+    batch.count > 0 && batch.instanceMatrix.needsUpdate));
+  assert.ok(batches.some((batch) =>
+    batch.instances.some((matrix) => matrix.position.x >= 123)),
+  "rival instance transforms follow their independently positioned handles");
+  assert.ok(batches.some((batch) =>
+    batch.instances.some((matrix) => matrix.scale.x === 0)),
+  "absent opponents have hidden transforms without changing fixed indices");
+  first.visible = false;
+  second.visible = false;
+  objects.syncOpponentModels();
+  assert.ok(batches.every((batch) => batch.count === 0));
 
   // Regression: cockpit scene groups were moved to vehicles.js, but
   // refreshCameraButton() was still accessing them as game.js locals.
