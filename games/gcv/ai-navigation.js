@@ -208,7 +208,9 @@ const GcvAiNavigation = (() => {
       // The yaw leads into the corner a little more than the travel
       // direction: rear tyres appear to slide rather than being on rails.
       const slip = clamp(curvature * speed * speed * 0.00135, -0.12, 0.12);
-      const yawOffset = -Math.atan(laneSlope) - slip;
+      // Physical steering rate on the curve, converted to the exact same
+      // normalized control input that triggers player skid particles.
+      const steerInput = Physics.steeringForYawRate(speed, curvature * speed);
       const roll = clamp(-slip * 0.6 - laneSlope * 0.12, -0.10, 0.10);
       const slope = (heightAt(fractionAt(progress + 3)) -
         heightAt(fractionAt(progress - 3))) / 6;
@@ -228,8 +230,14 @@ const GcvAiNavigation = (() => {
             Math.sin((seconds - jump.landing) * 34);
         }
       }
+      // Dust, body counter-yaw and its trigger must always agree. An
+      // airborne rival can't produce ground tyre particles.
+      const grounded = jumpY <= 0;
+      const skidIntensity = grounded ? Physics.skidIntensity(speed, steerInput) : 0;
+      const driftYaw = grounded ? Physics.driftBodyYaw(speed, steerInput) : 0;
+      const yawOffset = -Math.atan(laneSlope) - slip * 0.35 + driftYaw;
       return { ...result, lateral, yawOffset, roll, pitch,
-        jumpY, landing };
+        jumpY, landing, steerInput, skidIntensity, driftYaw };
     }
     // Timetable models are runtime-only; saves contain just each driver's
     // start slot, stable skill and elapsed time, so resumes rebuild the
