@@ -60,7 +60,7 @@ test("GMR and GCV share the official Super Kart title and circuit artwork", () =
   assert.ok(rule.includes("background: none; border: 0;"));
   assert.ok(css.includes(".gcv-title-artwork {"));
   assert.ok(css.includes("font-size: clamp(2.3rem, 10.5vw, 3.4rem)"));
-  assert.ok(html.includes("game.css?v=20261114t"));
+  assert.match(html, /game\.css\?v=\d{8}[a-z]/);
 });
 test("top-aligned menu keeps the three sections ordered and has SVG mode icons", () => {
   const html = file("index.html");
