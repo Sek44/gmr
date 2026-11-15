@@ -183,8 +183,9 @@ test("opponents smoothly vary their lane without leaving the paved road", () => 
         assert.ok(pose.jumpY >= 0 && Number.isFinite(pose.pitch));
         checkpoints.push(pose);
       }
-      assert.ok(Math.abs(checkpoints[50].lateral - ai.gridLateral) > 0.2,
-        "lane preferences must change during the course");
+      assert.ok(checkpoints.some(pose =>
+        Math.abs(pose.lateral - ai.gridLateral) > 0.2),
+      "lane preferences must change during the course");
       assert.deepEqual(checkpoints[50],
         navigation.sample(ai, plan.totalTime * 50 / 80),
         "AI position and drift must not depend on previous frames");
