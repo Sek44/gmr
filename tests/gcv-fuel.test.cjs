@@ -27,7 +27,8 @@ test("cans spawn in the road and along both circuit types", () => {
 test("consumption follows travelled distance; a can refills only once", () => {
   const fuel = fixture();
   const p = fuel.pickups[0];
-  fuel.tick({ x: 30, z: 0 }, { x: 30, z: 0 }, 550);
+  assert.equal(Fuel.RANGE_METRES, 1650);
+  fuel.tick({ x: 30, z: 0 }, { x: 30, z: 0 }, Fuel.RANGE_METRES / 2);
   assert.equal(fuel.level, 0.5);
   fuel.tick({ x: 30, z: 0 }, { x: 30, z: 0 }, 0);
   assert.equal(fuel.level, 0.5);

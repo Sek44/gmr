@@ -1,7 +1,7 @@
 "use strict";
 // Deterministic fuel-pickup simulation; does not depend on Three.js or the DOM.
 const GcvFuel = (() => {
-  const RANGE_METRES = 1100;
+  const RANGE_METRES = 1650;
   const PICKUP_GAIN = 0.38;
   const EMPTY_MAX_SPEED = 100 / 3.6;
   const PICKUP_RADIUS = 2.8;
