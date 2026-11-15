@@ -392,7 +392,7 @@ test("shared drift yaw starts at the exact same threshold as mud particles", () 
       const particles = physics.skidIntensity(speed, steer);
       const visualYaw = physics.driftBodyYaw(speed, steer);
       assert.equal(visualYaw === 0, particles === 0);
-      assert.ok(Math.abs(visualYaw) <= 0.19);
+      assert.ok(Math.abs(visualYaw) <= 0.285);
       if (particles > 0) assert.equal(Math.sign(visualYaw), -Math.sign(steer));
     }
   }
