@@ -674,7 +674,10 @@
       cameraOutside = Boolean(outside);
       cabin.visible = activeVehicle === DEFAULT_ID;
       dashboard.visible = activeVehicle === DEFAULT_ID && !cameraOutside;
-      // The inside camera must not sit inside a helmet.
+      // Remove the entire motorcycle rider from the cockpit view, not
+      // just the helmet: his torso and arms otherwise obstruct the road.
+      // The bike remains visible, and the rider returns in chase view.
+      if (motoRider) motoRider.body.visible = cameraOutside;
       for (const head of helmetHeads) head.visible = cameraOutside;
     }
     function setVehicle(id) {
