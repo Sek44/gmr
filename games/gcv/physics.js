@@ -89,8 +89,10 @@ const GcvPhysics = (() => {
   function driftBodyYaw(speed, steering) {
     const intensity = skidIntensity(speed, steering);
     if (!intensity) return 0;
-    const angle = Math.min(0.38, 0.31 * Math.sqrt(intensity));
-    return -(Math.sign(steering) || 0) * angle;
+    // Half the previous exaggeration. The signed steering value (rather
+    // than only its sign) scales the effect with the current turn angle.
+    const angle = Math.min(0.19, 0.155 * Math.sqrt(intensity));
+    return -clamp(Number(steering) || 0, -1, 1) * angle;
   }
 
   // Determine whether wheels lose contact over a convex hill. Following the
