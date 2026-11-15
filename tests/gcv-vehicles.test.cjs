@@ -327,7 +327,19 @@ test("sport motorcycle has a crouched rider, full-face helmet and visible fairin
     arm.children.length === 1 && arm.children[0].children.length >= 3),
   "the arms follow the new pivots without adding new mesh geometry");
   models.setCameraMode(false);
+  assert.equal(body.visible, false, "cockpit hides the entire motorcycle pilot");
   assert.equal(helmet.visible, false, "inside camera must not see the helmet");
+  assert.equal(bike.visible, true, "motorcycle stays visible in cockpit");
+  assert.equal(windscreen.visible, true, "the fairing and screen remain visible");
   models.setCameraMode(true);
+  assert.equal(body.visible, true, "chase camera restores the rider");
   assert.equal(helmet.visible, true);
+
+  // Camera selection survives changing vehicle types while in cockpit view.
+  models.setVehicle("kart");
+  models.setCameraMode(false);
+  models.setVehicle("moto");
+  assert.equal(body.visible, false, "selecting motorcycle in cockpit still hides the rider");
+  models.setCameraMode(true);
+  assert.equal(body.visible, true);
 });
