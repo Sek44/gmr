@@ -109,7 +109,7 @@ test("invalid input never changes quality and module requires callback", () => {
   assert.deepEqual(harness.changes, []);
 });
 
-test("game integrates adaptive quality only after an active WebGL frame", () => {
+test("game applies adaptive resolution before drawing an active WebGL frame", () => {
   const directory = path.join(__dirname, "../games/gcv");
   const game = fs.readFileSync(path.join(directory, "game.js"), "utf8");
   const html = fs.readFileSync(path.join(directory, "index.html"), "utf8");
@@ -117,7 +117,7 @@ test("game integrates adaptive quality only after an active WebGL frame", () => 
   assert.match(game, /AdaptiveResolution\.create\(/);
   assert.match(game, /setScale: \(scale\) => rendering\.setResolutionScale\(scale\)/);
   assert.match(game, /adaptiveResolution\.observe\(now, drawing\)/);
-  assert.match(game, /if \(drawing\) rendering\.render\(\);\s*adaptiveResolution\.observe/);
+  assert.match(game, /const drawing = !navigation\.paused;\s*adaptiveResolution\.observe\(now, drawing\);\s*if \(drawing\) rendering\.render\(\);/);
   assert.match(game, /adaptiveResolution\.observe\(now, false\)/);
   assert.match(game, /window\.addEventListener\("resize", adaptiveResolution\.reset/);
   assert.match(game, /document\.addEventListener\("fullscreenchange", adaptiveResolution\.reset/);

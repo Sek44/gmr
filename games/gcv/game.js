@@ -759,11 +759,12 @@
         mapElapsed = 0;
         drawMap();
       }
-      // The menu and score iframe cover the stage; no inactive frames
-      // should influence graphics quality. Evaluate only after a real draw.
+      // Only active frames influence graphics quality. Apply a DPR change
+      // immediately before the draw: resizing after render() would clear
+      // its framebuffer before the browser presents it on older GPUs.
       const drawing = !navigation.paused;
-      if (drawing) rendering.render();
       adaptiveResolution.observe(now, drawing);
+      if (drawing) rendering.render();
     }
 
     drawMap();
