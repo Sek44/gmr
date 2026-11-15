@@ -1,11 +1,13 @@
 "use strict";
 
-// Dynamic particle effects for the player car: mud spray and guardrail sparks.
-// Creation owns the Three.js buffers; simulation passes the current driver state.
+// One shared drift-particle batch for the player and all nine rivals, plus
+// player guardrail sparks. No per-opponent geometry, material or draw call.
 const GcvVisualEffects = (() => {
-  function create({ THREE, scene, car }) {
-    // One batched particle system: only very severe fast steering produces mud.
-    const MAX_MUD_PARTICLES = 240;
+  function create({ THREE, scene, car, visualBody = car,
+    opponentMeshes = new Map() }) {
+    // Same skid trigger and colour for all vehicles. A slightly larger ring
+    // covers several rivals drifting together without new GPU draw calls.
+    const MAX_MUD_PARTICLES = 512;
     const mudPositions = new Float32Array(MAX_MUD_PARTICLES * 3);
     const mudColors = new Float32Array(MAX_MUD_PARTICLES * 3);
     const mudState = Array.from({ length: MAX_MUD_PARTICLES }, () => ({
@@ -26,9 +28,44 @@ const GcvVisualEffects = (() => {
     }));
     mudPoints.frustumCulled = false;
     scene.add(mudPoints);
-    let nextMudParticle = 0, mudEmissionRemainder = 0;
+    let nextMudParticle = 0;
+    // Slot 0 = player, slot (opponent.id + 1) = that rival. Small,
+    // independent emission accumulators avoid shared-rate bias or bursts.
+    const mudEmissionRemainders = new Float32Array(11);
+    const origin = new THREE.Vector3();
 
-    function tickMudParticles(dt, intensity, driver) {
+    function emitDrift(dt, intensity, source, yaw, groundY, slot,
+      rearHalfWidth = 0.86, rearLength = 1.48, maxPerFrame = 12) {
+      if (!(intensity > 0) || !(dt > 0) || !source) {
+        mudEmissionRemainders[slot] = 0;
+        return;
+      }
+      const accumulated = mudEmissionRemainders[slot] +
+        Math.min(1.5, intensity) * dt * 100;
+      const emissions = Math.min(maxPerFrame, Math.floor(accumulated));
+      mudEmissionRemainders[slot] = Math.min(0.999, accumulated - emissions);
+      for (let i = 0; i < emissions; i++) {
+        const p = mudState[nextMudParticle];
+        const side = i % 2 === 0 ? -1 : 1;
+        source.localToWorld(origin.set(side * rearHalfWidth, 0.22, rearLength));
+        p.x = origin.x;
+        p.y = origin.y;
+        p.z = origin.z;
+        const spread = (Math.random() - 0.5) * 3;
+        const backSpeed = 1.3 + Math.random() * 3.7;
+        p.vx = Math.sin(yaw) * backSpeed + Math.cos(yaw) * spread;
+        p.vz = Math.cos(yaw) * backSpeed - Math.sin(yaw) * spread;
+        p.vy = 1.4 + Math.random() * 2.2;
+        p.duration = 0.4 + Math.random() * 0.4;
+        // Particles land on the actual road elevation, including crests.
+        p.groundY = groundY + 0.11;
+        p.landing = false;
+        p.lifetime = p.duration;
+        nextMudParticle = (nextMudParticle + 1) % MAX_MUD_PARTICLES;
+      }
+    }
+
+    function tickMudParticles(dt, intensity, driver, opponents) {
       for (let i = 0; i < MAX_MUD_PARTICLES; i++) {
         const p = mudState[i], j = 3 * i;
         if (p.lifetime > 0) {
@@ -53,30 +90,26 @@ const GcvVisualEffects = (() => {
         }
       }
 
-      if (intensity > 0 && dt > 0) {
-        mudEmissionRemainder += Math.min(1.5, intensity) * dt * 100;
-        const emissions = Math.min(12, Math.floor(mudEmissionRemainder));
-        mudEmissionRemainder -= emissions;
-        for (let i = 0; i < emissions; i++) {
-          const p = mudState[nextMudParticle];
-          const side = i % 2 === 0 ? -1 : 1;
-          const origin = car.localToWorld(new THREE.Vector3(
-            side * 0.86, 0.22, 1.48
-          ));
-          p.x = origin.x;
-          p.y = origin.y;
-          p.z = origin.z;
-          const spread = (Math.random() - 0.5) * 3.0;
-          const backSpeed = 1.3 + Math.random() * 3.7;
-          p.vx = Math.sin(driver.yaw) * backSpeed + Math.cos(driver.yaw) * spread;
-          p.vz = Math.cos(driver.yaw) * backSpeed - Math.sin(driver.yaw) * spread;
-          p.vy = 1.4 + Math.random() * 2.2;
-          p.duration = 0.4 + Math.random() * 0.4;
-          p.groundY = 0.11;
-          p.landing = false;
-          p.lifetime = p.duration;
-          nextMudParticle = (nextMudParticle + 1) % MAX_MUD_PARTICLES;
+      emitDrift(dt, intensity, visualBody, driver.yaw,
+        Number(driver.roadY) || 0, 0);
+      if (opponents) {
+        for (const ai of opponents) {
+          const slot = ai.id + 1;
+          if (slot < 1 || slot >= mudEmissionRemainders.length) continue;
+          const mesh = opponentMeshes.get(ai.id);
+          const model = mesh?.userData?.opponentModel;
+          const bike = model === "bike", kart = model === "kart";
+          // The AI mesh is the inexpensive pose handle used by the
+          // instanced model renderer; its transform is already up to date.
+          emitDrift(dt, mesh?.visible && !(ai.jumpY > 0)
+            ? ai.skidIntensity : 0,
+            mesh, mesh?.rotation?.y || 0,
+            (mesh?.position?.y || 0) - (ai.jumpY || 0) - 0.14,
+            slot, bike ? 0.25 : kart ? 0.84 : 0.92,
+            bike ? 1.12 : kart ? 1.0 : 1.45, 3);
         }
+      } else {
+        mudEmissionRemainders.fill(0, 1);
       }
       mudPositionAttribute.needsUpdate = true;
       mudColorAttribute.needsUpdate = true;
@@ -180,8 +213,8 @@ const GcvVisualEffects = (() => {
 
     return Object.freeze({
       land,
-      update(dt, driver, mudIntensity, barrierContact) {
-        tickMudParticles(dt, mudIntensity, driver);
+      update(dt, driver, mudIntensity, barrierContact, opponents = null) {
+        tickMudParticles(dt, mudIntensity, driver, opponents);
         tickBarrierSparks(dt, barrierContact, driver);
       },
     });
