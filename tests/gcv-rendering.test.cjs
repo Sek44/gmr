@@ -723,3 +723,16 @@ test("rival instancing is synchronized with visibility and pose", () => {
   view.syncOpponents(null);
   assert.equal(getOpponentSyncCount(), 2);
 });
+
+
+test("rival drift pose rotates the instanced vehicle handle visibly", () => {
+  const { view, ai } = fixture();
+  view.syncOpponents([{ id: 1, progress: 250, lateral: 3,
+    yawOffset: -0.30, driftYaw: -0.30, skidIntensity: 0.8, jumpY: 0 }]);
+  assert.ok(Math.abs(ai.rotation.y - (-Math.PI / 2 - 0.30)) < 1e-9);
+  assert.equal(ai.visible, true);
+  view.syncOpponents([{ id: 1, progress: 250, lateral: 3,
+    yawOffset: 0, driftYaw: 0, skidIntensity: 0, jumpY: 0 }]);
+  assert.equal(ai.rotation.y, -Math.PI / 2,
+    "the body straightens when the rival leaves the drift");
+});
