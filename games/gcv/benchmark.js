@@ -60,7 +60,8 @@
     });
     const t3 = performance.now();
     const effects = window.GcvVisualEffects.create({
-      THREE, scene: world.scene, car: vehicles.car,
+      THREE, scene: world.scene,
+      viewportCanvas: sceneHost.querySelector("canvas"), car: vehicles.car,
     });
     // Deterministic AI seed; the benchmark uses scripted paths and never
     // runs Race.advance() or modifies actual race results.
