@@ -376,7 +376,7 @@ const GcvRendering = (() => {
       // Only the vehicle graphics counter-yaw during a skid. Keeping the
       // outer car transform physical prevents shaking either camera, and
       // avoids changing tyre contact, race progress or collision physics.
-      const wantedDrift = !fall && !airborne ? clamp(driftYaw, -0.19, 0.19) : 0;
+      const wantedDrift = !fall && !airborne ? clamp(driftYaw, -0.285, 0.285) : 0;
       visualDriftYaw += (wantedDrift - visualDriftYaw) *
         (1 - Math.exp(-12 * Math.max(0, dt)));
       if (visualBody) visualBody.rotation.y = visualDriftYaw;
