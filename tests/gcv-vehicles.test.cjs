@@ -72,6 +72,7 @@ class SceneNode {
       set(x, y, z) { Object.assign(this, { x, y, z }); } };
     this.quaternion = { setFromUnitVectors() {}, setFromEuler() {} };
     this.matrix = {};
+    this.userData = {};
     this.visible = true;
   }
   add(...nodes) {
