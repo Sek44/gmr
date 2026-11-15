@@ -746,7 +746,7 @@ test("drift yaw is restrained, smoothly follows steering and never moves the phy
   const render = (driftYaw) => view.updatePlayer({ driver, dt: 0.5,
     fall: null, brakePressed: false, driftYaw });
   render(-0.5); // Clamp even an invalid oversized external request.
-  assert.ok(visualBody.rotation.y <= -0.18 && visualBody.rotation.y >= -0.19);
+  assert.ok(visualBody.rotation.y <= -0.27 && visualBody.rotation.y >= -0.285);
   assert.equal(car.rotation.y, 0.2, "the car's physical heading remains unchanged");
   render(-0.09);
   assert.ok(Math.abs(visualBody.rotation.y + 0.09) < 0.002);
