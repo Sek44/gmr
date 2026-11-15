@@ -695,8 +695,15 @@
     const { opponentMeshes, sync: syncOpponentModels } =
       OpponentVehicles.create({ THREE, scene, Race, trackLength });
 
+    // Vehicle graphics have their own yaw pivot. The car root remains on
+    // the physical heading, so cockpit/chase cameras do not wobble with
+    // an intentionally exaggerated visual drift.
+    const visualBody = new THREE.Group();
+    for (const part of [...car.children]) visualBody.add(part);
+    car.add(visualBody);
+
     return {
-      car, wheelPivots, extraWheelPivots, brakeLights, rearBrakeGlows,
+      car, visualBody, wheelPivots, extraWheelPivots, brakeLights, rearBrakeGlows,
       opponentMeshes, syncOpponentModels, motoRider, setCameraMode, setVehicle,
     };
   }
