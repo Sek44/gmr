@@ -91,12 +91,18 @@ function fixture(closed = true, withMotoRider = false, aiCount = 1,
   const wheelPivots = Array.from({ length: 4 }, () => ({ rotation: { x: 0 } }));
   const brakeLights = { emissiveIntensity: 0.15 };
   const rearBrakeGlows = [{ intensity: 0 }, { intensity: 0 }];
-  const ai = { position: new Vector(), rotation: {}, visible: false };
+  const makeOpponent = () => ({
+    position: new Vector(),
+    rotation: { x: 0, y: 0, z: 0,
+      set(x, y, z, order) { Object.assign(this, { x, y, z, order }); } },
+    scale: new Vector(1, 1, 1),
+    userData: { aiWheels: [] },
+    visible: false,
+  });
+  const ai = makeOpponent();
   const opponentMeshes = new Map([[1, ai]]);
   for (let id = 2; id <= aiCount; id++) {
-    opponentMeshes.set(id, {
-      position: new Vector(), rotation: {}, visible: false,
-    });
+    opponentMeshes.set(id, makeOpponent());
   }
   const curve = { getPointAt(t) { return new Vector(t * 100, 0, 20); },
     getTangentAt() { return new Vector(1, 0, 0); } };
