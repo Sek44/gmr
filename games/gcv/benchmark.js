@@ -51,6 +51,7 @@
       car: vehicles.car, wheelPivots: vehicles.wheelPivots,
       brakeLights: vehicles.brakeLights, rearBrakeGlows: vehicles.rearBrakeGlows,
       opponentMeshes: vehicles.opponentMeshes,
+      syncOpponentModels: vehicles.syncOpponentModels,
       extraWheelPivots: vehicles.extraWheelPivots, motoRider: vehicles.motoRider,
       curve: world.curve, startIndex: world.startIndex,
       SAMPLE_COUNT: world.SAMPLE_COUNT, trackLength: world.trackLength,

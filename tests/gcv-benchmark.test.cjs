@@ -48,6 +48,7 @@ test("benchmark is separate from the paid play-time and race state", () => {
   const script = fs.readFileSync(path.join(game, "benchmark.js"), "utf8");
   assert.match(html, /benchmark-metrics\.js/);
   assert.match(html, /\["(?:script|module)", "\.\/rendering\.js\?v=/);
+  assert.match(html, /\["(?:script|module)", "\.\/opponent-vehicles\.js\?v=/);
   assert.match(html, /\["(?:script|module)", "\.\/vehicles\.js\?v=/);
   assert.match(html, /\["(?:script|module)", "\.\/world-3d\.js\?v=/);
   assert.match(html, /\["(?:script|module)", "\.\/benchmark\.js\?v=/);
@@ -68,6 +69,9 @@ test("standalone benchmark browser scripts load in dependency order", () => {
   assert.ok(scriptPaths.indexOf("track-generator.js") <
     scriptPaths.indexOf("track-layout.js"),
     "Generator must initialize before the layout registry");
+  assert.ok(scriptPaths.indexOf("opponent-vehicles.js") <
+    scriptPaths.indexOf("vehicles.js"),
+    "Rival models must load before the player vehicle factory");
   assert.ok(scriptPaths.indexOf("track-progress.js") < scriptPaths.indexOf("race.js"),
     "Race depends on TrackProgress and must load after it");
 
@@ -81,7 +85,8 @@ test("standalone benchmark browser scripts load in dependency order", () => {
   }
   for (const name of ["GcvTrackProgress", "GcvRace", "GcvTrackGenerator",
     "GcvTrackLayout",
-    "GcvBarriers", "GcvScenery", "GcvWorld3D", "GcvVehicles",
+    "GcvBarriers", "GcvScenery", "GcvWorld3D", "GcvOpponentVehicles",
+    "GcvVehicles",
     "GcvRendering", "GcvVisualEffects", "GcvBenchmarkConfig",
     "GcvBenchmarkDisplay", "GcvBenchmarkMetrics"]) {
     assert.ok(sandbox.window[name], `Missing ${name} after loading benchmark scripts`);

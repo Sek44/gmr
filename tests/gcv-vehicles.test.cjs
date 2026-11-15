@@ -31,8 +31,10 @@ test("GCV loads its vehicle module before the game entry point", () => {
 
 test("vehicle factory is available from a classic browser script", () => {
   const sandbox = { window: {} };
-  const source = fs.readFileSync(path.join(gameDirectory, "vehicles.js"), "utf8");
-  vm.runInNewContext(source, sandbox, { filename: "vehicles.js" });
+  for (const name of ["opponent-vehicles.js", "vehicles.js"]) {
+    vm.runInNewContext(fs.readFileSync(path.join(gameDirectory, name), "utf8"),
+      sandbox, { filename: name });
+  }
   assert.equal(typeof sandbox.window.GcvVehicles.create, "function");
 });
 
@@ -316,7 +318,8 @@ test("all five vehicle/pilot pairs can be selected without creating a new scene"
   };
   const scene = new SceneNode();
   const models = Vehicles.create({ THREE, scene, Race, trackLength: 1500, document });
-  assert.equal(scene.children.length, 10);
+  assert.ok(scene.children.length > 10,
+    "AI pose handles and pooled instanced geometry belong to the same scene");
   assert.equal(models.extraWheelPivots.length, 14);
   for (const id of Vehicles.CHOICES.map((choice) => choice.id)) {
     assert.equal(models.setVehicle(id), id);
