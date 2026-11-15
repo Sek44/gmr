@@ -75,6 +75,24 @@ const GcvPhysics = (() => {
     return Math.min(1.5, Math.max(0, (lateralLoad - 45) / 32));
   }
 
+  // Translate an AI path's signed turn rate to the same normalized steering
+  // input used by the player's controls. Positive is a right-hand turn.
+  function steeringForYawRate(speed, yawRate) {
+    const steeringResponse = Math.min(Math.abs(speed) / 14, 1);
+    if (!Number.isFinite(yawRate) || steeringResponse < 1e-5) return 0;
+    return clamp(yawRate / (MAX_STEER_RATE * steeringResponse), -1, 1);
+  }
+
+  // Shared *visual* slip for player and rivals. The threshold is exactly
+  // skidIntensity's particle threshold; the underlying vehicle heading,
+  // camera, collisions and timing are never modified by this animation.
+  function driftBodyYaw(speed, steering) {
+    const intensity = skidIntensity(speed, steering);
+    if (!intensity) return 0;
+    const angle = Math.min(0.38, 0.31 * Math.sqrt(intensity));
+    return -(Math.sign(steering) || 0) * angle;
+  }
+
   // Determine whether wheels lose contact over a convex hill. Following the
   // road would require downward acceleration greater than gravity. There is
   // no invented launch impulse: takeoff inherits the road's vertical speed.
@@ -163,7 +181,8 @@ const GcvPhysics = (() => {
     REVERSE_DELAY, REVERSE_MAX_SPEED, GRAVITY, FALL_SECONDS,
     INITIAL_FALL_VELOCITY, JUMP_GRAVITY, JUMP_CLEARANCE,
     AIR_STEER_FACTOR, AIR_BRAKE_FACTOR,
-    advance, skidIntensity, takeoffVelocity, advanceJump, startFall, advanceFall,
+    advance, skidIntensity, steeringForYawRate, driftBodyYaw,
+    takeoffVelocity, advanceJump, startFall, advanceFall,
   });
 })();
 
