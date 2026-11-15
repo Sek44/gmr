@@ -88,6 +88,7 @@ function fixture(closed = true, withMotoRider = false, aiCount = 1,
     localToWorld(v) { return v.set(v.x + this.position.x, v.y + this.position.y,
       v.z + this.position.z); },
   };
+  const visualBody = { rotation: { y: 0 } };
   const wheelPivots = Array.from({ length: 4 }, () => ({ rotation: { x: 0 } }));
   const brakeLights = { emissiveIntensity: 0.15 };
   const rearBrakeGlows = [{ intensity: 0 }, { intensity: 0 }];
@@ -119,11 +120,12 @@ function fixture(closed = true, withMotoRider = false, aiCount = 1,
   const visibility = [];
   let opponentSyncCount = 0;
   const view = Rendering.create({ THREE, window, stage, sceneHost, scene, car,
-    wheelPivots, brakeLights, rearBrakeGlows, opponentMeshes, curve,
+    visualBody, wheelPivots, brakeLights, rearBrakeGlows, opponentMeshes, curve,
     syncOpponentModels: () => { opponentSyncCount++; },
     startIndex: 0, SAMPLE_COUNT: 100, trackLength: 1000, closed, motoRider,
     onCameraVisibility: (outside) => visibility.push(outside) });
-  return { view, window, stage, sceneHost, scene, car, motoRider, wheelPivots,
+  return { view, window, stage, sceneHost, scene, car, visualBody,
+    motoRider, wheelPivots,
     brakeLights, rearBrakeGlows, ai, opponentMeshes, visibility,
     renderer: latestRenderer, camera: latestCamera,
     getOpponentSyncCount: () => opponentSyncCount };
@@ -735,4 +737,20 @@ test("rival drift pose rotates the instanced vehicle handle visibly", () => {
     yawOffset: 0, driftYaw: 0, skidIntensity: 0, jumpY: 0 }]);
   assert.equal(ai.rotation.y, -Math.PI / 2,
     "the body straightens when the rival leaves the drift");
+});
+
+
+test("drift yaw is restrained, smoothly follows steering and never moves the physical heading", () => {
+  const { view, car, visualBody } = fixture();
+  const driver = { x: 5, z: 10, yaw: 0.2, speed: 62, jumpY: 0 };
+  const render = (driftYaw) => view.updatePlayer({ driver, dt: 0.5,
+    fall: null, brakePressed: false, driftYaw });
+  render(-0.5); // Clamp even an invalid oversized external request.
+  assert.ok(visualBody.rotation.y <= -0.18 && visualBody.rotation.y >= -0.19);
+  assert.equal(car.rotation.y, 0.2, "the car's physical heading remains unchanged");
+  render(-0.09);
+  assert.ok(Math.abs(visualBody.rotation.y + 0.09) < 0.002);
+  render(0);
+  assert.ok(Math.abs(visualBody.rotation.y) < 0.001,
+    "the body straightens once the skid ends");
 });
