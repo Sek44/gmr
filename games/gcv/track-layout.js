@@ -86,25 +86,31 @@ const GcvTrackLayout = (() => {
     });
   }
   const SPRINT = generateSprint();
-  // Seven short, lively swerves with a much smaller lateral excursion.
-  // Smoothstep fades the motion AND its derivative at both section edges.
-  function zigzagAt(progress) {
+  // Base the gentle slalom on travelled metres, not on the percentage of
+  // the rainbow section: shortening the section must not amplify the shake.
+  // Smoothstep fades both displacement and its derivative at the edges.
+  function zigzagAt(progress, lengthMetres = 150) {
     const t = Math.min(1, Math.max(0, Number(progress) || 0));
-    const fade = 0.12;
+    const length = Number.isFinite(lengthMetres) && lengthMetres > 0
+      ? lengthMetres : 150;
+    const travelled = t * length;
+    const fade = Math.min(18, length * 0.25);
     const smoothstep = (x) => x * x * (3 - 2 * x);
     const smoothstepDerivative = (x) => 6 * x * (1 - x);
-    const entry = Math.min(1, t / fade);
-    const exit = Math.min(1, (1 - t) / fade);
+    const entry = Math.min(1, travelled / fade);
+    const exit = Math.min(1, (length - travelled) / fade);
     const envelope = smoothstep(entry) * smoothstep(exit);
-    const envelopeDerivative =
-      (t < fade ? smoothstepDerivative(entry) * smoothstep(exit) / fade : 0) -
-      (t > 1 - fade ? smoothstepDerivative(exit) * smoothstep(entry) / fade : 0);
-    const phase = t * Math.PI * 14;
-    const amplitude = 1.65; // Metres, safely inside the 9 m half-width.
+    const envelopeDerivativeMetres =
+      (travelled < fade ? smoothstepDerivative(entry) * smoothstep(exit) / fade : 0) -
+      (travelled > length - fade ? smoothstepDerivative(exit) * smoothstep(entry) / fade : 0);
+    const waveRate = 2 * Math.PI / 55; // One gentle weave per 55 metres.
+    const phase = travelled * waveRate;
+    const amplitude = 1.0; // Metres, well inside the paved road.
     return {
       offset: amplitude * envelope * Math.sin(phase),
-      slope: amplitude * (envelopeDerivative * Math.sin(phase) +
-        envelope * Math.PI * 14 * Math.cos(phase)),
+      // Keep the derivative relative to normalized progress for callers.
+      slope: amplitude * length * (envelopeDerivativeMetres * Math.sin(phase) +
+        envelope * waveRate * Math.cos(phase)),
     };
   }
   function select(id) { return id === SPRINT.ID ? SPRINT : GcvTrackLayout; }

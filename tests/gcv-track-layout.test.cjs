@@ -98,3 +98,30 @@ test("generated rainbow course retains its separate open-route contract", () => 
   assert.ok(route.RAINBOW && route.RAINBOW[1] > route.RAINBOW[0]);
   assert.ok(route.FINISH.z < route.START.z);
 });
+
+test("rainbow slalom uses metre-based wavelength and a gentle steering slope", () => {
+  const route = layout.SPRINT;
+  const zoneLength = route.LENGTH_METRES * (route.RAINBOW[1] - route.RAINBOW[0]);
+  let maxOffset = 0, maxSlope = 0;
+  for (let i = 0; i <= 300; i++) {
+    const { offset, slope } = route.zigzagAt(i / 300, zoneLength);
+    maxOffset = Math.max(maxOffset, Math.abs(offset));
+    maxSlope = Math.max(maxSlope, Math.abs(slope / zoneLength));
+    if (i === 0 || i === 300) {
+      assert.ok(Math.abs(offset) < 1e-9);
+      assert.ok(Math.abs(slope) < 1e-9);
+    }
+  }
+  assert.ok(maxOffset > 0.9 && maxOffset <= 1.001);
+  assert.ok(maxSlope < 0.15, "shortening the zone must not amplify steering");
+
+  // At the same travelled distance, a longer zone must use the same phase
+  // and tangent. Only the fade near the far end may eventually differ.
+  const metres = 34;
+  const short = route.zigzagAt(metres / zoneLength, zoneLength);
+  const longer = route.zigzagAt(metres / (zoneLength * 1.6),
+    zoneLength * 1.6);
+  assert.ok(Math.abs(short.offset - longer.offset) < 1e-9);
+  assert.ok(Math.abs(short.slope / zoneLength -
+    longer.slope / (zoneLength * 1.6)) < 1e-9);
+});

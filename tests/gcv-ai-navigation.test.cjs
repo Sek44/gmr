@@ -9,7 +9,7 @@ const Race = require("../games/gcv/race.js");
 // Approximate World3D's arc-length sampling without requiring Three.js or a
 // browser in the Node suite. The production AI receives World3D's actual
 // Catmull-Rom positions and tangents, not this test-only polyline.
-function sampledLayout(route) {
+function sampledLayout(route, includeRainbow = true) {
   const waypoints = route.CLOSED ?
     [...route.WAYPOINTS, route.WAYPOINTS[0]] : route.WAYPOINTS;
   const sums = [0];
@@ -48,11 +48,13 @@ function sampledLayout(route) {
     (finishIndex - startIndex) * length / sampleCount;
   const laps = route.CLOSED ? Race.LAPS : 1;
   return {
-    length, routeLength, laps,
+    length, routeLength, laps, startIndex,
     navigation: Navigation.create({
       positions, directions, sampleCount, startIndex, trackLength: length,
       routeLength, closed: route.CLOSED, laps, maxSpeed: Physics.MAX_SPEED,
       roadHalfWidth: route.ROAD_HALF_WIDTH, heightAt: route.heightAt,
+      rainbow: includeRainbow ? route.RAINBOW : null,
+      zigzagAt: route.zigzagAt,
     }),
   };
 }
@@ -244,4 +246,44 @@ test("lane, drift, jumping and finish rank survive different frame sizes and res
   const after = Race.advance(restored, 1.7, 0, null, navigation);
   const uninterrupted = Race.advance(big, 1.7, 0, null, navigation);
   assert.deepEqual(after, uninterrupted);
+});
+
+test("AI rivals share the player's rainbow sway only while inside the zone", () => {
+  const route = Layout.SPRINT;
+  const withSway = sampledLayout(route);
+  const plain = sampledLayout(route, false);
+  const navigation = withSway.navigation;
+  const ai = Race.create(withSway.routeLength, () => 0.5,
+    null, withSway.laps, navigation).opponents[0];
+  const [begin, end] = route.RAINBOW;
+  const zoneLength = (end - begin) * withSway.length;
+  const progressAt = (fraction) => withSway.length *
+    (fraction - withSway.startIndex / route.SAMPLE_COUNT);
+  const limit = route.ROAD_HALF_WIDTH - 2.2;
+  for (const fraction of [begin - 0.01, end + 0.01]) {
+    const progress = progressAt(fraction);
+    assert.equal(navigation.laneAt(ai, progress), plain.navigation.laneAt(ai, progress));
+  }
+  let maxLaneDifference = 0, maxYawDifference = 0;
+  const path = navigation.plan(ai);
+  for (let i = 1; i < 60; i++) {
+    const fraction = begin + (end - begin) * i / 60;
+    const progress = progressAt(fraction);
+    const base = plain.navigation.laneAt(ai, progress);
+    const guidance = route.zigzagAt(i / 60, zoneLength).offset;
+    const expected = Math.min(limit, Math.max(-limit, base + guidance));
+    const actual = navigation.laneAt(ai, progress);
+    assert.ok(Math.abs(actual - expected) < 1e-8,
+      "rivals use exactly the player's shared slalom profile");
+    maxLaneDifference = Math.max(maxLaneDifference, Math.abs(actual - base));
+    const index = Math.max(0, Math.min(path.count,
+      Math.round((progress - ai.startProgress) / path.ds)));
+    const seconds = path.times[index];
+    const pose = navigation.sample(ai, seconds);
+    const plainPose = plain.navigation.sample(ai, seconds);
+    maxYawDifference = Math.max(maxYawDifference,
+      Math.abs(pose.yawOffset - plainPose.yawOffset));
+  }
+  assert.ok(maxLaneDifference > 0.5, "the rivals visibly weave in the rainbow zone");
+  assert.ok(maxYawDifference > 0.04, "the rivals also turn their bodies with the weave");
 });

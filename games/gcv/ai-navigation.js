@@ -15,7 +15,8 @@ const GcvAiNavigation = (() => {
 
   function create({ positions, directions, sampleCount, startIndex, trackLength,
     routeLength, laps = 1, closed = true, maxSpeed = 250 / 3.6,
-    roadHalfWidth = 9, heightAt = () => 0 }) {
+    roadHalfWidth = 9, heightAt = () => 0,
+    rainbow = null, zigzagAt = null }) {
     if (!Array.isArray(positions) || !Array.isArray(directions) ||
         !Number.isInteger(sampleCount) || sampleCount < 3 ||
         positions.length < sampleCount + 1 ||
@@ -28,7 +29,13 @@ const GcvAiNavigation = (() => {
         !Number.isFinite(roadHalfWidth) || roadHalfWidth <= 3 ||
         typeof heightAt !== "function")
       throw new RangeError("Invalid sampled track for AI navigation");
+    if (rainbow && (!Array.isArray(rainbow) || rainbow.length !== 2 ||
+        rainbow[0] < 0 || rainbow[1] > 1 || rainbow[1] <= rainbow[0] ||
+        typeof zigzagAt !== "function"))
+      throw new RangeError("Invalid rainbow guidance for AI navigation");
 
+    const rainbowLength = rainbow
+      ? (rainbow[1] - rainbow[0]) * trackLength : 0;
     const finish = routeLength * laps;
     const cache = new Map();
     function sampleIndex(progress) {
@@ -117,7 +124,13 @@ const GcvAiNavigation = (() => {
       const target = 3.4 * Math.sin(seed * 9.87 + 0.35) +
         1.9 * Math.sin(progress / 145 + seed * 12.7) +
         1.0 * Math.sin(progress / 67 + seed * 27.4);
-      return clamp(gridLateral * (1 - transition) + target * transition,
+      // Same distance-based slalom as the player's assist. This modifies
+      // the rival's actual lateral pose, so its yaw and roll follow naturally.
+      const fraction = fractionAt(progress);
+      const slalom = rainbow && fraction >= rainbow[0] && fraction <= rainbow[1]
+        ? zigzagAt((fraction - rainbow[0]) /
+          (rainbow[1] - rainbow[0]), rainbowLength).offset : 0;
+      return clamp(gridLateral * (1 - transition) + target * transition + slalom,
         -roadHalfWidth + 2.2, roadHalfWidth - 2.2);
     }
     // Direct evaluation of the existing distance/time timetable, with no

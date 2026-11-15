@@ -150,6 +150,7 @@
       positions, directions, sampleCount: SAMPLE_COUNT, startIndex,
       trackLength, routeLength, closed, maxSpeed: Physics.MAX_SPEED,
       roadHalfWidth: ROAD_HALF_WIDTH, heightAt,
+      rainbow: TrackLayout.RAINBOW, zigzagAt: TrackLayout.zigzagAt,
       laps: closed ? Race.LAPS : 1,
     });
 
@@ -650,18 +651,19 @@
             jumpVelocity = jump.velocity;
             if (jump.landed) visualEffects.land(driver);
           }
-          // Distinct automatic slalom: seven short, fast left/right
-          // oscillations rather than four wide sweeps.
+          // Gentle slalom follows physical distance, independent of
+          // the length of the rainbow section.
           if (TrackLayout.RAINBOW && driver.jumpY === 0 && driver.speed > 8 &&
               nearest.index / SAMPLE_COUNT >= TrackLayout.RAINBOW[0] &&
               nearest.index / SAMPLE_COUNT <= TrackLayout.RAINBOW[1]) {
             const section = TrackLayout.RAINBOW;
             const fraction = (nearest.index / SAMPLE_COUNT - section[0]) /
               (section[1] - section[0]);
-            const zigzag = TrackLayout.zigzagAt(fraction);
+            const zoneLength = trackLength * (section[1] - section[0]);
+            const zigzag = TrackLayout.zigzagAt(fraction, zoneLength);
             const tangent = directions[nearest.index];
             const side = sides[nearest.index], center = positions[nearest.index];
-            const slope = zigzag.slope / (trackLength * (section[1] - section[0]));
+            const slope = zigzag.slope / zoneLength;
             const guidedYaw = Math.atan2(
               -(tangent.x + side.x * slope), -(tangent.z + side.z * slope));
             const error = Math.atan2(Math.sin(guidedYaw - driver.yaw),
