@@ -384,3 +384,24 @@ test("first crowned crest stays airborne in the actual sampled-road loop", () =>
       "lift must be visible but modest; got " + peak + " m");
   }
 });
+
+
+test("shared drift yaw starts at the exact same threshold as mud particles", () => {
+  for (const steer of [-1, -0.8, 0, 0.8, 1]) {
+    for (const speed of [0, 15, 29.9, 30, 38, 47, 62, physics.MAX_SPEED]) {
+      const particles = physics.skidIntensity(speed, steer);
+      const visualYaw = physics.driftBodyYaw(speed, steer);
+      assert.equal(visualYaw === 0, particles === 0);
+      assert.ok(Math.abs(visualYaw) <= 0.38);
+      if (particles > 0) assert.equal(Math.sign(visualYaw), -Math.sign(steer));
+    }
+  }
+  const turnRate = 1.45;
+  assert.equal(physics.steeringForYawRate(50, turnRate), 1);
+  assert.equal(physics.steeringForYawRate(50, -turnRate), -1);
+  assert.equal(physics.steeringForYawRate(0, turnRate), 0);
+  assert.equal(physics.steeringForYawRate(50, 0), 0);
+  assert.equal(physics.skidIntensity(58, physics.steeringForYawRate(58, turnRate)),
+    physics.skidIntensity(58, 1),
+    "AI steering is evaluated with the player's original particle threshold");
+});
