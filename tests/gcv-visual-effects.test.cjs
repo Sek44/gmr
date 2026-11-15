@@ -54,7 +54,8 @@ class Points {
   }
 }
 class Vector3 {
-  constructor(x, y, z) { Object.assign(this, { x, y, z }); }
+  constructor(x = 0, y = 0, z = 0) { this.set(x, y, z); }
+  set(x, y, z) { Object.assign(this, { x, y, z }); return this; }
 }
 const THREE = {
   BufferAttribute, BufferGeometry, PointsMaterial, Points, Vector3,
@@ -63,7 +64,18 @@ const THREE = {
 function harness() {
   const scene = { children: [], add(object) { this.children.push(object); } };
   const car = { localToWorld(point) { return point; } };
-  const effects = VisualEffects.create({ THREE, scene, car });
+  const rival = {
+    visible: true,
+    position: { x: 6, y: 0.14, z: 12 },
+    rotation: { y: 0.3 },
+    userData: { opponentModel: "aero" },
+    localToWorld(p) {
+      return p.set(p.x + this.position.x, p.y + this.position.y,
+        p.z + this.position.z);
+    },
+  };
+  const opponentMeshes = new Map([[1, rival]]);
+  const effects = VisualEffects.create({ THREE, scene, car, opponentMeshes });
   const [mud, sparks] = scene.children;
   const visible = (object) => {
     const positions = object.geometry.attributes.position.array;
@@ -73,13 +85,13 @@ function harness() {
     }
     return count;
   };
-  return { effects, scene, mud, sparks, visible };
+  return { effects, scene, mud, sparks, visible, rival };
 }
 
-test("both particle systems have their original capacity, rendering and hidden initial state", () => {
+test("both particle systems remain batched, rendering and hidden initial state", () => {
   const { scene, mud, sparks, visible } = harness();
   assert.equal(scene.children.length, 2);
-  assert.equal(mud.geometry.attributes.position.array.length, 240 * 3);
+  assert.equal(mud.geometry.attributes.position.array.length, 512 * 3);
   assert.equal(sparks.geometry.attributes.position.array.length, 48 * 3);
   assert.equal(mud.material.size, 0.34);
   assert.equal(sparks.material.size, 0.18);
@@ -135,4 +147,34 @@ test("landing produces a single pale dust burst without extra draw calls", () =>
   assert.equal(visible(mud), 0);
   effects.update(0.016, driver, 0, null);
   assert.equal(visible(mud), 0, "no delayed or repeated dust");
+});
+
+
+test("rival drift uses the existing mud system without extra draw calls", () => {
+  const { effects, scene, mud, sparks, visible, rival } = harness();
+  const driver = { yaw: 0, speed: 55 };
+  effects.update(0.1, driver, 0, null,
+    [{ id: 1, skidIntensity: 1.1, jumpY: 0 }]);
+  effects.update(0.016, driver, 0, null, []);
+  assert.ok(visible(mud) > 0, "rival tyres should emit the same brown mud");
+  assert.equal(visible(sparks), 0);
+  assert.equal(scene.children.length, 2, "no GPU mesh per rival");
+  assert.ok(mud.geometry.attributes.position.array.some((v) =>
+    v >= rival.position.x - 2 && v <= rival.position.x + 2));
+});
+
+test("airborne and non-skidding rivals never emit tyre particles", () => {
+  const { effects, mud, visible, rival } = harness();
+  const driver = { yaw: 0, speed: 55 };
+  effects.update(0.1, driver, 0, null,
+    [{ id: 1, skidIntensity: 1.1, jumpY: 1.2 }]);
+  effects.update(0.016, driver, 0, null, null);
+  assert.equal(visible(mud), 0);
+  effects.update(0.1, driver, 0, null,
+    [{ id: 1, skidIntensity: 0, jumpY: 0 }]);
+  assert.equal(visible(mud), 0);
+  rival.visible = false;
+  effects.update(0.1, driver, 0, null,
+    [{ id: 1, skidIntensity: 1.1, jumpY: 0 }]);
+  assert.equal(visible(mud), 0);
 });
