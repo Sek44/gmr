@@ -35,15 +35,22 @@ class BufferAttribute {
   constructor(array, itemSize) {
     this.array = array;
     this.itemSize = itemSize;
-    this.needsUpdate = false;
+    this._needsUpdate = false;
+    this.uploads = 0;
   }
   setUsage(usage) { this.usage = usage; return this; }
+  set needsUpdate(value) { this._needsUpdate = value; if (value) this.uploads++; }
+  get needsUpdate() { return this._needsUpdate; }
 }
 class BufferGeometry {
-  constructor() { this.attributes = {}; }
+  constructor() { this.attributes = {}; this.drawRange = { start: 0, count: Infinity }; }
   setAttribute(name, attribute) { this.attributes[name] = attribute; }
+  setDrawRange(start, count) { this.drawRange = { start, count }; }
 }
 class PointsMaterial {
+  constructor(config) { Object.assign(this, config); }
+}
+class ShaderMaterial {
   constructor(config) { Object.assign(this, config); }
 }
 class Points {
@@ -58,7 +65,7 @@ class Vector3 {
   set(x, y, z) { Object.assign(this, { x, y, z }); return this; }
 }
 const THREE = {
-  BufferAttribute, BufferGeometry, PointsMaterial, Points, Vector3,
+  BufferAttribute, BufferGeometry, PointsMaterial, ShaderMaterial, Points, Vector3,
   DynamicDrawUsage: "dynamic",
 };
 function harness() {
@@ -75,7 +82,10 @@ function harness() {
     },
   };
   const opponentMeshes = new Map([[1, rival]]);
-  const effects = VisualEffects.create({ THREE, scene, car, opponentMeshes });
+  const viewportCanvas = { height: 360 };
+  const effects = VisualEffects.create({
+    THREE, scene, car, opponentMeshes, viewportCanvas,
+  });
   const [mud, sparks] = scene.children;
   const visible = (object) => {
     const positions = object.geometry.attributes.position.array;
@@ -85,7 +95,7 @@ function harness() {
     }
     return count;
   };
-  return { effects, scene, mud, sparks, visible, rival };
+  return { effects, scene, mud, sparks, visible, rival, viewportCanvas };
 }
 
 test("both particle systems remain batched, rendering and hidden initial state", () => {
@@ -93,7 +103,16 @@ test("both particle systems remain batched, rendering and hidden initial state",
   assert.equal(scene.children.length, 2);
   assert.equal(mud.geometry.attributes.position.array.length, 512 * 3);
   assert.equal(sparks.geometry.attributes.position.array.length, 48 * 3);
-  assert.equal(mud.material.size, 0.34);
+  assert.equal(mud.geometry.attributes.color.itemSize, 4);
+  assert.equal(mud.geometry.attributes.particleSize.itemSize, 1);
+  assert.equal(mud.geometry.attributes.particleSize.array.length, 512);
+  assert.match(mud.material.vertexShader, /gl_PointSize/);
+  assert.match(mud.material.fragmentShader, /gl_PointCoord/);
+  assert.match(mud.material.fragmentShader, /smoothstep/);
+  assert.equal(mud.material.transparent, true);
+  assert.equal(mud.material.depthWrite, false);
+  assert.equal(mud.material.uniforms.viewportHeight.value, 360);
+  assert.equal(mud.geometry.drawRange.count, 0);
   assert.equal(sparks.material.size, 0.18);
   assert.equal(mud.frustumCulled, false);
   assert.equal(sparks.frustumCulled, false);
@@ -112,9 +131,12 @@ test("mud appears only when skid intensity is nonzero and persists while animati
   assert.equal(visible(sparks), 0);
   assert.equal(mud.geometry.attributes.position.needsUpdate, true);
   assert.equal(mud.geometry.attributes.color.needsUpdate, true);
+  assert.equal(mud.geometry.attributes.particleSize.needsUpdate, true);
+  assert.ok(mud.geometry.drawRange.count > 0);
   assert.ok(mud.geometry.attributes.color.array.some((value) => value > 0));
   effects.update(1, driver, 0, null);
   assert.equal(visible(mud), 0);
+  assert.equal(mud.geometry.drawRange.count, 0);
 });
 
 test("sparks need a moving barrier contact and disappear when their lifetime ends", () => {
@@ -177,4 +199,39 @@ test("airborne and non-skidding rivals never emit tyre particles", () => {
   effects.update(0.1, driver, 0, null,
     [{ id: 1, skidIntensity: 1.1, jumpY: 0 }]);
   assert.equal(visible(mud), 0);
+});
+
+test("drift has differently sized translucent soft dust and hard grit in one batch", () => {
+  const { effects, mud, viewportCanvas } = harness();
+  const driver = { yaw: 0, speed: 65 };
+  for (let i = 0; i < 10; i++) effects.update(0.05, driver, 1.5, null);
+  const positions = mud.geometry.attributes.position.array;
+  const sizes = mud.geometry.attributes.particleSize.array;
+  const colors = mud.geometry.attributes.color.array;
+  const live = [];
+  for (let i = 0; i < 512; i++) if (positions[3 * i + 1] > -1000) live.push(i);
+  assert.ok(live.length > 25);
+  assert.ok(live.some((i) => sizes[i] > 0), "soft dust puffs");
+  assert.ok(live.some((i) => sizes[i] < 0), "sharper gravel flecks");
+  assert.ok(live.some((i) => colors[4 * i + 3] > 0 && colors[4 * i + 3] < 1),
+    "per-particle fading alpha");
+  viewportCanvas.height = 220; // Adaptive resolution or viewport resize.
+  effects.update(0.016, driver, 0, null);
+  assert.equal(mud.material.uniforms.viewportHeight.value, 220);
+});
+
+test("idle dust uses zero draw calls and skips unnecessary GPU uploads", () => {
+  const { effects, mud } = harness();
+  const driver = { yaw: 0, speed: 0 };
+  const position = mud.geometry.attributes.position;
+  effects.update(0.016, driver, 0, null);
+  assert.equal(position.uploads, 0);
+  assert.equal(mud.geometry.drawRange.count, 0);
+  effects.update(0.05, driver, 1.5, null);
+  assert.ok(position.uploads > 0);
+  effects.update(2, driver, 0, null);
+  assert.equal(mud.geometry.drawRange.count, 0);
+  const uploads = position.uploads;
+  effects.update(0.016, driver, 0, null);
+  assert.equal(position.uploads, uploads);
 });
