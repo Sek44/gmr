@@ -5,21 +5,24 @@ const assert = require("node:assert/strict");
 const Layout = require("../games/gcv/track-layout.js");
 const Barriers = require("../games/gcv/barriers.js");
 
-test("rainbow slalom is short, fast, bounded and smooth at both ends", () => {
-  const zigzag = Layout.SPRINT.zigzagAt;
+test("rainbow slalom stays gentle, bounded and smooth at both ends", () => {
+  const route = Layout.SPRINT;
+  const zoneLength = route.LENGTH_METRES * (route.RAINBOW[1] - route.RAINBOW[0]);
+  const zigzag = (fraction) => route.zigzagAt(fraction, zoneLength);
   assert.equal(zigzag(0).offset, 0);
   assert.ok(Math.abs(zigzag(1).offset) < 1e-12);
   assert.ok(Math.abs(zigzag(0).slope) < 1e-12);
   assert.ok(Math.abs(zigzag(1).slope) < 1e-10);
   const points = Array.from({ length: 1001 }, (_, i) => zigzag(i / 1000));
   assert.ok(points.every(({ offset, slope }) => Number.isFinite(offset) &&
-    Number.isFinite(slope) && Math.abs(offset) <= 1.65 + 1e-9));
-  assert.ok(points.some(({ offset }) => offset > 1.45));
-  assert.ok(points.some(({ offset }) => offset < -1.45));
+    Number.isFinite(slope) && Math.abs(offset) <= 1 + 1e-9));
+  assert.ok(points.some(({ offset }) => offset > 0.85));
+  assert.ok(points.some(({ offset }) => offset < -0.85));
   const signs = points.map(({ offset }) => Math.abs(offset) < 0.02
     ? 0 : Math.sign(offset)).filter(Boolean);
   const changes = signs.slice(1).filter((sign, i) => sign !== signs[i]).length;
-  assert.ok(changes >= 12, "seven short slaloms should change side repeatedly");
+  assert.ok(changes >= 4 && changes <= 6,
+    "metre-spaced weaving should not accelerate on a shortened section");
 });
 
 test("physical terminal walls keep the racer on the open course", () => {
