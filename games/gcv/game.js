@@ -138,6 +138,7 @@
       { signal });
     const visualEffects = VisualEffects.create({
       THREE, scene, car, visualBody, opponentMeshes,
+      viewportCanvas: sceneHost.querySelector("canvas"),
     });
     const hud = Hud.create({ document, LapTimes, Race, layout: TrackLayout });
     const routeLength = closed ? trackLength :
