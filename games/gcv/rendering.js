@@ -53,7 +53,8 @@ const GcvRendering = (() => {
     };
   }
 
-  function create({ THREE, window, stage, sceneHost, scene, car, wheelPivots,
+  function create({ THREE, window, stage, sceneHost, scene, car,
+    visualBody = null, wheelPivots,
     brakeLights, rearBrakeGlows, opponentMeshes, syncOpponentModels = () => {},
     extraWheelPivots = [], curve, startIndex,
     SAMPLE_COUNT, trackLength, closed = true, heightAt = () => 0,
@@ -98,6 +99,7 @@ const GcvRendering = (() => {
     let airborneRiderTurn = 0;
     let wasAirborne = false;
     let visualPitch = 0;
+    let visualDriftYaw = 0;
     let previousSpeed = null;
     let wasJumping = false;
     let landingCompression = 0;
@@ -309,7 +311,7 @@ const GcvRendering = (() => {
     }
 
     function updatePlayer({ driver, fall, dt, brakePressed, jumpVelocity = 0,
-      steerInput = 0 }) {
+      steerInput = 0, driftYaw = 0 }) {
       const deltaYaw = previousYaw === null ? 0 :
         Math.atan2(Math.sin(driver.yaw - previousYaw),
           Math.cos(driver.yaw - previousYaw));
@@ -371,11 +373,18 @@ const GcvRendering = (() => {
           (1 - Math.exp(-16 * Math.max(0, dt)));
         car.rotation.set(visualPitch, driver.yaw, motoLean, "YXZ");
       }
+      // Only the vehicle graphics counter-yaw during a skid. Keeping the
+      // outer car transform physical prevents shaking either camera, and
+      // avoids changing tyre contact, race progress or collision physics.
+      const wantedDrift = !fall && !airborne ? clamp(driftYaw, -0.38, 0.38) : 0;
+      visualDriftYaw += (wantedDrift - visualDriftYaw) *
+        (1 - Math.exp(-12 * Math.max(0, dt)));
+      if (visualBody) visualBody.rotation.y = visualDriftYaw;
       animateMotoRider(dt, driver, rate, steerInput, acceleration,
         jumpVelocity, fall);
       for (const wheel of wheelPivots) wheel.rotation.x -= driver.speed * dt / 0.46;
       for (const wheel of extraWheelPivots) wheel.rotation.x -= driver.speed * dt / 0.49;
-      car.updateMatrixWorld(true); // Needed before particles use car.localToWorld().
+      car.updateMatrixWorld(true); // Includes the visual body before wheel spray.
       brakeLights.emissiveIntensity = brakePressed ? 3.8 : 0.15;
       for (const glow of rearBrakeGlows) glow.intensity = brakePressed ? 3.5 : 0;
     }
@@ -406,6 +415,8 @@ const GcvRendering = (() => {
       airborneRiderTurn = 0;
       wasAirborne = false;
       visualPitch = 0;
+      visualDriftYaw = 0;
+      if (visualBody) visualBody.rotation.y = 0;
       resetMotoRider();
       const cockpits = {
         classic: [-0.42, 1.51, 0.34],
