@@ -94,12 +94,12 @@ function fixture(closed = true, withMotoRider = false, aiCount = 1,
   const rotation = () => ({ x: 0, y: 0, z: 0,
     set(x, y, z, order) { Object.assign(this, { x, y, z, order }); } });
   const ai = { position: new Vector(), rotation: rotation(),
-    scale: new Vector(1, 1, 1), visible: false };
+    scale: new Vector(1, 1, 1), userData: { aiWheels: [] }, visible: false };
   const opponentMeshes = new Map([[1, ai]]);
   for (let id = 2; id <= aiCount; id++) {
     opponentMeshes.set(id, {
       position: new Vector(), rotation: rotation(),
-      scale: new Vector(1, 1, 1), visible: false,
+      scale: new Vector(1, 1, 1), userData: { aiWheels: [] }, visible: false,
     });
   }
   const curve = { getPointAt(t) { return new Vector(t * 100, 0, 20); },
