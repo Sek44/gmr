@@ -10,7 +10,7 @@ Reviewed `rendering.js`, `vehicles.js`, `world-3d.js`, `visual-effects.js`, `gam
 
 - The road, shoulders, safety barriers and cliff geometry are combined into large indexed meshes.
 - Guardrail posts, pebbles, mud patches and puddles are already instanced.
-- Mud and spark effects use small batched `THREE.Points` buffers (240 and 48 particles respectively).
+- Drift/landing effects share one bounded 512-point batch for all ten vehicles, with soft analytic circle sprites (no textures), per-particle sizes/fade, at most 18 px diameter and no draw when idle; sparks retain a separate 48-point batch.
 - The road sample density (840 classic, 720 open course) is moderate and is also used by gameplay and collisions: do not lower it blindly.
 - Only one player vehicle model is visible at a time; there is no post-processing or realtime shadow mapping.
 - MSAA is disabled on every track when the browser reports ≤ 4 GB of device memory or ≤ 4 logical CPU cores. Rainbow always disables MSAA. The renderer skips drawing while the menu covers the stage.
@@ -33,6 +33,10 @@ Reviewed `rendering.js`, `vehicles.js`, `world-3d.js`, `visual-effects.js`, `gam
 | P3 | CSS uses `backdrop-filter: blur(...)` over live rendering. | `game.css` | Profile compositor overhead on older Android devices before changing. | Compare paint/composite times. |
 
 **Important:** These are investigation/optimization candidates, not validated bottlenecks. Geometry merging and resolution changes should preserve the current visual detail and motorcycle animation.
+
+## Drift particle GPU budget
+
+The drift effect keeps a **single draw** for player + 9 opponents, and **no draw** when inactive. The 512-particle bound, 18-pixel point-size cap and smaller emission rate avoid screen-filling transparent quads; each update transfers positions, RGBA colors and one size only while dust is visible. A tiny fragment shader computes circular softness and sharp grit without a separate texture, mesh, post-process or additional scene lights. The vertex shader reads the canvas drawing-buffer height, which tracks adaptive resolution. This is a source-level GPU budget, **not a measured performance improvement**: compare active racing frames on Android at matched framebuffer size, especially when several opponents drift simultaneously.
 
 ## Assets and memory
 
