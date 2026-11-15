@@ -210,7 +210,8 @@ test("vehicle factory builds the player and nine hidden opponent models", () => 
   const objects = Vehicles.create({ THREE, scene, Race, trackLength: 1500, document });
   assert.ok(scene.children.length > 10, "instanced batches accompany the pose handles");
   assert.ok(scene.children.includes(objects.car));
-  assert.deepEqual(objects.car.children, [objects.visualBody],
+  assert.equal(objects.car.children.length, 1);
+  assert.equal(objects.car.children[0], objects.visualBody,
     "only the graphics pivot is beneath the physical vehicle transform");
   assert.equal(objects.wheelPivots.length, 4);
   assert.equal(objects.rearBrakeGlows.length, 2);
