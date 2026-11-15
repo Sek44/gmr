@@ -210,7 +210,12 @@ const GcvAiNavigation = (() => {
       const slip = clamp(curvature * speed * speed * 0.00135, -0.12, 0.12);
       // Physical steering rate on the curve, converted to the exact same
       // normalized control input that triggers player skid particles.
-      const steerInput = Physics.steeringForYawRate(speed, curvature * speed);
+      // The guided AI turns its front wheels more decisively than the
+      // path's average curvature demands, simulating intentional arcade
+      // counter-steering. This is still passed through the *identical*
+      // player skidIntensity threshold: no dust on gentle turns.
+      const steerInput = clamp(
+        Physics.steeringForYawRate(speed, curvature * speed) * 1.7, -1, 1);
       const roll = clamp(-slip * 0.6 - laneSlope * 0.12, -0.10, 0.10);
       const slope = (heightAt(fractionAt(progress + 3)) -
         heightAt(fractionAt(progress - 3))) / 6;
