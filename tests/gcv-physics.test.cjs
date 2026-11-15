@@ -392,9 +392,24 @@ test("shared drift yaw starts at the exact same threshold as mud particles", () 
       const particles = physics.skidIntensity(speed, steer);
       const visualYaw = physics.driftBodyYaw(speed, steer);
       assert.equal(visualYaw === 0, particles === 0);
-      assert.ok(Math.abs(visualYaw) <= 0.38);
+      assert.ok(Math.abs(visualYaw) <= 0.19);
       if (particles > 0) assert.equal(Math.sign(visualYaw), -Math.sign(steer));
     }
+  }
+  // With the same speed, a larger steering angle must create a larger
+  // visual slide. Full steering now gives exactly half the old angle.
+  const speed = 65;
+  const moderate = Math.abs(physics.driftBodyYaw(speed, 0.85));
+  const hard = Math.abs(physics.driftBodyYaw(speed, 1));
+  assert.ok(moderate > 0 && moderate < hard);
+  const oldHard = Math.min(0.38,
+    0.31 * Math.sqrt(physics.skidIntensity(speed, 1)));
+  assert.ok(Math.abs(hard - oldHard * 0.5) < 1e-10);
+  for (const steer of [-1, -0.95, -0.85, 0.85, 0.95, 1]) {
+    const oldAngle = Math.min(0.38,
+      0.31 * Math.sqrt(physics.skidIntensity(speed, steer)));
+    assert.ok(Math.abs(physics.driftBodyYaw(speed, steer)) <=
+      oldAngle * 0.5 + 1e-12);
   }
   const turnRate = 1.45;
   assert.equal(physics.steeringForYawRate(50, turnRate), 1);
