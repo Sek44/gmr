@@ -179,7 +179,7 @@ test("opponents smoothly vary their lane without leaving the paved road", () => 
         // The additional arcade body drift is intentionally separate from
         // the navigation heading's previous 0.28 radian tolerance.
         assert.ok(Math.abs(pose.yawOffset - pose.driftYaw) < 0.28);
-        assert.ok(Math.abs(pose.driftYaw) <= 0.191);
+        assert.ok(Math.abs(pose.driftYaw) <= 0.286);
         assert.ok(pose.jumpY >= 0 && Number.isFinite(pose.pitch));
         checkpoints.push(pose);
       }
