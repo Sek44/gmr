@@ -370,6 +370,17 @@ test("race intro freezes when paused and cancels on a manual camera change", () 
   assert.equal(camera.position.z, 9.7);
 });
 
+test("switching into cockpit during the grid intro hides the rider immediately", () => {
+  const { view, visibility } = fixture();
+  view.setView(true);
+  view.startGridIntro();
+  view.updateCamera(0.8);
+  view.setView(false);
+  assert.equal(view.gridIntroActive, false);
+  assert.equal(visibility.at(-1), false,
+    "cancelling the intro must not restore the old exterior visibility");
+});
+
 test("race opponents follow track and disappear in free mode", () => {
   const { view, ai } = fixture();
   view.syncOpponents([{ id: 1, progress: 250, lateral: 3 }]);
