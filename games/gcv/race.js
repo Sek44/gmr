@@ -199,6 +199,7 @@ const GcvRace = (() => {
         const motion = navigation.sample(item, elapsed);
         if (motion.finishTime !== null) {
           return { ...item, ...motion, progress: finishDistance, speed: 0,
+            skidIntensity: 0, driftYaw: 0, steerInput: 0,
             finishTime: motion.finishTime };
         }
         return { ...item, ...motion };
