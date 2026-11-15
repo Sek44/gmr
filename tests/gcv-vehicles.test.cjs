@@ -120,7 +120,14 @@ class SceneNode {
     this.visible = true;
   }
   add(...nodes) {
-    this.children.push(...nodes);
+    for (const node of nodes) {
+      if (node.parent) {
+        const prior = node.parent.children.indexOf(node);
+        if (prior >= 0) node.parent.children.splice(prior, 1);
+      }
+      node.parent = this;
+      this.children.push(node);
+    }
   }
   updateMatrix() {
     this.matrix = new Matrix4();
@@ -203,6 +210,8 @@ test("vehicle factory builds the player and nine hidden opponent models", () => 
   const objects = Vehicles.create({ THREE, scene, Race, trackLength: 1500, document });
   assert.ok(scene.children.length > 10, "instanced batches accompany the pose handles");
   assert.ok(scene.children.includes(objects.car));
+  assert.deepEqual(objects.car.children, [objects.visualBody],
+    "only the graphics pivot is beneath the physical vehicle transform");
   assert.equal(objects.wheelPivots.length, 4);
   assert.equal(objects.rearBrakeGlows.length, 2);
   assert.equal(objects.brakeLights.emissiveIntensity, 0.15);
@@ -215,7 +224,7 @@ test("vehicle factory builds the player and nine hidden opponent models", () => 
 
   // Player #9 has the same five high-contrast number locations as the AI,
   // fitted to its taller roof and longer, different body geometry.
-  const playerDecals = objects.car.children.filter((child) =>
+  const playerDecals = objects.visualBody.children.filter((child) =>
     child.material?.map?.image?.labels.includes("9"));
   assert.equal(playerDecals.length, 5, "player #9 needs five visible decals");
   assert.equal(new Set(playerDecals.map((mesh) => mesh.material)).size, 1,
@@ -284,9 +293,9 @@ test("vehicle factory builds the player and nine hidden opponent models", () => 
 
   // Regression: cockpit scene groups were moved to vehicles.js, but
   // refreshCameraButton() was still accessing them as game.js locals.
-  const cabin = objects.car.children.find((group) =>
+  const cabin = objects.visualBody.children.find((group) =>
     group.children.some((mesh) => mesh.geometry));
-  const dashboard = objects.car.children.find((group) =>
+  const dashboard = objects.visualBody.children.find((group) =>
     group.position.y === -0.16);
   assert.ok(cabin);
   assert.ok(dashboard);
@@ -323,7 +332,7 @@ test("all five vehicle/pilot pairs can be selected without creating a new scene"
   assert.equal(models.extraWheelPivots.length, 14);
   for (const id of Vehicles.CHOICES.map((choice) => choice.id)) {
     assert.equal(models.setVehicle(id), id);
-    const activeModels = models.car.children.filter((child) =>
+    const activeModels = models.visualBody.children.filter((child) =>
       child.visible && child.children && child.children.some((part) => part.geometry));
     assert.ok(activeModels.length >= 1, `a visible vehicle exists for ${id}`);
     models.setCameraMode(false);
@@ -381,7 +390,7 @@ test("sport motorcycle has a crouched rider, full-face helmet and visible fairin
   const scene = new SceneNode();
   const models = Vehicles.create({ THREE, scene, Race, trackLength: 1500, document });
   models.setVehicle("moto");
-  const bike = models.car.children.find((node) => node.visible &&
+  const bike = models.visualBody.children.find((node) => node.visible &&
     node.children && node.children.length > 30);
   assert.ok(bike, "the active low-poly motorcycle has a detailed silhouette");
   assert.ok(bike.children.some((node) => node.material?.color === 0xd9112f),
