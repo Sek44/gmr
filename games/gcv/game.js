@@ -33,6 +33,8 @@
   const AiNavigation = window.GcvAiNavigation;
   const Vehicles = window.GcvVehicles;
   const VisualEffects = window.GcvVisualEffects;
+  const Fuel = window.GcvFuel;
+  const FuelVisuals = window.GcvFuelVisuals;
   const Rendering = window.GcvRendering;
   const AdaptiveResolution = window.GcvAdaptiveResolution;
   const Controls = window.GcvControls;
@@ -57,7 +59,7 @@
   }
 
   try {
-    if (!Physics || !TrackProgress || !Scenery || !World3D || !Tracks || !LapTimes || !Race || !Barriers || !Vehicles || !VisualEffects || !Rendering || !AdaptiveResolution || !Controls || !Hud || !MiniMap || !Navigation || !Session || !Flow || !Preferences)
+    if (!Physics || !TrackProgress || !Scenery || !World3D || !Tracks || !LapTimes || !Race || !Barriers || !Vehicles || !VisualEffects || !Fuel || !FuelVisuals || !Rendering || !AdaptiveResolution || !Controls || !Hud || !MiniMap || !Navigation || !Session || !Flow || !Preferences)
       throw new Error("Les modules de conduite sont introuvables.");
     preferences = Preferences.create();
     const THREE = await import("https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js");
@@ -141,6 +143,11 @@
       viewportCanvas: sceneHost.querySelector("canvas"),
     });
     const hud = Hud.create({ document, LapTimes, Race, layout: TrackLayout });
+    const fuel = Fuel.create({
+      positions, sides, sampleCount: SAMPLE_COUNT, trackLength,
+      roadHalfWidth: ROAD_HALF_WIDTH, startIndex, finishIndex, closed,
+    });
+    const fuelVisuals = FuelVisuals.create({ THREE, scene, fuel });
     const routeLength = closed ? trackLength :
       (finishIndex - startIndex) * trackLength / SAMPLE_COUNT;
     const timingSamples = closed ? SAMPLE_COUNT :
@@ -308,6 +315,8 @@
       rendering.setVehicle(vehicleId);
       updateCar(0);
       rendering.updateCamera(0);
+      hud.setFuel(fuel.level);
+      fuelVisuals.sync();
       drawMap();
     }
 
@@ -346,7 +355,7 @@
     activeFlow = flow;
     activeNavigation = navigation;
     session = Session.create({
-      window, state: sessionState, flow, revision: SAVE_REVISION,
+      window, state: sessionState, flow, fuel, revision: SAVE_REVISION,
       circuitKey, layoutVersion: TrackLayout.VERSION, positions, directions,
       startIndex, startCenter, startSide, startYaw, trackLength: routeLength,
       SAMPLE_COUNT: timingSamples, OUTER_HALF_WIDTH, Physics, TrackProgress, LapTimes, Race,
@@ -499,7 +508,9 @@
         const { roadY = 0, jumpY = 0 } = driver;
         const airborne = jumpY > 0 || jumpVelocity > 0;
         driver = { ...Physics.advance(driver,
-          { steer, accelerate, brake, airborne }, dt), roadY, jumpY };
+          { steer, accelerate, brake, airborne,
+            speedLimit: fuel.empty ? Fuel.EMPTY_MAX_SPEED : Physics.MAX_SPEED },
+          dt), roadY, jumpY };
         mudSkidIntensity = airborne ? 0 :
           Physics.skidIntensity(driver.speed, steer);
         let nearest = closestRoad(driver.x, driver.z, lapTracker.index);
@@ -677,6 +688,12 @@
             driver.z += side.z * correction;
           }
         }
+        if (!flow.falling) {
+          // Driving distance, not frame count: standing still costs no fuel.
+          // Swept collision detects cans passed between two render frames.
+          fuel.tick(previousPosition, driver, Math.abs(driver.speed) * dt,
+            driver.jumpY);
+        }
       }
 
       if (flow.mode === "race" && raceState) {
@@ -713,6 +730,8 @@
         flow.falling ? null : barrierSparkContact,
         flow.mode === "race" ? raceState?.opponents : null);
       hud.setSpeed(driver.speed);
+      hud.setFuel(fuel.level);
+      fuelVisuals.sync();
       // Chrono is refreshed once in frame(), after lap-hold timers advance.
     }
 
@@ -760,6 +779,7 @@
       controls.dispose();
       navigation.dispose();
       session.stop();
+      fuelVisuals.dispose();
       rendering.dispose();
       activeFlow = null;
       activeNavigation = null;

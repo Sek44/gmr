@@ -201,6 +201,24 @@
 .gcv-speed .gcv-gear { font-size: clamp(1.3rem, 2.8vw, 2rem); font-weight: 900; color: #f6d181; }
 .gcv-speed .gcv-gear:empty { display: none; }
 .gcv-speed small { font-size: .8rem; font-weight: 700; color: #d1e5f2; }
+.gcv-fuel {
+  display: flex; align-items: center; gap: 8px; box-sizing: border-box;
+  width: min(213px, 100%); padding: 7px 10px; border-radius: 10px;
+  background: #0d182ae8; color: #ffb669;
+  box-shadow: 0 2px 8px #06152240;
+}
+.gcv-fuel-track {
+  flex: 1; min-width: 48px; height: 12px; overflow: hidden;
+  border-radius: 8px; background: #020a17; border: 1px solid #ffffff55;
+}
+.gcv-fuel-fill {
+  display: block; width: 100%; height: 100%; border-radius: inherit;
+  background: linear-gradient(90deg, #e56d25, #ffd64a);
+}
+.gcv-fuel strong { min-width: 42px; text-align: right; font-size: .78rem; color: #fff; }
+.gcv-fuel.is-low .gcv-fuel-fill { background: #fc603c; }
+.gcv-fuel.is-empty { color: #ff7771; }
+.gcv-fuel.is-empty .gcv-fuel-fill { background: #fc603c; }
 .gcv-session-label { border-radius: 8px; background: #0d182aba; padding: 5px 9px; font-weight: 750; font-size: .75rem; letter-spacing: .025em; }
 
 .gcv-bests {

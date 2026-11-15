@@ -87,6 +87,24 @@ function setup(closed = true) {
   return { hud, get, nodes, writes, bestTitle };
 }
 
+test("fuel gauge updates only for a visible percentage or warning change", () => {
+  const { hud, get, writes } = setup();
+  hud.setFuel(0.76);
+  assert.equal(get("fuel-value").textContent, "76%");
+  assert.equal(get("fuel-fill").style.width, "76%");
+  assert.equal(get("fuel-box").getAttribute("aria-valuenow"), "76");
+  const baseline = writes();
+  hud.setFuel(0.7601);
+  assert.equal(writes(), baseline);
+  hud.setFuel(0.24);
+  assert.ok(get("fuel-box").classList.contains("is-low"));
+  hud.setFuel(0);
+  assert.equal(get("fuel-box").classList.contains("is-empty"), true);
+  assert.equal(get("fuel-box").classList.contains("is-low"), false);
+  hud.setFuel(0.5);
+  assert.equal(get("fuel-box").classList.contains("is-empty"), false);
+});
+
 test("speed and gear only mutate DOM when the visible value changes", () => {
   const { hud, get, writes } = setup();
   hud.setSpeed(10);

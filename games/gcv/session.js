@@ -2,7 +2,7 @@
 
 // Race/trial transitions, snapshots and autosave; the physics loop remains in game.js.
 const GcvSession = (() => {
-  function create({ window, state, flow, revision, circuitKey, layoutVersion,
+  function create({ window, state, flow, fuel = null, revision, circuitKey, layoutVersion,
     positions, directions, startIndex, startCenter, startSide, startYaw,
     trackLength, SAMPLE_COUNT, OUTER_HALF_WIDTH, Physics, TrackProgress,
     LapTimes, Race, progressSamples, startOffset, closestRoad, snapBack,
@@ -24,6 +24,7 @@ const GcvSession = (() => {
         : state.lapTracker;
       return {
         saveRevision: revision,
+        fuel: fuel?.snapshot() ?? null,
         x: safe.x, z: safe.z,
         yaw: flow.falling
           ? Math.atan2(-directions[state.respawnIndex].x, -directions[state.respawnIndex].z)
@@ -81,6 +82,7 @@ const GcvSession = (() => {
       flow.restore(restoredRace ? "race" : "free", restoredRace?.phase);
       state.raceState = restoredRace;
       if (restoredRace) state.lapTracker = restoredRace.playerMotion;
+      fuel?.restore(saved.fuel);
       state.freeSession = restoredRace &&
         LapTimes.sameCircuitRoute(saved.freeSession?.circuitKey, circuitKey)
         ? saved.freeSession : null;
@@ -92,6 +94,7 @@ const GcvSession = (() => {
       if (fresh) state.freeSession = null;
       else if (flow.mode === "free") state.freeSession = snapshot();
       clearControls();
+      fuel?.reset();
       flow.beginRace();
       clearLapHold();
       resetResultsCooldown();
@@ -147,6 +150,7 @@ const GcvSession = (() => {
       if (flow.mode === "race") { startRace(); return; }
       clearLapHold();
       // Restart the current attempt, without erasing permanent lap records.
+      fuel?.reset();
       const beforeLine = startCenter.clone()
         .addScaledVector(directions[startIndex], -10);
       const index = closestRoad(beforeLine.x, beforeLine.z).index;

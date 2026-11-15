@@ -16,10 +16,10 @@
         || String(Date.now());
       const resources = [
       ["style", "../../shared/site.css"],
-      ["style", "./game.css?v=20261115f"],
+      ["style", "./game.css?v=20261115fuel1"],
       ["script", "../../shared/game-state.js"],
       ["script", "../../shared/play-time.js?v=20261111-seconds2"],
-      ["script", "./physics.js?v=20261115f"],
+      ["script", "./physics.js?v=20261115fuel1"],
       ["script", "./track-progress.js?v=20261115f"],
       ["script", "./scenery.js?v=20261115f"],
       ["script", "./track-generator.js?v=20261115f"],
@@ -34,14 +34,16 @@
       ["script", "./rendering.js?v=20261115f"],
       ["script", "./adaptive-resolution.js?v=20261115f"],
       ["script", "./visual-effects.js?v=20261115g"],
+      ["script", "./fuel.js?v=20261115fuel1"],
+      ["script", "./fuel-visuals.js?v=20261115fuel1"],
       ["script", "./controls.js?v=20261115f"],
-      ["script", "./hud.js?v=20261115f"],
+      ["script", "./hud.js?v=20261115fuel1"],
       ["script", "./mini-map.js?v=20261115f"],
       ["script", "./flow.js?v=20261115f"],
       ["script", "./navigation.js?v=20261115f"],
-      ["script", "./session.js?v=20261115f"],
+      ["script", "./session.js?v=20261115fuel1"],
       ["script", "./preferences.js?v=20261115f"],
-      ["module", "./game.js?v=20261115f"],
+      ["module", "./game.js?v=20261115fuel1"],
       ];
       for (const [kind, file] of resources) {
         const url = new URL(file, location.href);
@@ -148,6 +150,11 @@
       <div class="gcv-hud-left">
         <div class="gcv-speed" aria-label="Vitesse">
           <span id="speed-value">0</span><span id="gear-value" class="gcv-gear" aria-label="Marche arrière"></span><small>km/h</small>
+        </div>
+        <div class="gcv-fuel" id="fuel-box" role="progressbar" aria-label="Essence" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100">
+          <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V4a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v17M3 21h13M5 11h9V5H5zM15 8l3 3v7a2 2 0 0 0 4 0v-6l-4-4"/></svg>
+          <span class="gcv-fuel-track"><span class="gcv-fuel-fill" id="fuel-fill"></span></span>
+          <strong id="fuel-value">100%</strong>
         </div>
         <span class="gcv-session-label" id="session-mode-label">Essais libres · N° 9</span>
         <span class="gcv-session-label" id="lap-count-label">Tours chronométrés : <strong id="lap-value">0</strong></span>

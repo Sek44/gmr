@@ -26,6 +26,9 @@ const GcvHud = (() => {
     }
     const speedLabel = document.getElementById("speed-value");
     const gearLabel = document.getElementById("gear-value");
+    const fuelBox = document.getElementById("fuel-box");
+    const fuelFill = document.getElementById("fuel-fill");
+    const fuelValue = document.getElementById("fuel-value");
     const lapLabel = document.getElementById("lap-value");
     const sessionModeLabel = document.getElementById("session-mode-label");
     const chronoLabel = document.getElementById("lap-chrono");
@@ -173,7 +176,17 @@ const GcvHud = (() => {
       setText(speedLabel, String(Math.round(Math.abs(metresPerSecond) * 3.6)));
       setText(gearLabel, metresPerSecond < -0.02 ? "R" : "");
     }
-    return { refreshBests, refreshChrono, syncRace, setLapCount, setSpeed };
+    function setFuel(level) {
+      const percentage = Math.round(Math.max(0, Math.min(1,
+        Number.isFinite(level) ? level : 0)) * 100);
+      const value = String(percentage);
+      if (fuelFill.style.width !== value + "%") fuelFill.style.width = value + "%";
+      setText(fuelValue, value + "%");
+      setAttribute(fuelBox, "aria-valuenow", value);
+      setClass(fuelBox, "is-low", percentage > 0 && percentage <= 25);
+      setClass(fuelBox, "is-empty", percentage === 0);
+    }
+    return { refreshBests, refreshChrono, syncRace, setLapCount, setSpeed, setFuel };
   }
 
   return { create };

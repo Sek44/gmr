@@ -19,6 +19,8 @@ const GcvPhysics = (() => {
 
   function advance(state, input, dt) {
     const elapsed = clamp(Number.isFinite(dt) ? dt : 0, 0, 0.05);
+    const maxSpeed = Number.isFinite(input.speedLimit)
+      ? clamp(input.speedLimit, 0, MAX_SPEED) : MAX_SPEED;
     const currentSpeed = clamp(Number(state.speed) || 0, -REVERSE_MAX_SPEED, MAX_SPEED);
     const gas = Boolean(input.accelerate);
     const brake = Boolean(input.brake);
@@ -33,7 +35,7 @@ const GcvPhysics = (() => {
       // The brake still trims speed enough to adjust where the car lands.
       speed = brake
         ? Math.max(0, currentSpeed - (BRAKE_DECELERATION * AIR_BRAKE_FACTOR + 0.55) * elapsed)
-        : clamp(currentSpeed + (gas ? 0.8 : -0.55) * elapsed, 0, MAX_SPEED);
+        : clamp(currentSpeed + (gas ? 0.8 : -0.55) * elapsed, 0, maxSpeed);
     } else if (brake) {
       if (currentSpeed > 0) {
         speed = Math.max(0, currentSpeed - (BRAKE_DECELERATION + drag) * elapsed);
@@ -45,12 +47,13 @@ const GcvPhysics = (() => {
       }
     } else if (gas) {
       speed = clamp(currentSpeed + (25 - Math.sign(currentSpeed) * drag) * elapsed,
-        -REVERSE_MAX_SPEED, MAX_SPEED);
+        -REVERSE_MAX_SPEED, maxSpeed);
     } else {
       // Drag brings a rolling car to rest in either direction.
       speed = Math.sign(currentSpeed) * Math.max(0, Math.abs(currentSpeed) - drag * elapsed);
     }
 
+    speed = Math.min(speed, maxSpeed);
     const steer = clamp(Number(input.steer) || 0, -1, 1);
     const yaw = state.yaw - steer * Math.sign(speed) *
       Math.min(Math.abs(speed) / 14, 1) *
