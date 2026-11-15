@@ -416,6 +416,8 @@ const GcvRendering = (() => {
       initializedCamera = false;
     }
     function setView(outside) {
+      // An interrupted grid intro restores visibility for the new view,
+      // not the previously selected one.
       outsideView = Boolean(outside);
       cancelGridIntro();
       initializedCamera = false;
