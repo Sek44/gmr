@@ -12,8 +12,8 @@
     Object.freeze({ id: "comet", name: "Comète Violette", pilot: "Nova l'astronaute" }),
   ]);
   const normalize = (id) => CHOICES.some((choice) => choice.id === id) ? id : DEFAULT_ID;
-  const OpponentVehicles = typeof GcvOpponentVehicles !== "undefined"
-    ? GcvOpponentVehicles : require("./opponent-vehicles.js");
+  const OpponentVehicles = root && root.GcvOpponentVehicles
+    ? root.GcvOpponentVehicles : require("./opponent-vehicles.js");
 
   function create({ THREE, scene, Race, trackLength, document: canvasDocument }) {
     const car = new THREE.Group();

@@ -88,17 +88,18 @@ function fixture(closed = true, withMotoRider = false, aiCount = 1,
     localToWorld(v) { return v.set(v.x + this.position.x, v.y + this.position.y,
       v.z + this.position.z); },
   };
-  const visualBody = { rotation: { y: 0 } };
   const wheelPivots = Array.from({ length: 4 }, () => ({ rotation: { x: 0 } }));
   const brakeLights = { emissiveIntensity: 0.15 };
   const rearBrakeGlows = [{ intensity: 0 }, { intensity: 0 }];
   const rotation = () => ({ x: 0, y: 0, z: 0,
     set(x, y, z, order) { Object.assign(this, { x, y, z, order }); } });
-  const ai = { position: new Vector(), rotation: rotation(), visible: false };
+  const ai = { position: new Vector(), rotation: rotation(),
+    scale: new Vector(1, 1, 1), visible: false };
   const opponentMeshes = new Map([[1, ai]]);
   for (let id = 2; id <= aiCount; id++) {
     opponentMeshes.set(id, {
-      position: new Vector(), rotation: rotation(), visible: false,
+      position: new Vector(), rotation: rotation(),
+      scale: new Vector(1, 1, 1), visible: false,
     });
   }
   const curve = { getPointAt(t) { return new Vector(t * 100, 0, 20); },
@@ -118,12 +119,11 @@ function fixture(closed = true, withMotoRider = false, aiCount = 1,
   const visibility = [];
   let opponentSyncCount = 0;
   const view = Rendering.create({ THREE, window, stage, sceneHost, scene, car,
-    visualBody, wheelPivots, brakeLights, rearBrakeGlows, opponentMeshes, curve,
+    wheelPivots, brakeLights, rearBrakeGlows, opponentMeshes, curve,
     syncOpponentModels: () => { opponentSyncCount++; },
     startIndex: 0, SAMPLE_COUNT: 100, trackLength: 1000, closed, motoRider,
     onCameraVisibility: (outside) => visibility.push(outside) });
-  return { view, window, stage, sceneHost, scene, car, visualBody,
-    motoRider, wheelPivots,
+  return { view, window, stage, sceneHost, scene, car, motoRider, wheelPivots,
     brakeLights, rearBrakeGlows, ai, opponentMeshes, visibility,
     renderer: latestRenderer, camera: latestCamera,
     getOpponentSyncCount: () => opponentSyncCount };
@@ -722,31 +722,4 @@ test("rival instancing is synchronized with visibility and pose", () => {
   assert.equal(getOpponentSyncCount(), 1);
   view.syncOpponents(null);
   assert.equal(getOpponentSyncCount(), 2);
-});
-
-
-test("visual drift rotates only the vehicle graphics, never the physical yaw or camera", () => {
-  const { view, car, visualBody, camera } = fixture();
-  const driver = { x: 5, z: 10, yaw: 0, speed: 58, jumpY: 0 };
-  view.setView(true);
-  view.updatePlayer({ driver, dt: 0.15, fall: null,
-    brakePressed: false, driftYaw: -0.34 });
-  view.updateCamera(0);
-  assert.equal(car.rotation.y, 0, "drifting must not alter the physics root");
-  assert.ok(visualBody.rotation.y < -0.25,
-    "the model visibly points into a right-hand drift");
-  assert.equal(camera.position.x, 5);
-  assert.ok(Math.abs(camera.position.z - 19.7) < 1e-8,
-    "the chase camera follows the real course, not visual sliding");
-
-  for (let i = 0; i < 20; i++) {
-    view.updatePlayer({ driver, dt: 0.05, fall: null,
-      brakePressed: false, driftYaw: 0 });
-  }
-  assert.ok(Math.abs(visualBody.rotation.y) < 0.001,
-    "body straightens when particles stop");
-  view.updatePlayer({ driver: { ...driver, jumpY: 1 }, dt: 0.1,
-    fall: null, brakePressed: false, driftYaw: -0.34 });
-  assert.ok(Math.abs(visualBody.rotation.y) < 0.001,
-    "no new tyre-slide yaw while airborne");
 });
