@@ -8,7 +8,7 @@ const GcvTrackLayout = (() => {
   // The Arc-en-ciel sprint is an authored SEQUENCE, not a hand-drawn
   // waypoint list. Only straights may contain crests or rainbow segments.
   // To add a circuit later, supply a template and seed to TrackGenerator.
-  // Turning sections are broad enough to avoid extreme handling on mobile.
+  // Sprint turns demand more steering while staying inside the forward corridor.
   const TrackGenerator = typeof module !== "undefined" && module.exports
     ? require("./track-generator.js")
     : window.GcvTrackGenerator;
@@ -53,24 +53,24 @@ const GcvTrackLayout = (() => {
     sections: Object.freeze([
       { type: "straight", length: 430, lengthVariance: 18,
         hump: { height: 16, widthMetres: 110, crown: 1, crownWidthMetres: 38 } },
-      { type: "turn", angle: 55, radius: 90,
-        angleVariance: 4, radiusVariance: 6 },
+      { type: "turn", angle: 64, radius: 58,
+        angleVariance: 3, radiusVariance: 5 },
       { type: "straight", length: 440, lengthVariance: 22,
         hump: { height: 14, widthMetres: 112, crown: 1, crownWidthMetres: 38 } },
-      { type: "turn", angle: -95, radius: 90,
-        angleVariance: 4, radiusVariance: 6 },
+      { type: "turn", angle: -96, radius: 58,
+        angleVariance: 3, radiusVariance: 5 },
       { type: "straight", length: 450, lengthVariance: 24,
         hump: { height: 18, widthMetres: 115, crown: 1, crownWidthMetres: 40 } },
-      { type: "turn", angle: 90, radius: 90,
-        angleVariance: 4, radiusVariance: 6 },
+      { type: "turn", angle: 95, radius: 58,
+        angleVariance: 3, radiusVariance: 5 },
       // Only about 150 m of multicoloured guidance rails, down from ~430 m.
       { type: "straight", length: 170, lengthVariance: 12, rainbow: true },
-      { type: "turn", angle: -70, radius: 100,
-        angleVariance: 4, radiusVariance: 6 },
+      { type: "turn", angle: -84, radius: 60,
+        angleVariance: 3, radiusVariance: 5 },
       { type: "straight", length: 460, lengthVariance: 24,
         hump: { height: 15, widthMetres: 117, crown: 1, crownWidthMetres: 40 } },
-      { type: "turn", angle: 60, radius: 95,
-        angleVariance: 4, radiusVariance: 6 },
+      { type: "turn", angle: 74, radius: 56,
+        angleVariance: 3, radiusVariance: 5 },
       { type: "straight", length: 170, lengthVariance: 12 },
     ]),
   });
@@ -80,7 +80,7 @@ const GcvTrackLayout = (() => {
   function generateSprint(seed = 20261114) {
     const generated = TrackGenerator.build(SPRINT_TEMPLATE, seed);
     return Object.freeze({
-      ...generated, ID: "rainbow", NAME: "Route Arc-en-ciel", VERSION: 5,
+      ...generated, ID: "rainbow", NAME: "Route Arc-en-ciel", VERSION: 6,
       CLOSED: false, SAMPLE_COUNT: 720, ROAD_HALF_WIDTH, SHOULDER_WIDTH,
       nearestIndex, zigzagAt,
     });

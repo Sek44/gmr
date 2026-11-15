@@ -57,6 +57,10 @@ tirage aléatoire ne modifie une course déjà lancée.
 
 ## Règles de conception et vérifications
 
+- La Route Arc-en-ciel alterne cinq virages de sens opposés, de rayons nominaux
+  **56 à 60 m**. Les petites variations de graine conservent un cap dans le
+  corridor de sécurité de ±72°, sans retour en arrière et sans nouvelle géométrie
+  supplémentaire pour le rendu ou l'IA.
 - Les bosses et les bandes Arc-en-ciel sont **interdites dans les sections
   `turn`**. Une bosse doit disposer d'au moins `1,8 × widthMetres` libres
   de chaque côté du sommet, à l'intérieur de la même ligne droite.

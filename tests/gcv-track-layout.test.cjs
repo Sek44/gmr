@@ -86,9 +86,9 @@ test("nearest sample index ignores the duplicated closing position", () => {
 
 test("generated rainbow course retains its separate open-route contract", () => {
   const route = layout.select("rainbow");
-  assert.equal(route.VERSION, 5);
+  assert.equal(route.VERSION, 6);
   assert.equal(route.CLOSED, false);
-  assert.ok(route.LENGTH_METRES > 2500 && route.LENGTH_METRES < 2900);
+  assert.ok(route.LENGTH_METRES > 2400 && route.LENGTH_METRES < 2700);
   assert.equal(route.HUMPS.length, 4);
   assert.deepEqual(route.HUMPS, route.HUMP_PROFILES.map(hump => hump.at));
   assert.ok(route.HUMP_PROFILES.every(hump =>

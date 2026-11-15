@@ -40,13 +40,13 @@ test("only straights can contain jumps or rainbow and both remain clear of turns
   }
 });
 
-test("rebuilt sprint is an open, mostly forward, 2.3-2.7 km route", () => {
+test("rebuilt sprint is an open, mostly forward, roughly 2.5 km route", () => {
   const route = Layout.SPRINT;
   assert.equal(route.CLOSED, false);
-  assert.equal(route.VERSION, 5);
+  assert.equal(route.VERSION, 6);
   assert.ok(route.WAYPOINTS.length > 70 && route.WAYPOINTS.length < 180,
     "lightweight centreline source for mobile rendering");
-  assert.ok(route.LENGTH_METRES > 2500 && route.LENGTH_METRES < 2900);
+  assert.ok(route.LENGTH_METRES > 2400 && route.LENGTH_METRES < 2700);
   for (let i = 1; i < route.WAYPOINTS.length; i++) {
     const a = route.WAYPOINTS[i - 1], b = route.WAYPOINTS[i];
     const distance = Math.hypot(a[0] - b[0], a[1] - b[1]);
@@ -59,6 +59,28 @@ test("rebuilt sprint is an open, mostly forward, 2.3-2.7 km route", () => {
     const crest = route.heightAt(h.at);
     return crest >= h.height - 0.05 && crest <= h.height + 0.1;
   }));
+});
+
+
+test("rainbow route has challenging, alternating curves for every seed", () => {
+  for (let seed = 1; seed <= 250; seed++) {
+    const route = Layout.generateSprint(seed);
+    const turns = route.SECTIONS.filter(section => section.type === "turn");
+    assert.equal(turns.length, 5);
+    assert.deepEqual(turns.map(section =>
+      Math.sign(section.endHeading - section.startHeading)),
+    [1, -1, 1, -1, 1]);
+    assert.ok(turns.every(section => {
+      const angle = Math.abs(section.endHeading - section.startHeading);
+      // Arc length / angle (radians) gives the generated radius.
+      const radius = section.length / (angle * Math.PI / 180);
+      return radius >= 50 && radius <= 65;
+    }), "tight turns must remain within the intended radius range");
+    assert.ok(route.SECTIONS.every(section =>
+      Math.abs(section.endHeading) <= 72),
+    "the stronger curves must stay in the safe forward corridor");
+    assert.ok(route.LENGTH_METRES > 2400 && route.LENGTH_METRES < 2700);
+  }
 });
 
 test("generator validates misplaced features, undersized straights and gates", () => {
