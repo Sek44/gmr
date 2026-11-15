@@ -115,12 +115,12 @@
       startGate, finishGate, islands, closed, heightAt,
     } = World3D.create({ THREE, TrackLayout, Barriers, Scenery });
     const {
-      car, wheelPivots, extraWheelPivots, brakeLights, rearBrakeGlows,
+      car, visualBody, wheelPivots, extraWheelPivots, brakeLights, rearBrakeGlows,
       opponentMeshes, syncOpponentModels, motoRider, setCameraMode, setVehicle,
     } = Vehicles.create({ THREE, scene, Race, trackLength, document });
 
     const rendering = Rendering.create({
-      THREE, window, stage, sceneHost, scene, car, wheelPivots,
+      THREE, window, stage, sceneHost, scene, car, visualBody, wheelPivots,
       brakeLights, rearBrakeGlows, opponentMeshes, syncOpponentModels,
       extraWheelPivots, motoRider, curve,
       startIndex, SAMPLE_COUNT, trackLength, closed, heightAt,
@@ -136,7 +136,9 @@
       { signal });
     document.addEventListener("visibilitychange", adaptiveResolution.reset,
       { signal });
-    const visualEffects = VisualEffects.create({ THREE, scene, car });
+    const visualEffects = VisualEffects.create({
+      THREE, scene, car, visualBody, opponentMeshes,
+    });
     const hud = Hud.create({ document, LapTimes, Race, layout: TrackLayout });
     const routeLength = closed ? trackLength :
       (finishIndex - startIndex) * trackLength / SAMPLE_COUNT;
@@ -496,7 +498,8 @@
         const airborne = jumpY > 0 || jumpVelocity > 0;
         driver = { ...Physics.advance(driver,
           { steer, accelerate, brake, airborne }, dt), roadY, jumpY };
-        mudSkidIntensity = Physics.skidIntensity(driver.speed, steer);
+        mudSkidIntensity = airborne ? 0 :
+          Physics.skidIntensity(driver.speed, steer);
         let nearest = closestRoad(driver.x, driver.z, lapTracker.index);
         let airTravel = null;
         if (airborne && !closed) {
@@ -699,9 +702,13 @@
       rendering.updatePlayer({
         driver, fall: flow.falling ? fall : null, dt, brakePressed,
         jumpVelocity, steerInput: steeringAnimation,
+        driftYaw: !flow.falling && !driver.jumpY && mudSkidIntensity > 0
+          ? Physics.driftBodyYaw(driver.speed, steeringAnimation) : 0,
       });
-      visualEffects.update(dt, driver, flow.falling ? 0 : mudSkidIntensity,
-        flow.falling ? null : barrierSparkContact);
+      visualEffects.update(dt, driver,
+        flow.falling || driver.jumpY > 0 ? 0 : mudSkidIntensity,
+        flow.falling ? null : barrierSparkContact,
+        flow.mode === "race" ? raceState?.opponents : null);
       hud.setSpeed(driver.speed);
       // Chrono is refreshed once in frame(), after lap-hold timers advance.
     }
