@@ -89,9 +89,9 @@ const GcvPhysics = (() => {
   function driftBodyYaw(speed, steering) {
     const intensity = skidIntensity(speed, steering);
     if (!intensity) return 0;
-    // Half the previous exaggeration. The signed steering value (rather
-    // than only its sign) scales the effect with the current turn angle.
-    const angle = Math.min(0.19, 0.155 * Math.sqrt(intensity));
+    // Subtle arcade slide: 50% stronger than the restrained pose, while
+    // the signed steering value still scales it with the current turn.
+    const angle = Math.min(0.285, 0.2325 * Math.sqrt(intensity));
     return -clamp(Number(steering) || 0, -1, 1) * angle;
   }
 
