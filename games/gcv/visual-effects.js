@@ -1,38 +1,86 @@
 "use strict";
 
-// One shared drift-particle batch for the player and all nine rivals, plus
-// player guardrail sparks. No per-opponent geometry, material or draw call.
+// Shared one-draw-call dust/grit for the player and every rival. Soft round
+// sprites use an analytic shader: no texture uploads or per-car meshes.
 const GcvVisualEffects = (() => {
   function create({ THREE, scene, car, visualBody = car,
-    opponentMeshes = new Map() }) {
-    // Same skid trigger and colour for all vehicles. A slightly larger ring
-    // covers several rivals drifting together without new GPU draw calls.
+    opponentMeshes = new Map(), viewportCanvas = null }) {
     const MAX_MUD_PARTICLES = 512;
     const mudPositions = new Float32Array(MAX_MUD_PARTICLES * 3);
-    const mudColors = new Float32Array(MAX_MUD_PARTICLES * 3);
+    const mudColors = new Float32Array(MAX_MUD_PARTICLES * 4);
+    // Negative size means a sharp grit fleck; positive means a soft puff.
+    const mudSizes = new Float32Array(MAX_MUD_PARTICLES);
     const mudState = Array.from({ length: MAX_MUD_PARTICLES }, () => ({
       lifetime: 0, duration: 0, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0,
-      groundY: 0.11, landing: false,
+      groundY: 0.11, landing: false, grit: false, diameter: 0,
+      opacity: 0, shade: 1,
     }));
     for (let i = 0; i < MAX_MUD_PARTICLES; i++) mudPositions[i * 3 + 1] = -2000;
     const mudGeometry = new THREE.BufferGeometry();
     const mudPositionAttribute = new THREE.BufferAttribute(mudPositions, 3);
-    const mudColorAttribute = new THREE.BufferAttribute(mudColors, 3);
+    const mudColorAttribute = new THREE.BufferAttribute(mudColors, 4);
+    const mudSizeAttribute = new THREE.BufferAttribute(mudSizes, 1);
     mudPositionAttribute.setUsage(THREE.DynamicDrawUsage);
     mudColorAttribute.setUsage(THREE.DynamicDrawUsage);
+    mudSizeAttribute.setUsage(THREE.DynamicDrawUsage);
     mudGeometry.setAttribute("position", mudPositionAttribute);
     mudGeometry.setAttribute("color", mudColorAttribute);
-    const mudPoints = new THREE.Points(mudGeometry, new THREE.PointsMaterial({
-      size: 0.34, vertexColors: true, transparent: true,
-      opacity: 0.92, depthWrite: false, sizeAttenuation: true,
-    }));
+    mudGeometry.setAttribute("particleSize", mudSizeAttribute);
+    // Zero triangles, one small Points draw when active. Keep a tight pixel
+    // cap so dust never becomes a huge overdraw hotspot near the camera.
+    const mudMaterial = new THREE.ShaderMaterial({
+      uniforms: { viewportHeight: { value: viewportCanvas?.height || 420 } },
+      transparent: true, depthWrite: false,
+      vertexShader: `
+        attribute vec4 color;
+        attribute float particleSize;
+        uniform float viewportHeight;
+        varying vec4 vColor;
+        varying float vGrit;
+        void main() {
+          vColor = color;
+          vGrit = step(particleSize, 0.0);
+          vec4 viewPos = modelViewMatrix * vec4(position, 1.0);
+          gl_Position = projectionMatrix * viewPos;
+          float pixelDiameter = abs(particleSize) * projectionMatrix[1][1] *
+            viewportHeight * 0.5 / max(0.1, -viewPos.z);
+          gl_PointSize = clamp(pixelDiameter, 1.0, 18.0);
+        }
+      `,
+      fragmentShader: `
+        varying vec4 vColor;
+        varying float vGrit;
+        void main() {
+          vec2 uv = gl_PointCoord * 2.0 - 1.0;
+          float radius2 = dot(uv, uv);
+          float dust = 1.0 - smoothstep(0.04, 1.0, radius2);
+          float grit = 1.0 - smoothstep(0.48, 0.95, radius2);
+          float alpha = vColor.a * mix(dust, grit, vGrit);
+          if (alpha < 0.012) discard;
+          gl_FragColor = vec4(vColor.rgb, alpha);
+          #include <tonemapping_fragment>
+          #include <colorspace_fragment>
+        }
+      `,
+    });
+    const mudPoints = new THREE.Points(mudGeometry, mudMaterial);
     mudPoints.frustumCulled = false;
+    mudGeometry.setDrawRange(0, 0);
     scene.add(mudPoints);
     let nextMudParticle = 0;
-    // Slot 0 = player, slot (opponent.id + 1) = that rival. Small,
-    // independent emission accumulators avoid shared-rate bias or bursts.
+    let highWaterMark = 0;
+    let hasMud = false;
+    // Independent fractional emitters for player (0) and rivals (id + 1).
     const mudEmissionRemainders = new Float32Array(11);
     const origin = new THREE.Vector3();
+
+    function allocateMud() {
+      const p = mudState[nextMudParticle];
+      highWaterMark = Math.max(highWaterMark, nextMudParticle + 1);
+      nextMudParticle = (nextMudParticle + 1) % MAX_MUD_PARTICLES;
+      hasMud = true;
+      return p;
+    }
 
     function emitDrift(dt, intensity, source, yaw, groundY, slot,
       rearHalfWidth = 0.86, rearLength = 1.48, maxPerFrame = 12) {
@@ -40,56 +88,40 @@ const GcvVisualEffects = (() => {
         mudEmissionRemainders[slot] = 0;
         return;
       }
+      // More apparent smoke from expanding puffs, not more particles. Keep
+      // emissions bounded for 9 simultaneous opponents on slow phones.
       const accumulated = mudEmissionRemainders[slot] +
-        Math.min(1.5, intensity) * dt * 100;
+        Math.min(1.5, intensity) * Math.min(dt, 0.05) * 82;
       const emissions = Math.min(maxPerFrame, Math.floor(accumulated));
       mudEmissionRemainders[slot] = Math.min(0.999, accumulated - emissions);
       for (let i = 0; i < emissions; i++) {
-        const p = mudState[nextMudParticle];
+        const p = allocateMud();
         const side = i % 2 === 0 ? -1 : 1;
         source.localToWorld(origin.set(side * rearHalfWidth, 0.22, rearLength));
         p.x = origin.x;
         p.y = origin.y;
         p.z = origin.z;
-        const spread = (Math.random() - 0.5) * 3;
-        const backSpeed = 1.3 + Math.random() * 3.7;
+        const spread = (Math.random() - 0.5) * 3.8;
+        const backSpeed = 0.8 + Math.random() * 2.9;
         p.vx = Math.sin(yaw) * backSpeed + Math.cos(yaw) * spread;
         p.vz = Math.cos(yaw) * backSpeed - Math.sin(yaw) * spread;
-        p.vy = 1.4 + Math.random() * 2.2;
-        p.duration = 0.4 + Math.random() * 0.4;
-        // Particles land on the actual road elevation, including crests.
+        p.grit = Math.random() < 0.24;
+        p.vy = p.grit ? 1.0 + Math.random() * 1.6 :
+          0.5 + Math.random() * 1.1;
+        p.duration = p.grit ? 0.28 + Math.random() * 0.28 :
+          0.48 + Math.random() * 0.36;
+        p.diameter = p.grit ? 0.10 + Math.random() * 0.13 :
+          0.38 + Math.random() * 0.38;
+        p.opacity = p.grit ? 0.75 : 0.40;
+        p.shade = 0.82 + Math.random() * 0.27;
+        // Dust lands on the current road elevation, including crests.
         p.groundY = groundY + 0.11;
         p.landing = false;
         p.lifetime = p.duration;
-        nextMudParticle = (nextMudParticle + 1) % MAX_MUD_PARTICLES;
       }
     }
 
     function tickMudParticles(dt, intensity, driver, opponents) {
-      for (let i = 0; i < MAX_MUD_PARTICLES; i++) {
-        const p = mudState[i], j = 3 * i;
-        if (p.lifetime > 0) {
-          p.lifetime -= dt;
-          p.x += p.vx * dt;
-          p.z += p.vz * dt;
-          p.y += p.vy * dt;
-          p.vy -= 9.81 * dt;
-          if (p.y < p.groundY) p.lifetime = 0;
-        }
-        if (p.lifetime > 0) {
-          mudPositions[j] = p.x;
-          mudPositions[j + 1] = p.y;
-          mudPositions[j + 2] = p.z;
-          const brightness = 0.3 + 0.7 * (p.lifetime / p.duration);
-          // Landing dust is pale and punchy; steering mud stays dark brown.
-          mudColors[j] = brightness * (p.landing ? 0.84 : 0.42);
-          mudColors[j + 1] = brightness * (p.landing ? 0.74 : 0.29);
-          mudColors[j + 2] = brightness * (p.landing ? 0.55 : 0.16);
-        } else {
-          mudPositions[j + 1] = -2000;
-        }
-      }
-
       emitDrift(dt, intensity, visualBody, driver.yaw,
         Number(driver.roadY) || 0, 0);
       if (opponents) {
@@ -99,8 +131,6 @@ const GcvVisualEffects = (() => {
           const mesh = opponentMeshes.get(ai.id);
           const model = mesh?.userData?.opponentModel;
           const bike = model === "bike", kart = model === "kart";
-          // The AI mesh is the inexpensive pose handle used by the
-          // instanced model renderer; its transform is already up to date.
           emitDrift(dt, mesh?.visible && !(ai.jumpY > 0)
             ? ai.skidIntensity : 0,
             mesh, mesh?.rotation?.y || 0,
@@ -111,16 +141,57 @@ const GcvVisualEffects = (() => {
       } else {
         mudEmissionRemainders.fill(0, 1);
       }
+      // No GPU buffer uploads or even a particle draw while the effect rests.
+      if (!hasMud) return;
+      let live = 0;
+      for (let i = 0; i < highWaterMark; i++) {
+        const p = mudState[i], j = 3 * i, c = 4 * i;
+        if (p.lifetime > 0) {
+          p.lifetime -= dt;
+          p.x += p.vx * dt;
+          p.z += p.vz * dt;
+          p.y += p.vy * dt;
+          p.vy -= 7.5 * dt;
+          if (p.y < p.groundY) p.lifetime = 0;
+        }
+        if (p.lifetime > 0) {
+          live++;
+          mudPositions[j] = p.x;
+          mudPositions[j + 1] = p.y;
+          mudPositions[j + 2] = p.z;
+          const t = Math.min(1, p.lifetime / p.duration);
+          // A quick newborn puff, then expanding translucent smoke. Flecks
+          // remain small and more opaque, falling out before the smoke.
+          const expansion = p.grit ? 0.75 + 0.2 * t : 0.7 + 0.85 * (1 - t);
+          mudSizes[i] = p.diameter * expansion * (p.grit ? -1 : 1);
+          const brightness = p.shade * (0.86 + 0.14 * t);
+          mudColors[c] = brightness * (p.landing ? 0.88 : p.grit ? 0.34 : 0.66);
+          mudColors[c + 1] = brightness * (p.landing ? 0.77 : p.grit ? 0.25 : 0.56);
+          mudColors[c + 2] = brightness * (p.landing ? 0.60 : p.grit ? 0.16 : 0.43);
+          mudColors[c + 3] = p.opacity * t * t;
+        } else {
+          mudPositions[j + 1] = -2000;
+          mudColors[c + 3] = 0;
+        }
+      }
+      hasMud = live > 0;
+      mudGeometry.setDrawRange(0, hasMud ? highWaterMark : 0);
       mudPositionAttribute.needsUpdate = true;
       mudColorAttribute.needsUpdate = true;
+      mudSizeAttribute.needsUpdate = true;
+      // Canvas dimensions reflect live DPR / adaptive-resolution changes,
+      // without layout reads, texture regeneration or shader recompilation.
+      const height = viewportCanvas?.height;
+      if (height > 0 && height !== mudMaterial.uniforms.viewportHeight.value) {
+        mudMaterial.uniforms.viewportHeight.value = height;
+      }
     }
 
-    // One radial burst at the exact road touchdown, reusing the mud buffer.
-    // No new draw calls or textures on mobile. Never called during falls.
+    // Reuse the same GPU batch for the touchdown puff.
     function land(driver) {
       const groundY = (Number(driver.roadY) || 0) + 0.1;
       for (let i = 0; i < 20; i++) {
-        const p = mudState[nextMudParticle];
+        const p = allocateMud();
         const angle = i * Math.PI * 2 / 20;
         const speed = 2.1 + (i % 4) * 0.42;
         p.x = driver.x + Math.cos(angle) * 0.62;
@@ -128,12 +199,15 @@ const GcvVisualEffects = (() => {
         p.y = groundY + 0.12;
         p.vx = Math.cos(angle) * speed;
         p.vz = Math.sin(angle) * speed;
-        p.vy = 1.45 + (i % 3) * 0.30;
-        p.duration = 0.28 + (i % 5) * 0.04;
+        p.vy = 1.05 + (i % 3) * 0.27;
+        p.duration = 0.34 + (i % 5) * 0.055;
+        p.diameter = 0.4 + (i % 4) * 0.11;
+        p.opacity = 0.52;
+        p.shade = 0.95 + (i % 3) * 0.025;
+        p.grit = false;
         p.lifetime = p.duration;
         p.groundY = groundY;
         p.landing = true;
-        nextMudParticle = (nextMudParticle + 1) % MAX_MUD_PARTICLES;
       }
     }
 
