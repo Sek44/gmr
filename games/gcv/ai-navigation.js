@@ -4,6 +4,7 @@
 const GcvAiNavigation = (() => {
   const Physics = typeof GcvPhysics !== "undefined"
     ? GcvPhysics : require("./physics.js");
+  const PACE_SCALE = 0.8; // New races run at 80% of the original AI pace.
   const ACCELERATION = 10;
   const BRAKING = 40;
   const CORNER_ACCELERATION = 82; // Arcade lateral grip, in m/s².
@@ -69,7 +70,11 @@ const GcvAiNavigation = (() => {
       if (!Number.isFinite(ai.strength) || ai.strength <= 0 ||
           !Number.isFinite(ai.startProgress) || ai.startProgress >= finish)
         throw new RangeError("Invalid AI driver");
-      const key = ai.id + ":" + ai.startProgress + ":" + ai.strength;
+      // Missing scale identifies a race saved before the pace adjustment.
+      const paceScale = ai.paceScale ?? 1;
+      if (!Number.isFinite(paceScale) || paceScale <= 0 || paceScale > 1)
+        throw new RangeError("Invalid AI pace scale");
+      const key = ai.id + ":" + ai.startProgress + ":" + ai.strength + ":" + paceScale;
       if (cache.has(key)) return cache.get(key);
       // Replaying many races on one screen must not retain every old
       // driver timetable forever. A clear rebuild costs only a few ms.
@@ -95,6 +100,9 @@ const GcvAiNavigation = (() => {
         speeds[i] = Math.min(speeds[i],
           Math.sqrt(speeds[i + 1] ** 2 + 2 * BRAKING * ds));
       }
+      // Scale the completed profile, including the capped fastest driver,
+      // before building times and jump events: no change to player physics.
+      for (let i = 1; i <= count; i++) speeds[i] *= paceScale;
       for (let i = 1; i <= count; i++) {
         times[i] = times[i - 1] +
           2 * ds / (speeds[i - 1] + speeds[i]);
@@ -262,7 +270,7 @@ const GcvAiNavigation = (() => {
     // exact same route without serializing thousands of samples.
     return Object.freeze({ plan, sample, finish, curveLimit, directionAt, laneAt });
   }
-  return Object.freeze({ create, SKILLS, ACCELERATION, BRAKING });
+  return Object.freeze({ create, SKILLS, PACE_SCALE, ACCELERATION, BRAKING });
 })();
 if (typeof window !== "undefined") window.GcvAiNavigation = GcvAiNavigation;
 if (typeof module !== "undefined" && module.exports)
