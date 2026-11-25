@@ -113,9 +113,11 @@ test("race progress and exact AI finish times are frame-rate independent", () =>
     const prestart = state.opponents.map(o => o.progress);
     state = Race.advance(state, 4.8, 0, null, navigation);
     assert.ok(state.opponents.every((o, i) => o.progress === prestart[i]));
-    const largeFrame = Race.advance(state, 100, 0, null, navigation);
+    const frames = Math.ceil(Math.max(...state.opponents.map(ai =>
+      navigation.plan(ai).totalTime)) / 0.2) + 10;
+    const largeFrame = Race.advance(state, frames * 0.2, 0, null, navigation);
     let smallFrames = state;
-    for (let i = 0; i < 500; i++)
+    for (let i = 0; i < frames; i++)
       smallFrames = Race.advance(smallFrames, 0.2, 0, null, navigation);
     for (let i = 0; i < 9; i++) {
       const a = largeFrame.opponents[i], b = smallFrames.opponents[i];
@@ -199,7 +201,9 @@ test("fast opponents leave the surface over generated crests and land", () => {
   const sprint = sampledLayout(Layout.SPRINT);
   const drivers = Race.create(sprint.routeLength, () => 0.5,
     null, sprint.laps, sprint.navigation).opponents;
-  const fastest = drivers[0];
+  // Test the takeoff criterion at the original full pace; slower new
+  // opponents may legitimately stay grounded on some of these crests.
+  const fastest = { ...drivers[0], paceScale: 1 };
   const plan = sprint.navigation.plan(fastest);
   let maxJump = 0, jumps = 0, landed = 0, wasAirborne = false;
   for (let i = 0; i <= 1000; i++) {
@@ -286,4 +290,21 @@ test("AI rivals share the player's rainbow sway only while inside the zone", () 
   }
   assert.ok(maxLaneDifference > 0.5, "the rivals visibly weave in the rainbow zone");
   assert.ok(maxYawDifference > 0.04, "the rivals also turn their bodies with the weave");
+});
+
+test("new opponents have exactly 80% of the previous speed profile on both circuits", () => {
+  for (const route of [Layout.CLASSIC, Layout.SPRINT]) {
+    const { navigation, routeLength, laps } = sampledLayout(route);
+    const state = Race.create(routeLength, () => 0.5, null, laps, navigation);
+    for (const ai of state.opponents) {
+      assert.equal(ai.paceScale, 0.8);
+      const slow = navigation.plan(ai);
+      const { paceScale, ...legacy } = ai;
+      const old = navigation.plan(legacy);
+      assert.ok(Math.abs(slow.totalTime - old.totalTime / 0.8) < 1e-8);
+      assert.ok(slow.speeds.every((speed, i) =>
+        Math.abs(speed - old.speeds[i] * 0.8) < 1e-9));
+      assert.ok(Math.abs(ai.targetLapSeconds - slow.totalTime / laps) < 1e-9);
+    }
+  }
 });
