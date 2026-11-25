@@ -72,11 +72,12 @@ const GcvRace = (() => {
         (Math.min(1, Math.max(0, roll)) - 0.5) * 0.024 : 0;
       const strength = navigation
         ? AiNavigation.SKILLS[rank] + jitter : null;
+      const paceScale = navigation ? AiNavigation.PACE_SCALE : 1;
       const startProgress = -grid.distance;
       const laneSeed = ((Number.isFinite(roll) ? roll : 0.5) *
         0.6180339 + slot * 0.1743) % 1;
       const lapSeconds = navigation
-        ? navigation.plan({ id: slot, startProgress, strength }).totalTime / laps
+        ? navigation.plan({ id: slot, startProgress, strength, paceScale }).totalTime / laps
         : laps === 1
           ? (27 + rank * 1.4 + Math.max(0, Math.min(1,
             Number.isFinite(roll) ? roll : 0.5)) * 1.2) *
@@ -84,7 +85,7 @@ const GcvRace = (() => {
           : lapTarget(rank, () => Number.isFinite(roll) ? roll : 0.5);
       opponents.push({
         id: slot, progress: startProgress, startProgress,
-        lateral: grid.lateral, gridLateral: grid.lateral, laneSeed, strength,
+        lateral: grid.lateral, gridLateral: grid.lateral, laneSeed, strength, ...(navigation ? { paceScale } : {}),
         targetLapSeconds: lapSeconds,
         finishTime: null,
         speed: navigation ? 0 : trackLength / lapSeconds,
@@ -278,7 +279,9 @@ const GcvRace = (() => {
           (navigation && (!Number.isFinite(ai.gridLateral) ||
             !Number.isFinite(ai.laneSeed) ||
             !Number.isFinite(ai.strength) ||
-            ai.strength <= 0 || !Number.isFinite(ai.startProgress) ||
+            ai.strength <= 0 || (ai.paceScale !== undefined &&
+              (!Number.isFinite(ai.paceScale) || ai.paceScale <= 0 || ai.paceScale > 1)) ||
+            !Number.isFinite(ai.startProgress) ||
             ai.startProgress >= saved.laps * trackLength)))) return null;
     return { ...saved };
   }
